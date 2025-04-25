@@ -77,7 +77,6 @@ public class TcpipResolverService implements ValueResolverService {
 		map.put("IPX_TYPE", IpxType::resolveType);
 
 		return map;
-//		return new HashMap<>();
 	}
 
 }

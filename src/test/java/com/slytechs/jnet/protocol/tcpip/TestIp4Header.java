@@ -27,8 +27,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 
-import com.slytechs.jnet.platform.api.util.Detail;
 import com.slytechs.jnet.platform.api.util.HexStrings;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.protocol.api.common.HeaderNotFound;
 import com.slytechs.jnet.protocol.api.core.PacketDescriptorType;
 import com.slytechs.jnet.protocol.api.descriptor.DescriptorConstants;
@@ -273,7 +273,7 @@ class TestIp4Header {
 		var ip4 = packet.getHeader(new Ip4());
 
 //		Tests.out.println(packet.descriptor().toString(Detail.HIGH));
-		Tests.out.println(ip4.toString(Detail.TRACE));
+		Tests.out.println(ip4.toString(Detail.HEXDUMP));
 
 		assertEquals(0x2, ip4.flags());
 	}

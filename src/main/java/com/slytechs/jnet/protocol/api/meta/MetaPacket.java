@@ -26,7 +26,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import com.slytechs.jnet.platform.api.util.Detail;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.protocol.api.common.Frame;
 import com.slytechs.jnet.protocol.api.common.HasIndexedRecord;
 import com.slytechs.jnet.protocol.api.common.HasOption;

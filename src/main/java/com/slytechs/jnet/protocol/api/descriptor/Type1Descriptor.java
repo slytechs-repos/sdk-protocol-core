@@ -24,7 +24,7 @@ import static com.slytechs.jnet.protocol.api.core.L4FrameType.*;
 import static com.slytechs.jnet.protocol.api.core.LayerConstants.*;
 import static com.slytechs.jnet.protocol.api.descriptor.impl.Type1DescriptorLayout.*;
 
-import com.slytechs.jnet.platform.api.util.Detail;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.platform.api.util.time.Timestamp;
 import com.slytechs.jnet.protocol.api.core.L2FrameType;
 import com.slytechs.jnet.protocol.api.core.L3FrameType;
@@ -247,11 +247,11 @@ public class Type1Descriptor extends PacketDescriptor {
 	 * @param detail     the detail
 	 * @return the string builder
 	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#buildDetailedString(java.lang.StringBuilder,
-	 *      com.slytechs.jnet.jnetruntime.util.Detail)
+	 *      com.slytechs.jnet.platform.api.util.format.jnetruntime.util.Detail)
 	 */
 	@Override
 	protected StringBuilder buildDetailedString(StringBuilder toAppendTo, Detail detail) {
-		if (detail == Detail.LOW) {
+		if (detail == Detail.SUMMARY) {
 			toAppendTo
 					.append("cap=%d".formatted(captureLength()))
 					.append(", ts=\"%s\"%n".formatted(new Timestamp(timestamp(), timestampUnit())));

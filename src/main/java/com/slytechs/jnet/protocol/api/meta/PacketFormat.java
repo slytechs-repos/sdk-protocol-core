@@ -22,9 +22,9 @@ import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.slytechs.jnet.platform.api.util.Detail;
 import com.slytechs.jnet.platform.api.util.HexStrings;
 import com.slytechs.jnet.platform.api.util.collection.IntArrayList;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.protocol.api.common.Header;
 import com.slytechs.jnet.protocol.api.common.Packet;
 import com.slytechs.jnet.protocol.api.meta.impl.DisplaysInfo;
@@ -169,11 +169,11 @@ public final class PacketFormat extends MetaFormat {
 
 			displayFormat = super.rewriteFormatString(displayFormat, argLengths);
 
-//		System.out.printf("formatField::%s displayFormat=%s, args=%s%n", 
-//				field.name(), 
-////				display.value(),
-//				displayFormat,
-//				Arrays.asList(valueArgs));
+		System.out.printf("formatField::%s displayFormat=%s, args=%s%n", 
+				field.name(), 
+//				display.value(),
+				displayFormat,
+				Arrays.asList(valueArgs));
 
 			var labelComponent = label;
 			var valueComponent = displayFormat.formatted(valueArgs);
@@ -188,7 +188,7 @@ public final class PacketFormat extends MetaFormat {
 			LOGGER.log(Level.FINE, "Meta (resource) error", e);
 			throw new IllegalStateException("Field '%s.%s': %s [printf=%s, args=%s]"
 					.formatted(field.getParentHeader().name(), field.name(), e
-							.getMessage(), displayFormat, Arrays.asList(valueArgs)));
+							.getMessage(), displayFormat, Arrays.asList(valueArgs)), e);
 		}
 	}
 

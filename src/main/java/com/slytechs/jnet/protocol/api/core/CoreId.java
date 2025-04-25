@@ -439,7 +439,7 @@ public enum CoreId implements HeaderInfo, PackId {
 		var set = EnumSet.noneOf(CoreId.class);
 
 		for (CoreId e : values()) {
-			if (PackId.bitmaskCheck(bitmask, e.id))
+			if (PackId.bitmaskCheck(bitmask & 0x0F, e.id))
 				set.add(e);
 		}
 

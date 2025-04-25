@@ -109,6 +109,8 @@ public record ResolversInfo(ValueResolver... resolvers) implements MetaInfoType 
 			var resolverName = jsonArray.getString(i);
 			var resolver = serviceResolvers.get(resolverName);
 			resolvers[i] = resolver;
+			
+//			System.out.printf("resolver=%s, inst=%s%n", resolverName, resolver);
 		}
 		
 //		for (int i = 0; i < jsonArray.size(); i++) {

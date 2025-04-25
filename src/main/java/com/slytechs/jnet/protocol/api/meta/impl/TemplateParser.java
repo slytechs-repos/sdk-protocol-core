@@ -22,7 +22,7 @@ import java.io.Reader;
 import java.util.List;
 import java.util.Map;
 
-import com.slytechs.jnet.platform.api.util.Detail;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 
 public interface TemplateParser {
 

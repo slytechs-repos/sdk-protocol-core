@@ -17,15 +17,16 @@
  */
 package com.slytechs.jnet.protocol.api.common;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
 import com.slytechs.jnet.platform.api.common.binding.MemoryBinding;
-import com.slytechs.jnet.platform.api.util.Detail;
-import com.slytechs.jnet.platform.api.util.DetailedString;
 import com.slytechs.jnet.platform.api.util.HexStrings;
 import com.slytechs.jnet.platform.api.util.ToHexdump;
+import com.slytechs.jnet.platform.api.util.format.Detail;
+import com.slytechs.jnet.platform.api.util.format.Stringable;
 import com.slytechs.jnet.platform.api.util.time.HasTimestamp;
 import com.slytechs.jnet.platform.api.util.time.Timestamp;
 import com.slytechs.jnet.platform.api.util.time.TimestampUnit;
@@ -63,7 +64,7 @@ import com.slytechs.jnet.protocol.api.pack.PackId;
 @MetaResource("packet-meta.json")
 public final class Packet
 		extends MemoryBinding
-		implements HasHeader, Cloneable, DetailedString, ToHexdump, HasTimestamp {
+		implements HasHeader, Cloneable, Stringable, ToHexdump, HasTimestamp {
 
 	/** The Constant MAX_PACKET_LENGTH. */
 	public static final int MAX_PACKET_LENGTH = 1538;
@@ -473,7 +474,7 @@ public final class Packet
 				: "";
 
 		return switch (detail) {
-		case LOW -> "Packet [#%2d: length=%4d%s, timestamp=%s]"
+		case SUMMARY -> "Packet [#%2d: length=%4d%s, timestamp=%s]"
 				.formatted(
 						descriptor().frameNo(),
 						captureLength(),
@@ -516,6 +517,64 @@ public final class Packet
 	 */
 	public int wireLength() {
 		return descriptor.wireLength();
+	}
+
+	/**
+	 * @see com.slytechs.jnet.platform.api.util.format.Printable#printTo(java.lang.Appendable,
+	 *      com.slytechs.jnet.platform.api.util.format.Detail)
+	 */
+	@Override
+	public void printTo(Appendable out, Detail detail) throws IOException {
+		if (formatter != null) {
+			var sb = new StringBuilder();
+
+			formatter.formatPacket(this, sb, detail);
+			out.append(sb.toString());
+
+			return;
+		}
+
+		String ifWirelenIsDifferent = (captureLength() != wireLength())
+				? "/%d".formatted(wireLength())
+				: "";
+
+		String str = switch (detail) {
+		case SUMMARY -> "Packet [#%2d: length=%4d%s, timestamp=%s]"
+				.formatted(
+						descriptor().frameNo(),
+						captureLength(),
+						ifWirelenIsDifferent,
+						new Timestamp(timestamp(), timestampUnit()));
+
+		case MEDIUM -> "Packet [#%2d: length=%4d, wireLength=%4d, timestamp=%s]"
+				.formatted(
+						descriptor().frameNo(),
+						captureLength(),
+						wireLength(),
+						new Timestamp(timestamp(), timestampUnit()));
+
+		case HIGH -> "Packet [#%2d: length=%4d, wireLength=%4d, timestamp=%s%n%s]"
+				.formatted(
+						descriptor().frameNo(),
+						captureLength(),
+						wireLength(),
+						new Timestamp(timestamp(), timestampUnit()),
+						HexStrings.toHexTextDump(buffer().slice(0, 16)));
+
+		case DEBUG -> "Packet [#%d: length=%4d, wireLength=%4d, %s]"
+				.formatted(
+						descriptor().frameNo(),
+						captureLength(),
+						wireLength(),
+						Arrays.asList(descriptor.toDescriptorArray())
+//						descriptor.peekDescriptor(IpfDescriptorType.IPF_FRAG)
+
+			);
+		case OFF -> "";
+		default -> throw new IllegalArgumentException("Unexpected value: " + detail);
+		};
+
+		out.append(str);
 	}
 
 }

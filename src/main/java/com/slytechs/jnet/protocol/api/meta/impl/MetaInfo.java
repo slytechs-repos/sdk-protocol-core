@@ -214,7 +214,7 @@ public class MetaInfo implements Comparable<MetaInfo>, MetaInfoType {
 	}
 
 	/**
-	 * Formatter.
+	 * PrintableFormatter.
 	 *
 	 * @return the type
 	 */

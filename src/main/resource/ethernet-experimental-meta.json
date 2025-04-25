@@ -1,8 +1,8 @@
 {
 	"Ethernet": {
-		"HIGH,MEDIUM,LOW": "Ethernet II, src: %{src:R1}s dst: %{dst:R1}s offset=%{offset},d length=%{length},d",
+		"HIGH,MEDIUM,LOW": "Ethernet II, src: %{src:ETHER_MAC_OUI_NAME_PREFIXED}s dst: %{dst:ETHER_MAC_OUI_NAME_PREFIXED}s offset=%{offset},d length=%{length},d",
 		"DEBUG": [
-			"Ethernet II, src: %{source:R1}s dst: %{destination:R1}s offset=%{offset},d length=%{length},d",
+			"Ethernet II, src: %{source:ETHER_MAC_OUI_NAME_PREFIXED}s dst: %{destination:ETHER_MAC_OUI_NAME_PREFIXED}s offset=%{offset},d length=%{length},d",
 			" 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1",
 			"+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+",
 			"|           |G|U|                                               |",
@@ -15,7 +15,7 @@
 			"+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                "
 		],
 		"TRACE": [
-			"Ethernet II, src: %{src:R1}s dst: %{dst:R1}s offset=%{offset},d length=%{length},d",
+			"Ethernet II, src: %{src:ETHER_MAC_OUI_NAME_PREFIXED}s dst: %{dst:ETHER_MAC_OUI_NAME_PREFIXED}s offset=%{offset},d length=%{length},d",
 			" 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1",
 			"+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+",
 			"|           |$1g|$1u|                $47-                       |",

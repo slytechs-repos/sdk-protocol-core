@@ -24,7 +24,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.slytechs.jnet.platform.api.util.Detail;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.protocol.api.meta.MetaValue.ValueResolver;
 import com.slytechs.jnet.protocol.api.meta.impl.DisplaysInfo;
 import com.slytechs.jnet.protocol.api.meta.impl.MetaElement;

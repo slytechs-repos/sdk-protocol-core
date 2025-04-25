@@ -23,7 +23,7 @@ import java.util.Optional;
 
 import com.slytechs.jnet.platform.api.common.binding.Binding;
 import com.slytechs.jnet.platform.api.common.binding.MemoryBinding;
-import com.slytechs.jnet.platform.api.util.Detail;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 
 /**
  * Common base class for all descriptors.
@@ -182,7 +182,7 @@ public abstract class Descriptor
 	 * @param detail the detail
 	 * @return the string builder
 	 * @see com.slytechs.jnet.jnetruntime.util.StringBuildable#buildString(java.lang.StringBuilder,
-	 *      com.slytechs.jnet.jnetruntime.util.Detail)
+	 *      com.slytechs.jnet.platform.api.util.format.jnetruntime.util.Detail)
 	 */
 	public final StringBuilder buildString(StringBuilder b, Detail detail) {
 		String newLine = detail.isLow() ? "" : "\n";
@@ -223,7 +223,7 @@ public abstract class Descriptor
 	 */
 	@Override
 	public final String toString() {
-		return toString(Detail.LOW);
+		return toString(Detail.SUMMARY);
 	}
 
 	/**

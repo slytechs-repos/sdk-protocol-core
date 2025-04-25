@@ -30,16 +30,16 @@ import java.util.Map;
 
 import org.yaml.snakeyaml.Yaml;
 
-import com.slytechs.jnet.platform.api.util.Detail;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 
 public class YamlTemplateParser implements TemplateParser {
 
 	private static final List<Detail> DETAIL_HIERARCHY = List.of(
-			Detail.TRACE,
+			Detail.HEXDUMP,
 			Detail.DEBUG,
 			Detail.HIGH,
 			Detail.MEDIUM,
-			Detail.LOW,
+			Detail.SUMMARY,
 			Detail.OFF);
 
 	@Override

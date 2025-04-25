@@ -26,10 +26,10 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.slytechs.jnet.platform.api.util.Detail;
 import com.slytechs.jnet.platform.api.util.WeakNamedCache;
 import com.slytechs.jnet.platform.api.util.collection.IntList;
 import com.slytechs.jnet.platform.api.util.format.BitFormat;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.protocol.api.meta.impl.DisplayUtil;
 import com.slytechs.jnet.protocol.api.meta.impl.MetaElement;
 import com.slytechs.jnet.protocol.api.meta.impl.MetaInfo;

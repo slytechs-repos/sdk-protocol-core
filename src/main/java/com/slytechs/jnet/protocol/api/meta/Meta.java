@@ -55,7 +55,7 @@ public @interface Meta {
 	}
 
 	/**
-	 * The Enum Formatter.
+	 * The Enum PrintableFormatter.
 	 */
 	public enum Formatter implements ValueFormatter {
 
@@ -145,7 +145,7 @@ public @interface Meta {
 	String note() default "";
 
 	/**
-	 * Formatter.
+	 * PrintableFormatter.
 	 *
 	 * @return the formatter
 	 */

@@ -23,10 +23,10 @@ import java.util.Optional;
 import java.util.function.IntSupplier;
 import java.util.regex.Pattern;
 
-import com.slytechs.jnet.platform.api.util.Detail;
 import com.slytechs.jnet.platform.api.util.IsAbbr;
 import com.slytechs.jnet.platform.api.util.IsDescription;
 import com.slytechs.jnet.platform.api.util.Reflections;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.platform.api.util.json.Json;
 import com.slytechs.jnet.platform.api.util.json.JsonException;
 import com.slytechs.jnet.platform.api.util.json.JsonObject;

@@ -20,6 +20,7 @@ package com.slytechs.jnet.protocol.api.meta.impl;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.slytechs.jnet.platform.api.util.HexStrings;
 import com.slytechs.jnet.platform.api.util.time.Timestamp;
 import com.slytechs.jnet.protocol.api.meta.MetaValue.ValueResolver;
 import com.slytechs.jnet.protocol.api.meta.spi.ValueResolverService;
@@ -45,6 +46,7 @@ public class CoreResolverService implements ValueResolverService {
 		var map = new HashMap<String, ValueResolver>();
 
 		map.put("NONE", null);
+		map.put("F", CoreResolverService::resolveAny);
 		map.put("TIMESTAMP", Timestamp::formatTimestamp);
 		map.put("TIMESTAMP_UNIT", Timestamp::formatTimestampUnit);
 		map.put("TIMESTAMP_IN_PCAP_MICRO", Timestamp::formatTimestampPcapMicro);
@@ -62,4 +64,19 @@ public class CoreResolverService implements ValueResolverService {
 //		return new HashMap<>();
 	}
 
+	private static String resolveAny(Object target) {
+		return switch (target) {
+
+		case byte[] arr -> resolveArrayValue(arr);
+
+		default -> String.valueOf(target);
+		};
+	}
+
+	private static String resolveArrayValue(byte[] arr) {
+		return switch (arr.length) {
+
+		default -> HexStrings.toHexString(arr);
+		};
+	}
 }

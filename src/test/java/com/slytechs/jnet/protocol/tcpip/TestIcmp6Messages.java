@@ -27,7 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 
-import com.slytechs.jnet.platform.api.util.Detail;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.protocol.api.common.HeaderNotFound;
 import com.slytechs.jnet.protocol.api.core.CoreId;
 import com.slytechs.jnet.protocol.api.core.PacketDescriptorType;
@@ -104,9 +104,9 @@ class TestIcmp6Messages {
 		packet.descriptor().buffer().flip();
 
 //		Tests.out.println(packet.descriptor().toString(Detail.HIGH));
-//		Tests.out.println(packet.toString(Detail.TRACE));
-		Tests.out.println(packet.getHeader(new Ethernet()).toString(Detail.TRACE));
-//		Tests.out.println(packet.getHeader(new Icmp6NeighborAdvertisement()).toString(Detail.TRACE));
+//		Tests.out.println(packet.toString(Detail.HEXDUMP));
+		Tests.out.println(packet.getHeader(new Ethernet()).toString(Detail.HEXDUMP));
+//		Tests.out.println(packet.getHeader(new Icmp6NeighborAdvertisement()).toString(Detail.HEXDUMP));
 		
 		
 

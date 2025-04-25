@@ -46,7 +46,7 @@ import com.slytechs.jnet.protocol.api.meta.MetaResource;
  * @author Sly Technologies
  * @author repos@slytechs.com
  */
-@MetaResource("ethernet-experimental-meta.json")
+@MetaResource("ethernet-meta.json")
 public final class Ethernet extends Header {
 
 	/** Core protocol pack assigned header ID. */

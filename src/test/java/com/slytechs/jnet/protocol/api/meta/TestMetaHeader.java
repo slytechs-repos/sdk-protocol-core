@@ -28,8 +28,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.slytechs.jnet.platform.api.common.NotFound;
-import com.slytechs.jnet.platform.api.util.Detail;
 import com.slytechs.jnet.platform.api.util.HexStrings;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.platform.api.util.json.JsonException;
 import com.slytechs.jnet.protocol.api.common.Packet;
 import com.slytechs.jnet.protocol.api.common.Payload;
@@ -166,7 +166,7 @@ class TestMetaHeader {
 
 	@Test
 	void testPerHeaderFormatter() throws NotFound, JsonException {
-		PacketFormat pf = new PacketFormat(Detail.LOW);
+		PacketFormat pf = new PacketFormat(Detail.SUMMARY);
 
 		Ethernet eth = new Ethernet();
 		Ip4 ip4 = new Ip4();
@@ -176,7 +176,7 @@ class TestMetaHeader {
 //			Tests.out.println(pf.format(eth));
 
 		if (packet.hasHeader(ip4))
-			Tests.out.println(pf.format(ip4, Detail.TRACE));
+			Tests.out.println(pf.format(ip4, Detail.HEXDUMP));
 
 //		if (packet.hasHeader(payload))
 //			Tests.out.println(pf.format(payload));
@@ -184,14 +184,14 @@ class TestMetaHeader {
 
 	@Test
 	void testPacketFormatter() throws NotFound, JsonException {
-		PacketFormat format = new PacketFormat(Detail.LOW);
+		PacketFormat format = new PacketFormat(Detail.SUMMARY);
 
 		Tests.out.println(format.format(packet));
 	}
 
 	@Test
 	void testPacketHexdumps() throws NotFound, JsonException {
-		PacketFormat format = new PacketFormat(Detail.LOW);
+		PacketFormat format = new PacketFormat(Detail.SUMMARY);
 
 //		Ethernet eth = packet.getHeader(new Ethernet());
 //		Payload payload = packet.getHeader(new Payload());

@@ -23,7 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import com.slytechs.jnet.platform.api.util.Detail;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.platform.api.util.json.JsonArray;
 import com.slytechs.jnet.platform.api.util.json.JsonArrayBuilder;
 import com.slytechs.jnet.platform.api.util.json.JsonException;
@@ -77,7 +77,7 @@ public class MetaResourceShortformReader extends MetaResourceReader {
 
 		for (final String key : sobj.keyOrderedList()) {
 
-			final Detail[] detailArray = findDetail(key); // Ex. HIGH,LOW,MEDIUM - comma sep
+			final Detail[] detailArray = findDetail(key); // Ex. HIGH,SUMMARY,MEDIUM - comma sep
 			if (detailArray == null) {
 				/* Inflate header checks and prevents duplicate header declarations */
 				inflateHeader(topBuilder, key, sobj.get(key));

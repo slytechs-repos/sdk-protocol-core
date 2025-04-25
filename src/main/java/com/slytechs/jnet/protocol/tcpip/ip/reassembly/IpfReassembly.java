@@ -23,8 +23,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import com.slytechs.jnet.platform.api.util.Detail;
 import com.slytechs.jnet.platform.api.util.IntSegment;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.protocol.api.core.L3FrameType;
 import com.slytechs.jnet.protocol.tcpip.ip.impl.IpfReassemblyLayout;
 
@@ -216,11 +216,11 @@ public class IpfReassembly extends IpfDescriptor {
 
 	/**
 	 * @see com.slytechs.jnet.protocol.api.descriptor.Descriptor#buildDetailedString(java.lang.StringBuilder,
-	 *      com.slytechs.jnet.jnetruntime.util.Detail)
+	 *      com.slytechs.jnet.platform.api.util.format.jnetruntime.util.Detail)
 	 */
 	@Override
 	protected StringBuilder buildDetailedString(StringBuilder toAppendTo, Detail detail) {
-		if (detail == Detail.LOW) {
+		if (detail == Detail.SUMMARY) {
 			toAppendTo
 					.append("%d %s Fragments (%d bytes): %s"
 							.formatted(

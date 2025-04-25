@@ -17,7 +17,7 @@
  */
 package com.slytechs.jnet.protocol.tcpip.ip.reassembly;
 
-import com.slytechs.jnet.platform.api.util.Detail;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.protocol.tcpip.ip.impl.IpfTrackingLayout;
 
 /**
@@ -42,7 +42,7 @@ public class IpfTrackingDescriptor extends IpfDescriptor {
 
 	/**
 	 * @see com.slytechs.jnet.protocol.api.descriptor.Descriptor#buildDetailedString(java.lang.StringBuilder,
-	 *      com.slytechs.jnet.jnetruntime.util.Detail)
+	 *      com.slytechs.jnet.platform.api.util.format.jnetruntime.util.Detail)
 	 */
 	@Override
 	protected StringBuilder buildDetailedString(StringBuilder b, Detail detail) {

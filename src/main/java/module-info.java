@@ -60,6 +60,8 @@ module com.slytechs.jnet.protocol.api {
 	exports com.slytechs.jnet.protocol.api.pack.impl to
 			com.slytechs.jnet.protocol.tcpip;
 
+	exports com.slytechs.jnet.protocol.api.descriptor.impl;
+
 	requires transitive com.slytechs.jnet.platform.api;
 	requires org.yaml.snakeyaml; // Meta header template resource in YAML format
 

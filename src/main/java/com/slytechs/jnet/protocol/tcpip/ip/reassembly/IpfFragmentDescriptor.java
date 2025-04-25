@@ -21,8 +21,8 @@ import static com.slytechs.jnet.protocol.api.descriptor.DescriptorConstants.*;
 
 import java.nio.ByteBuffer;
 
-import com.slytechs.jnet.platform.api.util.Detail;
 import com.slytechs.jnet.platform.api.util.HexStrings;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.protocol.api.core.L3FrameType;
 import com.slytechs.jnet.protocol.tcpip.ip.IpType;
 import com.slytechs.jnet.protocol.tcpip.ip.impl.IpfFragmentLayout;
@@ -264,11 +264,11 @@ public class IpfFragmentDescriptor extends IpfDescriptor {
 	 * @param detail     the detail
 	 * @return the string builder
 	 * @see com.slytechs.jnet.protocol.api.descriptor.Descriptor#buildDetailedString(java.lang.StringBuilder,
-	 *      com.slytechs.jnet.jnetruntime.util.Detail)
+	 *      com.slytechs.jnet.platform.api.util.format.jnetruntime.util.Detail)
 	 */
 	@Override
 	protected StringBuilder buildDetailedString(StringBuilder toAppendTo, Detail detail) {
-		if (detail == Detail.LOW) {
+		if (detail == Detail.SUMMARY) {
 			toAppendTo
 					.append("ipType=%s".formatted(ipTypeAsL3FrameType()))
 					.append(" %5d-%-5d (%4d bytes)".formatted(

@@ -17,16 +17,17 @@
  */
 package com.slytechs.jnet.protocol.api.common;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 import com.slytechs.jnet.platform.api.common.binding.MemoryBinding;
-import com.slytechs.jnet.platform.api.util.Detail;
-import com.slytechs.jnet.platform.api.util.DetailedString;
 import com.slytechs.jnet.platform.api.util.HexStrings;
 import com.slytechs.jnet.platform.api.util.ToHexdump;
+import com.slytechs.jnet.platform.api.util.format.Detail;
+import com.slytechs.jnet.platform.api.util.format.Stringable;
 import com.slytechs.jnet.protocol.api.descriptor.HeaderDescriptor;
 import com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor;
 import com.slytechs.jnet.protocol.api.meta.Meta;
@@ -41,7 +42,7 @@ import com.slytechs.jnet.protocol.api.pack.HasPackId;
  * @author repos@slytechs.com
  */
 @Meta
-public abstract class Header extends MemoryBinding implements DetailedString, ToHexdump, HasPackId {
+public abstract class Header extends MemoryBinding implements Stringable, ToHexdump, HasPackId {
 
 	private final HeaderDescriptor headerDescriptor = new HeaderDescriptor();
 
@@ -291,12 +292,36 @@ public abstract class Header extends MemoryBinding implements DetailedString, To
 		if (formatter != null)
 			return formatter.format(this, detail);
 
+		return printToString(detail);
+	}
+
+	/**
+	 * Header descriptor.
+	 *
+	 * @return the header descriptor
+	 */
+	public HeaderDescriptor getHeaderDescriptor() {
+		return headerDescriptor;
+	}
+
+	/**
+	 * @see com.slytechs.jnet.platform.api.util.format.Printable#printTo(java.lang.Appendable,
+	 *      com.slytechs.jnet.platform.api.util.format.Detail)
+	 */
+	@Override
+	public void printTo(Appendable out, Detail detail) throws IOException {
+		if (formatter != null) {
+			out.append(formatter.format(this, detail));
+
+			return;
+		}
+
 		int offset = headerOffset();
 		int length = headerLength();
 
-		return switch (detail) {
+		String str = switch (detail) {
 		case OFF -> "";
-		case LOW -> headerName();
+		case SUMMARY -> headerName();
 
 		case MEDIUM -> "%s [offset=%d, length=%d]"
 				.formatted(headerName(), offset, length);
@@ -309,17 +334,11 @@ public abstract class Header extends MemoryBinding implements DetailedString, To
 						buffer(),
 						i -> "%04X: ".formatted(i + offset)));
 
-		case TRACE, DEBUG -> "%s [offset=%d, length=%d, payload=%d, id=%04X]"
+		case HEXDUMP, DEBUG -> "%s [offset=%d, length=%d, payload=%d, id=%04X]"
 				.formatted(headerName(), offset, length, payloadLength(), id());
 		};
+
+		out.append(str);
 	}
 
-	/**
-	 * Header descriptor.
-	 *
-	 * @return the header descriptor
-	 */
-	public HeaderDescriptor getHeaderDescriptor() {
-		return headerDescriptor;
-	}
 }

@@ -23,8 +23,8 @@ import java.util.Arrays;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import com.slytechs.jnet.platform.api.util.Detail;
 import com.slytechs.jnet.platform.api.util.Enums;
+import com.slytechs.jnet.platform.api.util.format.Detail;
 import com.slytechs.jnet.platform.api.util.json.JsonObject;
 import com.slytechs.jnet.platform.api.util.json.JsonObjectBuilder;
 import com.slytechs.jnet.platform.api.util.json.JsonValue;
