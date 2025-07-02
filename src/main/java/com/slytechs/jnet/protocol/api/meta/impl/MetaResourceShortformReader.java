@@ -240,8 +240,8 @@ public class MetaResourceShortformReader extends MetaResourceReader {
 	private void inflateHeader(JsonObjectBuilder top, String metaString, JsonValue jsHeader) {
 
 		if (top.getJsonObject("meta") != null)
-			throw new IllegalStateException("header meta resource already defined [%s]"
-					.formatted(metaString));
+			throw new IllegalStateException("header meta resource [%s] already defined [%s]"
+					.formatted(super.resourceName, metaString));
 
 		var displayBuilder = new JsonObjectBuilder();
 

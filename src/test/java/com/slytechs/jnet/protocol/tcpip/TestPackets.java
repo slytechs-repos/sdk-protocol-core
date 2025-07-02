@@ -840,7 +840,7 @@ public enum TestPackets {
 	 */
 	public Packet toPacket() {
 		var packet = new Packet(toByteBuffer());
-		packet.descriptor().timestampUnit(TimestampUnit.EPOCH_MILLI);
+		packet.descriptor().setTimestampUnit(TimestampUnit.EPOCH_MILLI);
 		packet.setFormatter(new PacketFormat());
 
 		return packet;

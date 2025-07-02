@@ -6,8 +6,8 @@
 	<parent>
 		<groupId>com.slytechs.jnet.protocol</groupId>
 		<artifactId>protocol-sdk-parent</artifactId>
-		<version>0.10.0-SNAPSHOT</version>
-		<relativePath>../protocol-sdk</relativePath>
+		<version>0.1.0-SNAPSHOT</version>
+		<relativePath>../protocol-sdk/pom.xml</relativePath>
 	</parent>
 	
 	<artifactId>protocol-api</artifactId>

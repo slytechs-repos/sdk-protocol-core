@@ -105,7 +105,7 @@ public abstract class PacketDescriptor
 	 *
 	 * @param flags the new dissector flags
 	 */
-	public final void flags(int flags) {
+	public final void setFlags(int flags) {
 		this.flags = flags;
 	}
 
@@ -126,11 +126,11 @@ public abstract class PacketDescriptor
 		return portName;
 	}
 
-	public void portNo(int portNo) {
+	public void setPortNo(int portNo) {
 		this.portNo = portNo;
 	}
 
-	public void portName(String name) {
+	public void setPortName(String name) {
 		this.portName = name;
 	}
 
@@ -140,7 +140,7 @@ public abstract class PacketDescriptor
 	 * @param newNumber the new number
 	 * @return the packet descriptor
 	 */
-	public PacketDescriptor frameNo(long newNumber) {
+	public PacketDescriptor setFrameNo(long newNumber) {
 		this.frameNo = newNumber;
 
 		return this;
@@ -176,7 +176,7 @@ public abstract class PacketDescriptor
 	 *
 	 * @param timestampUnit the timestamp unit
 	 */
-	public void timestampUnit(TimestampUnit timestampUnit) {
+	public void setTimestampUnit(TimestampUnit timestampUnit) {
 		this.timestampUnit = timestampUnit;
 	}
 

@@ -35,6 +35,7 @@ public class MetaResourceReader {
 
 	/** The json obj. */
 	private final JsonObject jsonObj;
+	protected final String resourceName;
 
 	/**
 	 * Instantiates a new meta resource reader.
@@ -43,6 +44,7 @@ public class MetaResourceReader {
 	 * @throws JsonException the json exception
 	 */
 	public MetaResourceReader(String resourceName) throws JsonException {
+		this.resourceName = resourceName;
 		InputStream in = ReflectedClass.class.getResourceAsStream("/" + resourceName);
 		if (in == null) {
 			this.jsonObj = null;

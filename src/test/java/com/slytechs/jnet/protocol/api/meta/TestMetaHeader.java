@@ -150,7 +150,7 @@ class TestMetaHeader {
 				.txPort(15)
 				.txIgnore(1);
 
-		descriptorType2.frameNo(7);
+		descriptorType2.setFrameNo(7);
 
 		packet = new Packet(descriptorType2);
 		packet.bind(PACKET);
