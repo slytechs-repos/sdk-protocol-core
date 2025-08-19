@@ -51,6 +51,9 @@ public interface ProtocolPack {
 	/** The TCP/IP protocol pack. */
 	int TCPIP_ID = (2 << 8);
 
+	/** The TCP/IP protocol pack. */
+	int WEB_ID = (3 << 8);
+
 	String name();
 
 	String description();
