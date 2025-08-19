@@ -15,20 +15,22 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
+package com.slytechs.jnet.protocol.api.format;
+
+import com.slytechs.jnet.protocol.api.BasePacket;
+import com.slytechs.jnet.protocol.api.Header;
 
 /**
- * 
- *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public interface PacketFormat {
 
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
+	static PacketFormat getDefault() {
+		return null;
+	}
+
+	String formatPacket(BasePacket packet);
+
+	String formatHeader(Header header);
 }

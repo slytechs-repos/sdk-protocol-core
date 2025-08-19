@@ -17,18 +17,21 @@
  */
 package com.slytechs.jnet.protocol.api.descriptor;
 
+import com.slytechs.jnet.core.api.time.TimestampUnit;
+
 /**
  * 
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public interface TimestampProperties {
 
-	DescriptorType type();
+	long timestamp();
 	
-	int id();
+	TimestampUnit timestampUnit();
 	
-	int length();
+	long timestampNanos();
 	
+	long txTimestampNanos();
 }

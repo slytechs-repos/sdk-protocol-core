@@ -18,17 +18,16 @@
 package com.slytechs.jnet.protocol.api.descriptor;
 
 /**
- * 
+ * Chainable network tag for protocol-specific metadata (e.g., DPDK tags, IPF fragment links).
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
-
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
+public interface NetTag extends Descriptor {
+    /**
+     * Gets the next tag in the chain.
+     *
+     * @return the next NetTag, or null if none
+     */
+    NetTag next();
 }

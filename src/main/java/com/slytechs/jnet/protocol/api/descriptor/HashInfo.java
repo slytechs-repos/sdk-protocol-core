@@ -18,17 +18,38 @@
 package com.slytechs.jnet.protocol.api.descriptor;
 
 /**
- * 
+ * Provides hash and flow identifier metadata.
+ * Maps to DPDK (rte_mbuf.hash), Napatech (color/hash), Pcap (computed or NONE).
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public interface HashInfo {
+    /**
+     * Gets the hash value (e.g., RSS or FDIR hash).
+     *
+     * @return the hash value
+     */
+    long hash();
 
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
+    /**
+     * Gets the hash type as a binary integer.
+     *
+     * @return the hash type
+     */
+    int hashType();
+
+    /**
+     * Gets the hash type as an enum.
+     *
+     * @return the HashType enum
+     */
+//    HashType hashTypeEnum();
+
+    /**
+     * Gets the flow identifier (e.g., FDIR ID).
+     *
+     * @return the flow ID
+     */
+    long flowId();
 }

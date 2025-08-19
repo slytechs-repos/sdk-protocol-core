@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
+package com.slytechs.jnet.protocol.api.address;
 
 /**
  * 
@@ -23,12 +23,28 @@ package com.slytechs.jnet.protocol.api.descriptor;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+class Addresses {
 
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
+	public static String unsupportedMessage(String name) {
+		return "not implemented by " + name;
+	}
+
+	public static byte[] validateLength(byte[] bytes, int expectedLength) {
+		if (bytes.length != expectedLength) {
+			throw new IllegalArgumentException(
+					"Expected " + expectedLength + " bytes, got " + bytes.length);
+		}
+		return bytes;
+	}
+
+	public static long toLongFromBytes(byte[] bytes) {
+		long result = 0;
+		for (int i = 0; i < 6; i++) {
+			result = (result << 8) | (bytes[i] & 0xFF);
+		}
+		return result;
+	}
+
+	private Addresses() {}
+
 }

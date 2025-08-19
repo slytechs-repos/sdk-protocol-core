@@ -15,7 +15,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
+package com.slytechs.jnet.protocol.api;
+
+import com.slytechs.jnet.core.api.time.TimestampUnit;
 
 /**
  * 
@@ -23,12 +25,18 @@ package com.slytechs.jnet.protocol.api.descriptor;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public interface TxDescriptor {
 
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
+	boolean isTransmitEnabled();
+
+	boolean isTransmitImmediately();
+
+	boolean isTransmitSyncTimestamp();
+
+	long timestamp();
+
+	TimestampUnit timestampUnit();
+
+	int transmitPort();
+
 }

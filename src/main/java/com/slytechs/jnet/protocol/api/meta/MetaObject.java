@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
+package com.slytechs.jnet.protocol.api.meta;
 
 /**
  * 
@@ -23,12 +23,6 @@ package com.slytechs.jnet.protocol.api.descriptor;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public interface MetaObject extends Meta {
 
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
 }

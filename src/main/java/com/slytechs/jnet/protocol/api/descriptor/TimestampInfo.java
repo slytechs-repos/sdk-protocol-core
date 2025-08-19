@@ -17,18 +17,34 @@
  */
 package com.slytechs.jnet.protocol.api.descriptor;
 
+import com.slytechs.jnet.core.api.time.TimestampUnit;
+
 /**
- * 
+ * Provides timestamp metadata for a packet, including unit for precision.
+ * Maps to DPDK (rte_mbuf.timesync), Napatech (descriptor timestamp), Pcap (pcap_pkthdr.ts).
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public interface TimestampInfo {
+    /**
+     * Gets the raw timestamp value in native format.
+     *
+     * @return the timestamp
+     */
+    long timestamp();
 
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
+    /**
+     * Gets the timestamp unit as a binary integer (e.g., 9 for nanoseconds).
+     *
+     * @return the unit as an integer
+     */
+    int timestampUnit();
+
+    /**
+     * Gets the timestamp unit as an enum for type safety.
+     *
+     * @return the TimestampUnit enum
+     */
+    TimestampUnit timestampUnitEnum();
 }

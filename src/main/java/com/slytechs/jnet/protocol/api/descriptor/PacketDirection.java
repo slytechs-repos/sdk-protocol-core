@@ -18,17 +18,32 @@
 package com.slytechs.jnet.protocol.api.descriptor;
 
 /**
- * 
+ * Provides contextual metadata (port, direction, user data).
+ * Maps to DPDK (rte_mbuf.port, userdata), Napatech (descriptor meta), Pcap (from handle).
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public enum PacketDirection {
+    RX(0), TX(1), UNKNOWN(-1);
 
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
+    private final int value;
+
+    PacketDirection(int value) {
+        this.value = value;
+    }
+
+    public int value() {
+        return value;
+    }
+
+    public static PacketDirection of(int value) {
+        for (PacketDirection dir : values()) {
+            if (dir.value == value) {
+                return dir;
+            }
+        }
+        return UNKNOWN;
+    }
 }
+

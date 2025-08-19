@@ -18,17 +18,24 @@
 package com.slytechs.jnet.protocol.api.descriptor;
 
 /**
- * 
+ * Provides basic capture length metadata for a packet.
+ * Maps to Pcap (pcap_pkthdr.caplen/len), DPDK (rte_mbuf.pkt_len), Napatech (descriptor lengths).
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public interface CaptureInfo {
+    /**
+     * Gets the captured length of the packet (bytes captured by the backend).
+     *
+     * @return the captured length in bytes
+     */
+    int captureLength();
 
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
+    /**
+     * Gets the original wire length of the packet (before capture truncation).
+     *
+     * @return the wire length in bytes
+     */
+    int wireLength();
 }

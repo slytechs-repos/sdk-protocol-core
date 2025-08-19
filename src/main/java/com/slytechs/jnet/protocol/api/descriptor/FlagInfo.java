@@ -18,17 +18,17 @@
 package com.slytechs.jnet.protocol.api.descriptor;
 
 /**
- * 
+ * Provides a bitmask of packet flags (e.g., checksum status, offloads).
+ * Maps to DPDK (rte_mbuf.ol_flags), Napatech (descriptor flags), Pcap (none, default 0).
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
-
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
+public interface FlagInfo {
+    /**
+     * Gets the bitmask of packet flags (e.g., checksum errors, offload status).
+     *
+     * @return the flag bitmask
+     */
+    long packetFlagBitmask();
 }

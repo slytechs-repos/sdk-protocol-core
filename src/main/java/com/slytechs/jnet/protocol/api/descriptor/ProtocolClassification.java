@@ -23,12 +23,13 @@ package com.slytechs.jnet.protocol.api.descriptor;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public interface ProtocolClassification {
 
-	DescriptorType type();
+	long packetType();
 	
-	int id();
+	void setPacketType(long type);
 	
-	int length();
+	int vlanTci();
 	
+	int vlanTciOuter();
 }

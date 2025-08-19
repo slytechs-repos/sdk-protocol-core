@@ -15,7 +15,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
+package com.slytechs.jnet.protocol.api;
+
+import java.util.List;
+
+import com.slytechs.jnet.protocol.api.pack.ProtocolPack;
 
 /**
  * 
@@ -23,12 +27,16 @@ package com.slytechs.jnet.protocol.api.descriptor;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public interface Protocol {
 
-	DescriptorType type();
-	
 	int id();
-	
-	int length();
-	
+
+	String name();
+
+	ProtocolPack pack();
+
+	HeaderFactory<?> headerFactory();
+
+	List<Option> listOptions();
+
 }

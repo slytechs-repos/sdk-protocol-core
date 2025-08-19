@@ -18,17 +18,24 @@
 package com.slytechs.jnet.protocol.api.descriptor;
 
 /**
- * 
+ * Provides segmentation and TSO metadata for scattered packets.
+ * Maps to DPDK (rte_mbuf.nb_segs, tso_segsz), Napatech (multi-segment), Pcap (single segment).
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public interface SegmentationInfo {
+    /**
+     * Gets the TSO segment size (for TCP segmentation offload).
+     *
+     * @return the TSO segment size in bytes
+     */
+    int tsoSegmentSize();
 
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
+    /**
+     * Gets the number of mbuf segments in the packet.
+     *
+     * @return the segment count
+     */
+    int segmentCount();
 }

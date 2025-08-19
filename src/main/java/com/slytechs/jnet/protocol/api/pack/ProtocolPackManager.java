@@ -15,20 +15,30 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
+package com.slytechs.jnet.protocol.api.pack;
+
+import java.util.List;
+
+import com.slytechs.jnet.protocol.api.Header;
+import com.slytechs.jnet.protocol.api.Protocol;
+import com.slytechs.jnet.protocol.api.ProtocolException;
 
 /**
- * 
- *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Descriptor {
+public interface ProtocolPackManager {
 
-	DescriptorType type();
-	
-	int id();
-	
-	int length();
-	
+	static Protocol lookupProtocol(Class<? extends Header> headerClass) {
+		return listProtocolPacks().stream()
+				.map(p -> p.findProtocol(headerClass))
+				.filter(o -> o.isPresent())
+				.map(o -> o.get())
+				.findAny()
+				.orElseThrow(() -> new ProtocolException("Protocol for header class " + headerClass + " not found"));
+	}
+
+	public static List<ProtocolPack> listProtocolPacks() {
+		throw new UnsupportedOperationException();
+	}
 }
