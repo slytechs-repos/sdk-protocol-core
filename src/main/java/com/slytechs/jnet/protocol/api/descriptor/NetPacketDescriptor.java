@@ -302,14 +302,6 @@ public class NetPacketDescriptor
 	}
 
 	/**
-	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#l2Lenght()
-	 */
-	@Override
-	public int l2Lenght() {
-		throw new UnsupportedOperationException("not implemented yet");
-	}
-
-	/**
 	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#l3Length()
 	 */
 	@Override
@@ -370,6 +362,14 @@ public class NetPacketDescriptor
 	 */
 	@Override
 	public long hash() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#l2Length()
+	 */
+	@Override
+	public int l2Length() {
 		throw new UnsupportedOperationException("not implemented yet");
 	}
 

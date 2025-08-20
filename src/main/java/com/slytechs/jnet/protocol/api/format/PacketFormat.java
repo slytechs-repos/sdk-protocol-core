@@ -17,8 +17,8 @@
  */
 package com.slytechs.jnet.protocol.api.format;
 
-import com.slytechs.jnet.protocol.api.BasePacket;
 import com.slytechs.jnet.protocol.api.Header;
+import com.slytechs.jnet.protocol.api.Packet;
 
 /**
  * @author Mark Bednarczyk [mark@slytechs.com]
@@ -30,7 +30,7 @@ public interface PacketFormat {
 		return null;
 	}
 
-	String formatPacket(BasePacket packet);
+	String formatPacket(Packet packet);
 
 	String formatHeader(Header header);
 }

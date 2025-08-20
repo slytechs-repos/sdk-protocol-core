@@ -104,8 +104,9 @@ public class BasePacket extends MemoryProxy implements HeaderAccessor {
 		return packetDescriptor.getHeader(header, depth);
 	}
 
-	public final PacketDescriptor getPacketDescriptor() {
-		return packetDescriptor;
+	@SuppressWarnings("unchecked")
+	public final <T extends PacketDescriptor> T getPacketDescriptor() {
+		return (T) packetDescriptor;
 	}
 
 	/**

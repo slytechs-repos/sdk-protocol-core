@@ -33,7 +33,8 @@ import static java.lang.foreign.ValueLayout.*;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public class QuickPacketDescriptor extends MemoryStructureProxy implements PacketDescriptor, StructFormattable {
+public class Type1Descriptor extends MemoryStructureProxy
+		implements TxPacketDescriptor, RxPacketDescriptor, StructFormattable {
 
 	public static final int MAX_RECORD_COUNT = 64;
 
@@ -58,7 +59,7 @@ public class QuickPacketDescriptor extends MemoryStructureProxy implements Packe
 
 	private final RecordCodec codec = new RecordCodec();
 
-	public QuickPacketDescriptor() {
+	public Type1Descriptor() {
 		super(LAYOUT);
 	}
 
@@ -273,6 +274,182 @@ public class QuickPacketDescriptor extends MemoryStructureProxy implements Packe
 	 */
 	@Override
 	public long hash() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#isTxEnabled()
+	 */
+	@Override
+	public boolean isTxEnabled() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#setTxEnabled(boolean)
+	 */
+	@Override
+	public void setTxEnabled(boolean enabled) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#isTxImmediate()
+	 */
+	@Override
+	public boolean isTxImmediate() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#setTxImmediate(boolean)
+	 */
+	@Override
+	public void setTxImmediate(boolean immediate) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#isTxSyncTimestamp()
+	 */
+	@Override
+	public boolean isTxSyncTimestamp() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#setTxSyncTimestamp(boolean)
+	 */
+	@Override
+	public void setTxSyncTimestamp(boolean sync) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#txTimestamp()
+	 */
+	@Override
+	public long txTimestamp() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#setTxTimestamp(long)
+	 */
+	@Override
+	public void setTxTimestamp(long timestamp) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#txPort()
+	 */
+	@Override
+	public int txPort() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#setTxPort(int)
+	 */
+	@Override
+	public void setTxPort(int port) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#txOffsetInjection()
+	 */
+	@Override
+	public int txOffsetInjection() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#setTxOffsetInjection(int)
+	 */
+	@Override
+	public void setTxOffsetInjection(int offset) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#txIpChecksumAtOffset()
+	 */
+	@Override
+	public int txIpChecksumAtOffset() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#setTxIpChecksumAtOffset(int)
+	 */
+	@Override
+	public void setTxIpChecksumAtOffset(int offset) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#txL4ChecksumAtOffset()
+	 */
+	@Override
+	public int txL4ChecksumAtOffset() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.TxPacketDescriptor#setTxL4ChecksumAtOffset(int)
+	 */
+	@Override
+	public void setTxL4ChecksumAtOffset(int offset) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.RxPacketDescriptor#isIpChecksumGood()
+	 */
+	@Override
+	public boolean isIpChecksumGood() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.RxPacketDescriptor#isL4ChecksumGood()
+	 */
+	@Override
+	public boolean isL4ChecksumGood() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.RxPacketDescriptor#timestamp()
+	 */
+	@Override
+	public long timestamp() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.RxPacketDescriptor#isFcsPresent()
+	 */
+	@Override
+	public boolean isFcsPresent() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.RxPacketDescriptor#rxPort()
+	 */
+	@Override
+	public int rxPort() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.RxPacketDescriptor#setRxPort(int)
+	 */
+	@Override
+	public void setRxPort(int portNumber) {
 		throw new UnsupportedOperationException("not implemented yet");
 	}
 

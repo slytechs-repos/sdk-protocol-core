@@ -18,38 +18,42 @@
 package com.slytechs.jnet.protocol.api.descriptor;
 
 /**
- * Provides RX-specific metadata for packets.
- * Maps to DPDK (rte_mbuf.ol_flags for checksums), Napatech (descriptor errors), Pcap (computed).
+ * Provides RX-specific metadata for packets. Maps to DPDK (rte_mbuf.ol_flags
+ * for checksums), Napatech (descriptor errors), Pcap (computed).
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
 public interface RxPacketDescriptor extends PacketDescriptor {
-    /**
-     * Checks if the IP checksum is valid.
-     *
-     * @return true if valid
-     */
-    boolean isIpChecksumGood();
+	/**
+	 * Checks if the IP checksum is valid.
+	 *
+	 * @return true if valid
+	 */
+	boolean isIpChecksumGood();
 
-    /**
-     * Checks if the L4 checksum is valid.
-     *
-     * @return true if valid
-     */
-    boolean isL4ChecksumGood();
+	/**
+	 * Checks if the L4 checksum is valid.
+	 *
+	 * @return true if valid
+	 */
+	boolean isL4ChecksumGood();
 
-    /**
-     * Gets the receive timestamp.
-     *
-     * @return the timestamp
-     */
-    long timestamp();
+	/**
+	 * Gets the receive timestamp.
+	 *
+	 * @return the timestamp
+	 */
+	long timestamp();
 
-    /**
-     * Checks if the FCS is present in the packet data.
-     *
-     * @return true if FCS is present
-     */
-    boolean isFcsPresent();
+	/**
+	 * Checks if the FCS is present in the packet data.
+	 *
+	 * @return true if FCS is present
+	 */
+	boolean isFcsPresent();
+
+	int rxPort();
+
+	void setRxPort(int portNumber);
 }
