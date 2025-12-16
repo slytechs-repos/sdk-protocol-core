@@ -17,54 +17,33 @@
  */
 package com.slytechs.jnet.protocol.api.address;
 
-import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
-import java.lang.invoke.VarHandle;
+
+import com.slytechs.jnet.core.api.memory.MemoryHandle.ByteHandle;
+import com.slytechs.jnet.core.api.memory.MemoryHandle.IntHandle;
 
 import static java.lang.foreign.MemoryLayout.*;
-import static java.lang.foreign.MemoryLayout.PathElement.*;
-import static java.lang.foreign.ValueLayout.*;
 
 /**
  * IPv4 address implementation.
  */
 public final class Ip4AddressMemory extends IpAddressMemory implements Ip4Address {
 
-	public static final MemoryLayout LAYOUT$BIG$SIZE_4 = unionLayout(
-			sequenceLayout(LENGTH, JAVA_BYTE).withName("byte_array"),
-			BIG_INT.withName("int_value")
+	public static final MemoryLayout LAYOUT = unionLayout(
+			sequenceLayout(LENGTH, U8_BE).withName("byte_array"),
+			U32_BE.withName("int_value"));
 
-	);
-
-	public static final MemoryLayout LAYOUT = LAYOUT$BIG$SIZE_4;
-
-	private static final VarHandle BYTE_ARRAY = LAYOUT.varHandle(groupElement("byte_array"), sequenceElement());
-	private static final VarHandle INT_VALUE = LAYOUT.varHandle(groupElement("int_value"));
+	// Use MemoryHandle instead of VarHandle
+	private static final ByteHandle BYTE_ARRAY = new ByteHandle(LAYOUT, "byte_array[]");
+	private static final IntHandle INT_VALUE = new IntHandle(LAYOUT, "int_value");
 
 	public Ip4AddressMemory() {
 		super(LAYOUT);
 	}
 
-	public Ip4AddressMemory(Arena arena) {
-		super(LAYOUT, arena);
-	}
-
-	public Ip4AddressMemory(MemorySegment pointer, Arena arena) {
-		super(LAYOUT, pointer, arena);
-	}
-
-	public Ip4AddressMemory(MemorySegment segment, long offset) {
-		super(LAYOUT, segment, offset);
-	}
-
-	public Ip4AddressMemory(MemorySegment pointer) {
-		super(LAYOUT, pointer);
-	}
-
 	@Override
 	public int asInt() {
-		return (int) INT_VALUE.get(asMemorySegment(), activeBytesStart());
+		return INT_VALUE.getInt(view());
 	}
 
 	@Override
@@ -74,7 +53,7 @@ public final class Ip4AddressMemory extends IpAddressMemory implements Ip4Addres
 
 	@Override
 	public byte byteAt(int index) {
-		return (byte) BYTE_ARRAY.get(asMemorySegment(), activeBytesStart(), index);
+		return BYTE_ARRAY.getByteAtIndex(view(), index);
 	}
 
 	/**
@@ -82,7 +61,12 @@ public final class Ip4AddressMemory extends IpAddressMemory implements Ip4Addres
 	 */
 	@Override
 	public void setBytes(byte[] addr) {
-		setBytesUsingVarhandle(BYTE_ARRAY, addr);
+		if (addr.length != LENGTH) {
+			throw new IllegalArgumentException("IPv4 address must be " + LENGTH + " bytes");
+		}
+		for (int i = 0; i < LENGTH; i++) {
+			BYTE_ARRAY.setByteAtIndex(view(), i, addr[i]);
+		}
 	}
 
 	/**
@@ -90,7 +74,7 @@ public final class Ip4AddressMemory extends IpAddressMemory implements Ip4Addres
 	 */
 	@Override
 	public void setInt(int addr) {
-		INT_VALUE.set(asMemorySegment(), activeBytesStart(), addr);
+		INT_VALUE.setInt(view(), 0, addr);
 	}
 
 	/**
@@ -98,6 +82,9 @@ public final class Ip4AddressMemory extends IpAddressMemory implements Ip4Addres
 	 */
 	@Override
 	public byte[] bytes(byte[] dst, int offset) {
-		return bytesUsingVarHandle(BYTE_ARRAY, dst, offset);
+		for (int i = 0; i < LENGTH; i++) {
+			dst[offset + i] = BYTE_ARRAY.getByteAtIndex(view(), i);
+		}
+		return dst;
 	}
 }

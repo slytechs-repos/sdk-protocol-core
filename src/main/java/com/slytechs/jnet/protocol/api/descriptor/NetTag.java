@@ -17,17 +17,47 @@
  */
 package com.slytechs.jnet.protocol.api.descriptor;
 
+import java.util.List;
+
 /**
- * Chainable network tag for protocol-specific metadata (e.g., DPDK tags, IPF fragment links).
+ * Chainable network tag for protocol-specific metadata (e.g., DPDK tags, IPF
+ * fragment links).
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface NetTag extends Descriptor {
-    /**
-     * Gets the next tag in the chain.
-     *
-     * @return the next NetTag, or null if none
-     */
-    NetTag next();
+public interface NetTag {
+
+	int RESOURCE_ID_TYPE = 1;
+
+	/**
+	 * Gets the next tag in the chain.
+	 *
+	 * @return the next NetTag, or null if none
+	 */
+	NetTag next();
+
+	NetTag setNext(NetTag next);
+
+	int type();
+
+	static <T extends NetTag> T getTag(NetTag head, int type) {
+		throw new UnsupportedOperationException();
+	}
+
+	static <T extends NetTag> boolean compareTag(NetTag head, T tag) {
+		return head == tag;
+	}
+
+	static <T extends NetTag> T removeTag(NetTag head, int type) {
+		throw new UnsupportedOperationException();
+	}
+
+	static <T extends NetTag> List<T> getAllTags(NetTag head, int type) {
+		throw new UnsupportedOperationException();
+	}
+
+	static <T extends NetTag> List<T> removeAllTags(NetTag head, int type) {
+		throw new UnsupportedOperationException();
+	}
 }

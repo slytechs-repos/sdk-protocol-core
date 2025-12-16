@@ -5,7 +5,7 @@ package com.slytechs.jnet.protocol.api.address;
  * Defines the different types of network addresses supported.
  */
 public enum AddressFamily {
-    // Layer 2 (Data Link) Addresses
+    // Layer 2 (Data Linked) Addresses
     ETHERNET(6, "Ethernet MAC Address"),
     EUI64(8, "IEEE EUI-64 Address"),
     BLUETOOTH(6, "Bluetooth Device Address"),
@@ -98,7 +98,7 @@ public enum AddressFamily {
     }
     
     /**
-     * Returns true if this is a Layer 2 (Data Link) address family.
+     * Returns true if this is a Layer 2 (Data Linked) address family.
      */
     public boolean isLayer2() {
         return this == ETHERNET || this == EUI64 || this == BLUETOOTH || 

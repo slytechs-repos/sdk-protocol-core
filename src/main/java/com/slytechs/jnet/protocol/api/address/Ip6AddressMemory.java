@@ -17,14 +17,13 @@
  */
 package com.slytechs.jnet.protocol.api.address;
 
-import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
-import java.lang.invoke.VarHandle;
+
+import com.slytechs.jnet.core.api.memory.MemoryHandle.ByteHandle;
+import com.slytechs.jnet.core.api.memory.MemoryHandle.IntHandle;
+import com.slytechs.jnet.core.api.memory.MemoryHandle.LongHandle;
 
 import static java.lang.foreign.MemoryLayout.*;
-import static java.lang.foreign.MemoryLayout.PathElement.*;
-import static java.lang.foreign.ValueLayout.*;
 
 /**
  * @author Mark Bednarczyk [mark@slytechs.com]
@@ -32,45 +31,31 @@ import static java.lang.foreign.ValueLayout.*;
  */
 public class Ip6AddressMemory extends IpAddressMemory implements Ip6Address {
 
-	public static final MemoryLayout LAYOUT$BIG$SIZE_16 = unionLayout(
-			sequenceLayout(LENGTH, JAVA_BYTE).withName("byte_array"),
-			sequenceLayout(LENGTH / BIG_INT.byteSize(), BIG_INT).withName("int_array"),
-			sequenceLayout(LENGTH / BIG_LONG.byteSize(), BIG_LONG).withName("long_array"));
+	public static final MemoryLayout LAYOUT = unionLayout(
+			sequenceLayout(LENGTH / U8_BE.byteSize(), U8_BE).withName("byte_array"),
+			sequenceLayout(LENGTH / U32_BE.byteSize(), U32_BE).withName("int_array"),
+			sequenceLayout(LENGTH / U64_BE.byteSize(), U64_BE).withName("long_array"));
 
-	public static final MemoryLayout LAYOUT = LAYOUT$BIG$SIZE_16;
-
-	private static final VarHandle BYTE_ARRAY = LAYOUT.varHandle(groupElement("byte_array"), sequenceElement());
-	private static final VarHandle INT_ARRAY = LAYOUT.varHandle(groupElement("int_array"), sequenceElement());
-	private static final VarHandle LONG_ARRAY = LAYOUT.varHandle(groupElement("long_array"), sequenceElement());
+	// Use MemoryHandle instead of VarHandle
+	private static final ByteHandle BYTE_ARRAY = new ByteHandle(LAYOUT, "byte_array[]");
+	private static final IntHandle INT_ARRAY = new IntHandle(LAYOUT, "int_array[]");
+	private static final LongHandle LONG_ARRAY = new LongHandle(LAYOUT, "long_array[]");
 
 	public Ip6AddressMemory() {
 		super(LAYOUT);
 	}
 
-	public Ip6AddressMemory(Arena arena) {
-		super(LAYOUT, arena);
-	}
-
-	public Ip6AddressMemory(MemorySegment pointer) {
-		super(LAYOUT, pointer);
-	}
-
-	public Ip6AddressMemory(MemorySegment pointer, Arena arena) {
-		super(LAYOUT, pointer, arena);
-	}
-
-	public Ip6AddressMemory(MemorySegment segment, long offset) {
-		super(LAYOUT, segment, offset);
-	}
-
 	@Override
 	public byte[] bytes(byte[] dst, int offset) {
-		return bytesUsingVarHandle(BYTE_ARRAY, dst, offset);
+		for (int i = 0; i < LENGTH; i++) {
+			dst[offset + i] = BYTE_ARRAY.getByteAtIndex(view(), i);
+		}
+		return dst;
 	}
 
 	@Override
 	public byte byteAt(int index) {
-		return (byte) BYTE_ARRAY.get(asMemorySegment(), activeBytesStart(), index);
+		return BYTE_ARRAY.getByteAtIndex(view(), index);
 	}
 
 	/**
@@ -78,7 +63,7 @@ public class Ip6AddressMemory extends IpAddressMemory implements Ip6Address {
 	 */
 	@Override
 	public long asLongHigh() {
-		return (long) LONG_ARRAY.get(asMemorySegment(), activeBytesStart(), 0);
+		return LONG_ARRAY.getLongAtIndex(view(), 0);
 	}
 
 	/**
@@ -86,7 +71,7 @@ public class Ip6AddressMemory extends IpAddressMemory implements Ip6Address {
 	 */
 	@Override
 	public long asLongLow() {
-		return (long) LONG_ARRAY.get(asMemorySegment(), activeBytesStart(), 1);
+		return LONG_ARRAY.getLongAtIndex(view(), 1);
 	}
 
 	/**
@@ -94,10 +79,8 @@ public class Ip6AddressMemory extends IpAddressMemory implements Ip6Address {
 	 */
 	@Override
 	public long[] longs(long[] dst) {
-
 		dst[0] = asLongHigh();
 		dst[1] = asLongLow();
-
 		return dst;
 	}
 
@@ -106,12 +89,10 @@ public class Ip6AddressMemory extends IpAddressMemory implements Ip6Address {
 	 */
 	@Override
 	public int[] ints(int[] dst) {
-
 		dst[0] = intAt(0);
 		dst[1] = intAt(1);
 		dst[2] = intAt(2);
 		dst[3] = intAt(3);
-
 		return dst;
 	}
 
@@ -120,7 +101,7 @@ public class Ip6AddressMemory extends IpAddressMemory implements Ip6Address {
 	 */
 	@Override
 	public int intAt(int index) {
-		return (int) INT_ARRAY.get(asMemorySegment(), activeBytesStart(), index);
+		return INT_ARRAY.getIntAtIndex(view(), index);
 	}
 
 	/**
@@ -128,7 +109,7 @@ public class Ip6AddressMemory extends IpAddressMemory implements Ip6Address {
 	 */
 	@Override
 	public long longAt(int index) {
-		return (long) LONG_ARRAY.get(asMemorySegment(), activeBytesStart(), index);
+		return LONG_ARRAY.getLongAtIndex(view(), index);
 	}
 
 	@Override
@@ -141,6 +122,50 @@ public class Ip6AddressMemory extends IpAddressMemory implements Ip6Address {
 	 */
 	@Override
 	public void setBytes(byte[] addr) {
-		setBytesUsingVarhandle(BYTE_ARRAY, addr);
+		if (addr.length != LENGTH) {
+			throw new IllegalArgumentException("IPv6 address must be " + LENGTH + " bytes");
+		}
+		for (int i = 0; i < LENGTH; i++) {
+			BYTE_ARRAY.setByteAtIndex(view(), i, addr[i]);
+		}
+	}
+
+	/**
+	 * Sets the high 64 bits of the IPv6 address.
+	 * 
+	 * @param value the high 64 bits
+	 */
+	public void setLongHigh(long value) {
+		LONG_ARRAY.setLongAtIndex(view(), 0, value);
+	}
+
+	/**
+	 * Sets the low 64 bits of the IPv6 address.
+	 * 
+	 * @param value the low 64 bits
+	 */
+	public void setLongLow(long value) {
+		LONG_ARRAY.setLongAtIndex(view(), 1, value);
+	}
+
+	/**
+	 * Sets the IPv6 address from two longs.
+	 * 
+	 * @param high the high 64 bits
+	 * @param low  the low 64 bits
+	 */
+	public void setLongs(long high, long low) {
+		setLongHigh(high);
+		setLongLow(low);
+	}
+
+	/**
+	 * Sets an int value at the specified index.
+	 * 
+	 * @param index the index (0-3)
+	 * @param value the int value
+	 */
+	public void setIntAt(int index, int value) {
+		INT_ARRAY.setIntAtIndex(view(), index, value);
 	}
 }

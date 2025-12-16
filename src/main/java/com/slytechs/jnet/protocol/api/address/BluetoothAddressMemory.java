@@ -1,13 +1,11 @@
 package com.slytechs.jnet.protocol.api.address;
 
-import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
-import java.lang.invoke.VarHandle;
+
+import com.slytechs.jnet.core.api.memory.MemoryHandle.ByteHandle;
+import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
 
 import static java.lang.foreign.MemoryLayout.*;
-import static java.lang.foreign.MemoryLayout.PathElement.*;
-import static java.lang.foreign.ValueLayout.*;
 
 /**
  * Bluetooth device address (BD_ADDR). Represents a 48-bit Bluetooth device
@@ -15,10 +13,10 @@ import static java.lang.foreign.ValueLayout.*;
  */
 public final class BluetoothAddressMemory extends AddressMemory implements BluetoothAddress {
 	public static final MemoryLayout LAYOUT$BIG$SIZE_6 = unionLayout(
-			sequenceLayout(LENGTH, JAVA_BYTE).withName("byte_array"),
+			sequenceLayout(LENGTH, U8_BE).withName("byte_array"),
 			structLayout(
-					BIG_SHORT.withName("high"),
-					BIG_INT.withName("low")
+					U16_BE.withName("high"),
+					U32_BE.withName("low")
 
 			).withName("fast_path")
 
@@ -26,28 +24,12 @@ public final class BluetoothAddressMemory extends AddressMemory implements Bluet
 
 	public static final MemoryLayout LAYOUT = LAYOUT$BIG$SIZE_6;
 
-	private static final VarHandle BYTE_ARRAY = LAYOUT.varHandle(groupElement("byte_array"), sequenceElement());
-	private static final VarHandle HIGH = LAYOUT.varHandle(groupElement("fast_path"), groupElement("high"));
-	private static final VarHandle LOW = LAYOUT.varHandle(groupElement("fast_path"), groupElement("low"));
-
-	public BluetoothAddressMemory(Arena arena) {
-		super(LAYOUT, arena);
-	}
+	private static final ByteHandle BYTE_ARRAY = new ByteHandle(LAYOUT, "byte_array[]");
+	private static final ShortHandle HIGH = new ShortHandle(LAYOUT, "fast_path[]", "high");
+	private static final ShortHandle LOW = new ShortHandle(LAYOUT, "fast_path[]", "low");
 
 	public BluetoothAddressMemory() {
 		super(LAYOUT);
-	}
-
-	public BluetoothAddressMemory(MemorySegment pointer, Arena arena) {
-		super(LAYOUT, pointer, arena);
-	}
-
-	public BluetoothAddressMemory(MemorySegment segment, long offset) {
-		super(LAYOUT, segment, offset);
-	}
-
-	public BluetoothAddressMemory(MemorySegment pointer) {
-		super(LAYOUT, pointer);
 	}
 
 	private static byte[] parseFromString(String address) {
@@ -209,7 +191,7 @@ public final class BluetoothAddressMemory extends AddressMemory implements Bluet
 	 */
 	@Override
 	public byte[] bytes(byte[] dst, int offset) {
-		return bytesUsingVarHandle(BYTE_ARRAY, dst, offset);
+		return bytesUsingVarHandle(BYTE_ARRAY.varHandle(), dst, offset);
 	}
 
 	/**
@@ -217,7 +199,7 @@ public final class BluetoothAddressMemory extends AddressMemory implements Bluet
 	 */
 	@Override
 	public byte byteAt(int index) {
-		return (byte) BYTE_ARRAY.get(asMemory(), activeBytesStart(), index);
+		return BYTE_ARRAY.getByteAtIndex(view(), index);
 	}
 
 	/**
@@ -225,8 +207,8 @@ public final class BluetoothAddressMemory extends AddressMemory implements Bluet
 	 */
 	@Override
 	public long asLong() {
-		short high = (short) HIGH.get(asMemorySegment(), activeBytesStart());
-		short low = (short) LOW.get(asMemorySegment(), activeBytesStart());
+		short high = HIGH.getShort(view());
+		short low = LOW.getShort(view());
 
 		return high << 32 | low;
 	}

@@ -100,7 +100,7 @@ public interface BluetoothAddress extends Address {
 	String toDashString();
 
 	@Override
-	default int length() {
+	default long length() {
 		return LENGTH;
 	}
 

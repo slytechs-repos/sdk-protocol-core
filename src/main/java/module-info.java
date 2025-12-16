@@ -25,10 +25,15 @@ module com.slytechs.jnet.protocol.api {
 	exports com.slytechs.jnet.protocol.api.flag;
 	exports com.slytechs.jnet.protocol.api.checksum;
 	exports com.slytechs.jnet.protocol.api.pack;
+	exports com.slytechs.jnet.protocol.api.builtin;
 	exports com.slytechs.jnet.protocol.api.descriptor;
+	exports com.slytechs.jnet.protocol.api.dissector;
 	exports com.slytechs.jnet.protocol.api.format;
+	exports com.slytechs.jnet.protocol.api.table;
 
 	requires transitive com.slytechs.jnet.core.api;
+	requires java.logging;
 
 	uses com.slytechs.jnet.protocol.api.pack.ProtocolPackPlugin;
+    uses com.slytechs.jnet.protocol.api.table.TableProvider;
 }

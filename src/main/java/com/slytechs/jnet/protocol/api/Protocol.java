@@ -37,6 +37,6 @@ public interface Protocol {
 
 	HeaderFactory<?> headerFactory();
 
-	List<Option> listOptions();
+	List<HeaderExtension> listOptions();
 
 }

@@ -43,8 +43,8 @@ public interface ProtocolPack {
 	int BUILTIN_ID = (0 << 8);
 
 	/**
-	 * Shared IDs for options, typically for the preceding header type within a
-	 * packet
+	 * Shared IDs for options and extensions, typically for the preceding header
+	 * type within a packet
 	 */
 	int OPTIONS_ID = (1 << 8);
 

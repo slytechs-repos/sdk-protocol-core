@@ -15,20 +15,31 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
+package com.slytechs.jnet.protocol.api.builtin;
+
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.ValueLayout;
+
+import com.slytechs.jnet.protocol.api.FixedHeader;
 
 /**
- * Provides a bitmask of packet flags (e.g., checksum status, offloads).
- * Maps to DPDK (rte_mbuf.ol_flags), Napatech (descriptor flags), Pcap (none, default 0).
+ * 
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface FlagInfo {
-    /**
-     * Gets the bitmask of packet flags (e.g., checksum errors, offload status).
-     *
-     * @return the flag bitmask
-     */
-    long packetFlagBitmask();
+public class Payload extends FixedHeader {
+
+	public static final int ID = Builtin.Constants.PAYLOAD_ID;
+
+	public static final MemoryLayout LAYOUT = ValueLayout.JAVA_BYTE;
+
+	/**
+	 * @param id
+	 * @param layout
+	 */
+	public Payload() {
+		super(ID, LAYOUT);
+	}
+
 }

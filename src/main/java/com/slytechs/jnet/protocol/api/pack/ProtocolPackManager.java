@@ -17,11 +17,14 @@
  */
 package com.slytechs.jnet.protocol.api.pack;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import com.slytechs.jnet.protocol.api.Header;
 import com.slytechs.jnet.protocol.api.Protocol;
 import com.slytechs.jnet.protocol.api.ProtocolException;
+import com.slytechs.jnet.protocol.api.dissector.DissectorPlugin;
 
 /**
  * @author Mark Bednarczyk [mark@slytechs.com]
@@ -38,7 +41,26 @@ public interface ProtocolPackManager {
 				.orElseThrow(() -> new ProtocolException("Protocol for header class " + headerClass + " not found"));
 	}
 
+	static Protocol lookupProtocol(int protocolId) {
+		return listProtocolPacks().stream()
+				.map(p -> p.mapProtocolUsingId(protocolId))
+				.findAny()
+				.orElseThrow(() -> new ProtocolException("Protocol for protocol ID "
+						+ "0x" + Integer.toHexString(protocolId).toUpperCase()
+						+ " not found"));
+	}
+
+	static Optional<Protocol> findProtocol(int protocolId) {
+		return listProtocolPacks().stream()
+				.map(p -> p.mapProtocolUsingId(protocolId))
+				.findAny();
+	}
+
 	public static List<ProtocolPack> listProtocolPacks() {
-		throw new UnsupportedOperationException();
+		return Collections.emptyList();
+	}
+	
+	public static List<DissectorPlugin> listDissectors() {
+		return Collections.emptyList();
 	}
 }

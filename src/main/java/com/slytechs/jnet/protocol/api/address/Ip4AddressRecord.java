@@ -91,7 +91,7 @@ public record Ip4AddressRecord(byte[] bytes, int asInt) implements Ip4Address {
 	 */
 	@Override
 	public byte[] bytes(byte[] dst, int offset) {
-		System.arraycopy(bytes, 0, dst, offset, length());
+		System.arraycopy(bytes, 0, dst, offset, (int) length());
 
 		return dst;
 	}

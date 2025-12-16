@@ -29,14 +29,14 @@ import java.lang.reflect.Modifier;
  */
 public record HeaderFactory<T extends Header>(
 		Class<T> headerClass,
-		StubCreated<T> stub,
+		ProxyCreated<T> proxy,
 		ArenaAllocated<T> allocated,
 		Reinterpreted<T> reintrepreted,
 		Binding<T> binding) {
 
 	public HeaderFactory(Class<T> headerClass) {
 		this(headerClass,
-				stub(headerClass),
+				proxy(headerClass),
 				allocated(headerClass),
 				reinterpreted(headerClass),
 				binding(headerClass)
@@ -44,7 +44,7 @@ public record HeaderFactory<T extends Header>(
 		);
 	}
 
-	public interface StubCreated<T extends Header> {
+	public interface ProxyCreated<T extends Header> {
 		T newHeader();
 	}
 
@@ -60,7 +60,7 @@ public record HeaderFactory<T extends Header>(
 		T newHeader(MemorySegment segment, long offset);
 	}
 
-	private static <T extends Header> StubCreated<T> stub(Class<T> cl) {
+	private static <T extends Header> ProxyCreated<T> proxy(Class<T> cl) {
 		try {
 			var con = cl.getDeclaredConstructor();
 			if (isQualifed(cl, con) == false)

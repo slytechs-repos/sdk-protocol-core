@@ -17,16 +17,11 @@
  */
 package com.slytechs.jnet.protocol.api.address;
 
-import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
 
-import com.slytechs.jnet.core.api.memory.MemoryStructureProxy;
-
-import static java.lang.foreign.ValueLayout.*;
+import com.slytechs.jnet.core.api.memory.ByteBuf;
+import com.slytechs.jnet.core.api.memory.MemoryStructure;
 
 /**
  * 
@@ -34,21 +29,19 @@ import static java.lang.foreign.ValueLayout.*;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public abstract class AddressMemory extends MemoryStructureProxy implements Address {
+public abstract class AddressMemory extends ByteBuf implements Address, MemoryStructure {
 
-	protected static final ValueLayout BIG_SHORT = JAVA_SHORT.withOrder(ByteOrder.BIG_ENDIAN).withByteAlignment(1);
-	protected static final ValueLayout BIG_INT = JAVA_INT.withOrder(ByteOrder.BIG_ENDIAN).withByteAlignment(1);
-	protected static final ValueLayout BIG_LONG = JAVA_LONG.withOrder(ByteOrder.BIG_ENDIAN).withByteAlignment(1);
+	private final MemoryLayout layout;
 
 	protected final byte[] bytesUsingVarHandle(VarHandle byteArrayHandle) {
-		return bytesUsingVarHandle(byteArrayHandle, new byte[length()]);
+		return bytesUsingVarHandle(byteArrayHandle, new byte[(int) length()]);
 	}
 
 	protected final void setBytesUsingVarhandle(VarHandle byteArrayHandle, byte[] bytes) {
 		assert bytes.length == length();
 
 		for (int i = 0; i < bytes.length; i++) {
-			byteArrayHandle.set(asMemorySegment(), activeBytesStart(), i, bytes[i]);
+			byteArrayHandle.set(segment(), view().start(), i, bytes[i]);
 		}
 	}
 
@@ -61,29 +54,13 @@ public abstract class AddressMemory extends MemoryStructureProxy implements Addr
 			throw new IllegalArgumentException("array length must be equal to address length");
 
 		for (int i = 0; i < bytes.length; i++)
-			bytes[i + bytesArrayOffset] = (byte) byteArrayHandle.get(asMemorySegment(), activeBytesStart(), i);
+			bytes[i + bytesArrayOffset] = (byte) byteArrayHandle.get(segment(), view().start(), i);
 
 		return bytes;
 	}
 
 	public AddressMemory(MemoryLayout layout) {
-		super(layout);
-	}
-
-	public AddressMemory(MemoryLayout layout, Arena arena) {
-		super(layout, arena);
-	}
-
-	public AddressMemory(MemoryLayout layout, MemorySegment pointer, Arena arena) {
-		super(layout, pointer, arena);
-	}
-
-	public AddressMemory(MemoryLayout layout, MemorySegment segment, long offset) {
-		super(layout, segment, offset);
-	}
-
-	public AddressMemory(MemoryLayout layout, MemorySegment pointer) {
-		super(layout, pointer);
+		this.layout = layout;
 	}
 
 	@Override

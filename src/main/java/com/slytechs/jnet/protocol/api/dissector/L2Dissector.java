@@ -15,41 +15,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
+package com.slytechs.jnet.protocol.api.dissector;
 
 /**
- * Provides hash and flow identifier metadata.
- * Maps to DPDK (rte_mbuf.hash), Napatech (color/hash), Pcap (computed or NONE).
+ * 
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface HashInfo {
-    /**
-     * Gets the hash value (e.g., RSS or FDIR hash).
-     *
-     * @return the hash value
-     */
-    long hash();
+public interface L2Dissector {
 
-    /**
-     * Gets the hash type as a binary integer.
-     *
-     * @return the hash type
-     */
-    int hashType();
-
-    /**
-     * Gets the hash type as an enum.
-     *
-     * @return the HashType enum
-     */
-//    HashType hashTypeEnum();
-
-    /**
-     * Gets the flow identifier (e.g., FDIR ID).
-     *
-     * @return the flow ID
-     */
-    long flowId();
+	
 }

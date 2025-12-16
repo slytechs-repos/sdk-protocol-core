@@ -83,7 +83,7 @@ public interface MacAddress extends Address {
 	}
 
 	@Override
-	default int length() {
+	default long length() {
 		return LENGTH;
 	}
 }

@@ -73,7 +73,7 @@ public interface Ip4Address extends IpAddress {
 	}
 
 	@Override
-	default int length() {
+	default long length() {
 		return LENGTH;
 	}
 

@@ -15,9 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
-
-import com.slytechs.jnet.core.api.time.TimestampUnit;
+package com.slytechs.jnet.protocol.api.dissector;
 
 /**
  * 
@@ -25,13 +23,6 @@ import com.slytechs.jnet.core.api.time.TimestampUnit;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface TimestampProperties {
+public interface L3Dissector {
 
-	long timestamp();
-	
-	TimestampUnit timestampUnit();
-	
-	long timestampNanos();
-	
-	long txTimestampNanos();
 }

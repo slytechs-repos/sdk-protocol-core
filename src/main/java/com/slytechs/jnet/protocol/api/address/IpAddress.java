@@ -53,4 +53,21 @@ public interface IpAddress extends Address {
 				? Ip4Address.formatIpv4Address(bytes)
 				: Ip6Address.formatIpv6Address(bytes);
 	}
+	
+	static String formatIp4(int addr) {
+	    return String.format("%d.%d.%d.%d",
+	            (addr >> 24) & 0xFF,
+	            (addr >> 16) & 0xFF,
+	            (addr >> 8) & 0xFF,
+	            addr & 0xFF);
+	}
+	
+	static String formatIp4(byte[] addr) {
+	    if (addr == null || addr.length != 4) return "0.0.0.0";
+	    return String.format("%d.%d.%d.%d",
+	            addr[0] & 0xFF,
+	            addr[1] & 0xFF,
+	            addr[2] & 0xFF,
+	            addr[3] & 0xFF);
+	}
 }

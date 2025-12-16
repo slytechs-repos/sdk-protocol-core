@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,27 +15,28 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
+package com.slytechs.jnet.protocol.api.dissector;
+
+import com.slytechs.jnet.core.api.memory.ByteBuf;
+import com.slytechs.jnet.protocol.api.builtin.L2FrameType;
 
 /**
- * Provides segmentation and TSO metadata for scattered packets.
- * Maps to DPDK (rte_mbuf.nb_segs, tso_segsz), Napatech (multi-segment), Pcap (single segment).
+ * 
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface SegmentationInfo {
-    /**
-     * Gets the TSO segment size (for TCP segmentation offload).
-     *
-     * @return the TSO segment size in bytes
-     */
-    int tsoSegmentSize();
+public interface LazyDissector {
 
-    /**
-     * Gets the number of mbuf segments in the packet.
-     *
-     * @return the segment count
-     */
-    int segmentCount();
+	/**
+	 * Returns a bitmask of supported protocol's (their ordinals). Allows for a
+	 * quick check if the dissector is usable for a particular protocol.
+	 *
+	 * @return the 64-bit bitmask
+	 */
+	long supportedBitmask();
+
+	int dissect(long[] protocolArray, int arrayOffset, ByteBuf packet, L2FrameType l2Type);
+
+	long lookupProtocolId(int protocolId, long[] protocolArray, int arrayLength);
 }

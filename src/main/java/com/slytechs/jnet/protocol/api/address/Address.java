@@ -65,7 +65,7 @@ public interface Address extends Comparable<Address> {
 	 * Byte-by-byte comparison fallback.
 	 */
 	static boolean byteArrayEquals(Address addr1, Address addr2) {
-		int length = addr1.length();
+		long length = addr1.length();
 		for (int i = 0; i < length; i++) {
 			if (addr1.byteAt(i) != addr2.byteAt(i)) {
 				return false;
@@ -78,7 +78,7 @@ public interface Address extends Comparable<Address> {
 	 * Returns the raw bytes of this address.
 	 */
 	default byte[] bytes() {
-		return bytes(new byte[length()]);
+		return bytes(new byte[(int) length()]);
 	}
 
 	/**
@@ -111,7 +111,7 @@ public interface Address extends Comparable<Address> {
 	/**
 	 * Returns the length of this address in bytes.
 	 */
-	int length();
+	long length();
 
 	/**
 	 * Returns the address family/type.
@@ -131,7 +131,7 @@ public interface Address extends Comparable<Address> {
 	@Override
 	default int compareTo(Address other) {
 		if (this.length() != other.length())
-			return Integer.compare(this.length(), other.length());
+			return Long.compare(this.length(), other.length());
 
 		return Arrays.compare(this.bytes(), other.bytes());
 	}

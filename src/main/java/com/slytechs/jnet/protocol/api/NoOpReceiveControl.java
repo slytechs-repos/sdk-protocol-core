@@ -17,12 +17,41 @@
  */
 package com.slytechs.jnet.protocol.api;
 
+import com.slytechs.jnet.protocol.api.builtin.L2FrameType;
+import com.slytechs.jnet.protocol.api.descriptor.ReceiveControl;
+
 /**
- * 
+ * Empty/No-op implementation of ReceiveControl that silently consumes/ignores
+ * all of the method calls.
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Option {
+enum NoOpReceiveControl implements ReceiveControl {
+	INSTANCE;
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.ReceiveControl#rxPort()
+	 */
+	@Override
+	public int rxPort() {
+		return 0;
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.ReceiveControl#l2FrameType()
+	 */
+	@Override
+	public L2FrameType l2FrameType() {
+		return L2FrameType.L2_FRAME_TYPE_ETHER;
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.ReceiveControl#hasL2Extensions()
+	 */
+	@Override
+	public boolean hasL2Extensions() {
+		return false;
+	}
 
 }

@@ -17,16 +17,25 @@
  */
 package com.slytechs.jnet.protocol.api.descriptor;
 
+import java.lang.foreign.MemorySegment;
+import java.nio.ByteBuffer;
+
+import com.slytechs.jnet.core.api.memory.ByteBuf;
+
 /**
  * Base interface for all descriptor types in the packet processing framework.
  * 
- * <p>Descriptors are compact, memory-efficient data structures that store metadata
- * about packets, headers, and protocol-specific information. They serve as the foundation
- * for the framework's high-performance packet dissection and analysis capabilities.
+ * <p>
+ * Descriptors are compact, memory-efficient data structures that store metadata
+ * about packets, headers, and protocol-specific information. They serve as the
+ * foundation for the framework's high-performance packet dissection and
+ * analysis capabilities.
  * 
  * <h2>Descriptor Hierarchy</h2>
  * 
- * <p>The descriptor system follows a hierarchical structure:
+ * <p>
+ * The descriptor system follows a hierarchical structure:
+ * 
  * <pre>
  *                    Descriptor
  *                        │
@@ -40,16 +49,23 @@ package com.slytechs.jnet.protocol.api.descriptor;
  * 
  * <h2>Descriptor Types</h2>
  * 
- * <p>Different descriptor types provide varying levels of detail and functionality:
+ * <p>
+ * Different descriptor types provide varying levels of detail and
+ * functionality:
  * <ul>
- *   <li><strong>TYPE1:</strong> Basic descriptors with minimal metadata (fastest)</li>
- *   <li><strong>TYPE2:</strong> Extended descriptors with detailed protocol information</li>
- *   <li><strong>TYPE3:</strong> Full descriptors with complete metadata and annotations</li>
+ * <li><strong>TYPE1:</strong> Basic descriptors with minimal metadata
+ * (fastest)</li>
+ * <li><strong>TYPE2:</strong> Extended descriptors with detailed protocol
+ * information</li>
+ * <li><strong>TYPE3:</strong> Full descriptors with complete metadata and
+ * annotations</li>
  * </ul>
  * 
  * <h2>Memory Layout</h2>
  * 
- * <p>Descriptors are designed for cache-efficiency and minimal memory footprint:
+ * <p>
+ * Descriptors are designed for cache-efficiency and minimal memory footprint:
+ * 
  * <pre>{@code
  * // Typical descriptor memory layout (Type2 example)
  * +--------+--------+--------+--------+
@@ -62,63 +78,67 @@ package com.slytechs.jnet.protocol.api.descriptor;
  * <h2>Usage Patterns</h2>
  * 
  * <h3>Type Checking</h3>
+ * 
  * <pre>{@code
  * Descriptor desc = packet.getDescriptor();
  * 
  * // Check descriptor type for capabilities
  * switch (desc.type()) {
- *     case TYPE1:
- *         // Basic processing only
- *         processBasic(desc);
- *         break;
- *     case TYPE2:
- *         // Extended processing available
- *         Type2Descriptor type2 = (Type2Descriptor) desc;
- *         processExtended(type2);
- *         break;
- *     case TYPE3:
- *         // Full processing with annotations
- *         Type3Descriptor type3 = (Type3Descriptor) desc;
- *         processComplete(type3);
- *         break;
+ * case TYPE1:
+ * 	// Basic processing only
+ * 	processBasic(desc);
+ * 	break;
+ * case TYPE2:
+ * 	// Extended processing available
+ * 	Type2Descriptor type2 = (Type2Descriptor) desc;
+ * 	processExtended(type2);
+ * 	break;
+ * case TYPE3:
+ * 	// Full processing with annotations
+ * 	Type3Descriptor type3 = (Type3Descriptor) desc;
+ * 	processComplete(type3);
+ * 	break;
  * }
  * }</pre>
  * 
  * <h3>Descriptor Validation</h3>
+ * 
  * <pre>{@code
  * public boolean isValidDescriptor(Descriptor desc) {
- *     // Validate descriptor integrity
- *     if (desc.type() == null) {
- *         return false;
- *     }
- *     
- *     // Check length constraints
- *     int length = desc.length();
- *     if (length < MIN_DESCRIPTOR_SIZE || length > MAX_DESCRIPTOR_SIZE) {
- *         return false;
- *     }
- *     
- *     // Verify ID is within valid range
- *     int id = desc.id();
- *     return id >= 0 && id < MAX_DESCRIPTOR_ID;
+ * 	// Validate descriptor integrity
+ * 	if (desc.type() == null) {
+ * 		return false;
+ * 	}
+ * 
+ * 	// Check length constraints
+ * 	int length = desc.length();
+ * 	if (length < MIN_DESCRIPTOR_SIZE || length > MAX_DESCRIPTOR_SIZE) {
+ * 		return false;
+ * 	}
+ * 
+ * 	// Verify ID is within valid range
+ * 	int id = desc.id();
+ * 	return id >= 0 && id < MAX_DESCRIPTOR_ID;
  * }
  * }</pre>
  * 
  * <h2>Performance Considerations</h2>
  * 
- * <p>Descriptors are optimized for high-performance packet processing:
+ * <p>
+ * Descriptors are optimized for high-performance packet processing:
  * <ul>
- *   <li>Compact memory layout minimizes cache misses</li>
- *   <li>Fixed-size headers enable efficient array storage</li>
- *   <li>Type-based dispatch avoids virtual method calls</li>
- *   <li>Direct memory access patterns for predictable performance</li>
+ * <li>Compact memory layout minimizes cache misses</li>
+ * <li>Fixed-size headers enable efficient array storage</li>
+ * <li>Type-based dispatch avoids virtual method calls</li>
+ * <li>Direct memory access patterns for predictable performance</li>
  * </ul>
  * 
  * <h2>Thread Safety</h2>
  * 
- * <p>Descriptors are immutable once created and can be safely shared between threads.
- * However, descriptor creation and modification should be performed by a single thread
- * or protected by appropriate synchronization.
+ * <p>
+ * Descriptors are immutable once created and can be safely shared between
+ * threads. However, descriptor creation and modification should be performed by
+ * a single thread or protected by appropriate synchronization.
  * 
  * @see PacketDescriptor
  * @see DescriptorType
@@ -130,58 +150,66 @@ package com.slytechs.jnet.protocol.api.descriptor;
  */
 public interface Descriptor {
 
+	MemorySegment segment();
+
+	ByteBuf buffer();
+
+	ByteBuffer byteBuffer();
+
 	/**
 	 * Returns the type of this descriptor.
 	 * 
-	 * <p>The descriptor type determines the level of detail and available
-	 * operations. Higher type numbers generally indicate more comprehensive
-	 * descriptors with additional metadata and functionality.
+	 * <p>
+	 * The descriptor type determines the level of detail and available operations.
+	 * Higher type numbers generally indicate more comprehensive descriptors with
+	 * additional metadata and functionality.
 	 * 
 	 * <h3>Type Characteristics</h3>
 	 * <table border="1">
-	 *   <caption>Descriptor Type Comparison</caption>
-	 *   <tr>
-	 *     <th>Type</th>
-	 *     <th>Size</th>
-	 *     <th>Features</th>
-	 *     <th>Use Case</th>
-	 *   </tr>
-	 *   <tr>
-	 *     <td>TYPE1</td>
-	 *     <td>16-32 bytes</td>
-	 *     <td>Basic protocol presence</td>
-	 *     <td>Fast filtering, routing decisions</td>
-	 *   </tr>
-	 *   <tr>
-	 *     <td>TYPE2</td>
-	 *     <td>64-128 bytes</td>
-	 *     <td>Header offsets and lengths</td>
-	 *     <td>Protocol analysis, statistics</td>
-	 *   </tr>
-	 *   <tr>
-	 *     <td>TYPE3</td>
-	 *     <td>256+ bytes</td>
-	 *     <td>Full metadata and annotations</td>
-	 *     <td>Deep packet inspection, forensics</td>
-	 *   </tr>
+	 * <caption>Descriptor Type Comparison</caption>
+	 * <tr>
+	 * <th>Type</th>
+	 * <th>Size</th>
+	 * <th>Features</th>
+	 * <th>Use Case</th>
+	 * </tr>
+	 * <tr>
+	 * <td>TYPE1</td>
+	 * <td>16-32 bytes</td>
+	 * <td>Basic protocol presence</td>
+	 * <td>Fast filtering, routing decisions</td>
+	 * </tr>
+	 * <tr>
+	 * <td>TYPE2</td>
+	 * <td>64-128 bytes</td>
+	 * <td>Header offsets and lengths</td>
+	 * <td>Protocol analysis, statistics</td>
+	 * </tr>
+	 * <tr>
+	 * <td>TYPE3</td>
+	 * <td>256+ bytes</td>
+	 * <td>Full metadata and annotations</td>
+	 * <td>Deep packet inspection, forensics</td>
+	 * </tr>
 	 * </table>
 	 * 
 	 * <h3>Example: Type-Based Processing</h3>
+	 * 
 	 * <pre>{@code
 	 * public void processDescriptor(Descriptor desc) {
-	 *     DescriptorType type = desc.type();
-	 *     
-	 *     // Log descriptor type for monitoring
-	 *     logger.debug("Processing {} descriptor, ID: {}, Length: {}", 
-	 *                  type, desc.id(), desc.length());
-	 *     
-	 *     // Dispatch based on type
-	 *     switch (type) {
-	 *         case TYPE1 -> processMinimal(desc);
-	 *         case TYPE2 -> processStandard(desc);
-	 *         case TYPE3 -> processExtended(desc);
-	 *         default -> logger.warn("Unknown descriptor type: {}", type);
-	 *     }
+	 * 	DescriptorType type = desc.type();
+	 * 
+	 * 	// Log descriptor type for monitoring
+	 * 	logger.debug("Processing {} descriptor, ID: {}, Length: {}",
+	 * 			type, desc.id(), desc.length());
+	 * 
+	 * 	// Dispatch based on type
+	 * 	switch (type) {
+	 * 	case TYPE1 -> processMinimal(desc);
+	 * 	case TYPE2 -> processStandard(desc);
+	 * 	case TYPE3 -> processExtended(desc);
+	 * 	default -> logger.warn("Unknown descriptor type: {}", type);
+	 * 	}
 	 * }
 	 * }</pre>
 	 * 
@@ -189,19 +217,22 @@ public interface Descriptor {
 	 * @see DescriptorType
 	 */
 	DescriptorType type();
-	
+
 	/**
 	 * Returns the unique identifier for this descriptor.
 	 * 
-	 * <p>The ID serves multiple purposes depending on the descriptor context:
+	 * <p>
+	 * The ID serves multiple purposes depending on the descriptor context:
 	 * <ul>
-	 *   <li>For packet descriptors: Packet sequence number or flow ID</li>
-	 *   <li>For header descriptors: Protocol ID (e.g., 6 for TCP, 17 for UDP)</li>
-	 *   <li>For NetTags: Tag type identifier</li>
+	 * <li>For packet descriptors: Packet sequence number or flow ID</li>
+	 * <li>For header descriptors: Protocol ID (e.g., 6 for TCP, 17 for UDP)</li>
+	 * <li>For NetTags: Tag type identifier</li>
 	 * </ul>
 	 * 
 	 * <h3>ID Ranges</h3>
-	 * <p>IDs are typically organized in ranges for different purposes:
+	 * <p>
+	 * IDs are typically organized in ranges for different purposes:
+	 * 
 	 * <pre>
 	 * 0x0000-0x00FF : Core protocols (Ethernet, IP, TCP, UDP)
 	 * 0x0100-0x01FF : Application protocols (HTTP, DNS, TLS)
@@ -211,39 +242,42 @@ public interface Descriptor {
 	 * </pre>
 	 * 
 	 * <h3>Example: Protocol Identification</h3>
+	 * 
 	 * <pre>{@code
 	 * public String getProtocolName(Descriptor desc) {
-	 *     int id = desc.id();
-	 *     
-	 *     return switch (id) {
-	 *         case 0x0001 -> "Ethernet";
-	 *         case 0x0800 -> "IPv4";
-	 *         case 0x86DD -> "IPv6";
-	 *         case 0x0006 -> "TCP";
-	 *         case 0x0011 -> "UDP";
-	 *         case 0x0050 -> "HTTP";
-	 *         default -> "Unknown (0x" + Integer.toHexString(id) + ")";
-	 *     };
+	 * 	int id = desc.id();
+	 * 
+	 * 	return switch (id) {
+	 * 	case 0x0001 -> "Ethernet";
+	 * 	case 0x0800 -> "IPv4";
+	 * 	case 0x86DD -> "IPv6";
+	 * 	case 0x0006 -> "TCP";
+	 * 	case 0x0011 -> "UDP";
+	 * 	case 0x0050 -> "HTTP";
+	 * 	default -> "Unknown (0x" + Integer.toHexString(id) + ")";
+	 * 	};
 	 * }
 	 * }</pre>
 	 * 
 	 * @return the descriptor identifier, typically non-negative
 	 */
-	int id();
-	
+	int descriptorId();
+
 	/**
 	 * Returns the total length of this descriptor in bytes.
 	 * 
-	 * <p>The length includes both the descriptor header and any variable-length
-	 * data associated with the descriptor. This value is critical for:
+	 * <p>
+	 * The length includes both the descriptor header and any variable-length data
+	 * associated with the descriptor. This value is critical for:
 	 * <ul>
-	 *   <li>Memory allocation and buffer management</li>
-	 *   <li>Descriptor traversal in chained structures</li>
-	 *   <li>Validation and bounds checking</li>
-	 *   <li>Serialization and deserialization</li>
+	 * <li>Memory allocation and buffer management</li>
+	 * <li>Descriptor traversal in chained structures</li>
+	 * <li>Validation and bounds checking</li>
+	 * <li>Serialization and deserialization</li>
 	 * </ul>
 	 * 
 	 * <h3>Length Calculation</h3>
+	 * 
 	 * <pre>
 	 * Total Length = Fixed Header Size + Variable Data Size
 	 * 
@@ -253,47 +287,49 @@ public interface Descriptor {
 	 * </pre>
 	 * 
 	 * <h3>Example: Descriptor Chain Traversal</h3>
+	 * 
 	 * <pre>{@code
 	 * public void traverseDescriptorChain(ByteBuffer buffer) {
-	 *     while (buffer.hasRemaining()) {
-	 *         // Read descriptor header
-	 *         int position = buffer.position();
-	 *         Descriptor desc = readDescriptor(buffer);
-	 *         
-	 *         // Validate descriptor length
-	 *         int length = desc.length();
-	 *         if (length <= 0 || length > buffer.remaining()) {
-	 *             throw new MalformedDescriptorException(
-	 *                 "Invalid descriptor length: " + length);
-	 *         }
-	 *         
-	 *         // Process descriptor
-	 *         processDescriptor(desc);
-	 *         
-	 *         // Move to next descriptor
-	 *         buffer.position(position + length);
-	 *     }
+	 * 	while (buffer.hasRemaining()) {
+	 * 		// Read descriptor header
+	 * 		int position = buffer.position();
+	 * 		Descriptor desc = readDescriptor(buffer);
+	 * 
+	 * 		// Validate descriptor length
+	 * 		int length = desc.length();
+	 * 		if (length <= 0 || length > buffer.remaining()) {
+	 * 			throw new MalformedDescriptorException(
+	 * 					"Invalid descriptor length: " + length);
+	 * 		}
+	 * 
+	 * 		// Process descriptor
+	 * 		processDescriptor(desc);
+	 * 
+	 * 		// Move to next descriptor
+	 * 		buffer.position(position + length);
+	 * 	}
 	 * }
 	 * }</pre>
 	 * 
 	 * <h3>Memory Efficiency</h3>
+	 * 
 	 * <pre>{@code
 	 * // Calculate memory usage for descriptor array
 	 * public long calculateMemoryUsage(Descriptor[] descriptors) {
-	 *     long totalBytes = 0;
-	 *     
-	 *     for (Descriptor desc : descriptors) {
-	 *         totalBytes += desc.length();
-	 *     }
-	 *     
-	 *     // Add object overhead (estimated)
-	 *     totalBytes += descriptors.length * 16; // Object headers
-	 *     
-	 *     return totalBytes;
+	 * 	long totalBytes = 0;
+	 * 
+	 * 	for (Descriptor desc : descriptors) {
+	 * 		totalBytes += desc.length();
+	 * 	}
+	 * 
+	 * 	// Add object overhead (estimated)
+	 * 	totalBytes += descriptors.length * 16; // Object headers
+	 * 
+	 * 	return totalBytes;
 	 * }
 	 * }</pre>
 	 * 
 	 * @return the total length in bytes, always positive
 	 */
-	int length();
+	long length();
 }

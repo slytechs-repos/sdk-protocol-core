@@ -17,73 +17,57 @@
  */
 package com.slytechs.jnet.protocol.api.address;
 
-import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
-import java.lang.invoke.VarHandle;
+
+import com.slytechs.jnet.core.api.memory.MemoryHandle.ByteHandle;
+import com.slytechs.jnet.core.api.memory.MemoryHandle.IntHandle;
+import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
 
 import static java.lang.foreign.MemoryLayout.*;
-import static java.lang.foreign.MemoryLayout.PathElement.*;
-import static java.lang.foreign.ValueLayout.*;
 
 /**
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
 public class MacAddressMemory extends AddressMemory implements MacAddress {
-	public static final MemoryLayout LAYOUT$BIG$SIZE_6 = unionLayout(
-			sequenceLayout(LENGTH, JAVA_BYTE).withName("byte_array"),
+
+	public static final MemoryLayout LAYOUT = unionLayout(
+			sequenceLayout(LENGTH, U8_BE).withName("byte_array"),
 			structLayout(
-					BIG_SHORT.withName("high"),
-					BIG_INT.withName("low")
+					U16_BE.withName("high"),
+					U32_BE.withName("low")).withName("fast_path"));
 
-			).withName("fast_path")
-
-	);
-
-	public static final MemoryLayout LAYOUT = LAYOUT$BIG$SIZE_6;
-
-	private static final VarHandle BYTE_ARRAY = LAYOUT.varHandle(groupElement("byte_array"), sequenceElement());
-	private static final VarHandle HIGH = LAYOUT.varHandle(groupElement("fast_path"), groupElement("high"));
-	private static final VarHandle LOW = LAYOUT.varHandle(groupElement("fast_path"), groupElement("low"));
-
-	public MacAddressMemory(Arena arena) {
-		super(LAYOUT, arena);
-	}
+	// Use MemoryHandle instead of VarHandle
+	private static final ByteHandle BYTE_ARRAY = new ByteHandle(LAYOUT, "byte_array[]");
+	private static final ShortHandle HIGH = new ShortHandle(LAYOUT, "fast_path", "high");
+	private static final IntHandle LOW = new IntHandle(LAYOUT, "fast_path", "low");
 
 	public MacAddressMemory() {
 		super(LAYOUT);
 	}
 
-	public MacAddressMemory(MemorySegment pointer, Arena arena) {
-		super(LAYOUT, pointer, arena);
-	}
-
-	public MacAddressMemory(MemorySegment segment, long offset) {
-		super(LAYOUT, segment, offset);
-	}
-
-	public MacAddressMemory(MemorySegment pointer) {
-		super(LAYOUT, pointer);
-	}
-
 	@Override
 	public byte[] bytes(byte[] dst, int offset) {
-		return bytesUsingVarHandle(BYTE_ARRAY, dst, offset);
+		for (int i = 0; i < LENGTH; i++) {
+			dst[offset + i] = BYTE_ARRAY.getByteAtIndex(view(), i);
+		}
+		return dst;
 	}
 
 	@Override
 	public byte byteAt(int index) {
-		return (byte) BYTE_ARRAY.get(asMemorySegment(), activeBytesStart(), index);
+		return BYTE_ARRAY.getByteAtIndex(view(), index);
 	}
 
 	@Override
 	public long asLong() {
-		// Read 1st 4 bytes quickly
-		int high = (int) HIGH.get(asMemorySegment(), activeBytesStart());
-		int low = (short) LOW.get(asMemorySegment(), activeBytesStart()) & 0xFFFF;
+		// Read first 2 bytes as short (high order)
+		long high = HIGH.getShort(view()) & 0xFFFFL;
+		// Read last 4 bytes as int (low order)
+		long low = LOW.getInt(view()) & 0xFFFFFFFFL;
 
-		return low | (high << 32);
+		// Combine: high 16 bits in upper position, low 32 bits in lower
+		return (high << 32) | low;
 	}
 
 	/**
@@ -91,7 +75,12 @@ public class MacAddressMemory extends AddressMemory implements MacAddress {
 	 */
 	@Override
 	public void setBytes(byte[] addr) {
-		setBytesUsingVarhandle(BYTE_ARRAY, addr);
+		if (addr.length != LENGTH) {
+			throw new IllegalArgumentException("MAC address must be " + LENGTH + " bytes");
+		}
+		for (int i = 0; i < LENGTH; i++) {
+			BYTE_ARRAY.setByteAtIndex(view(), i, addr[i]);
+		}
 	}
 
 	/**
@@ -99,10 +88,17 @@ public class MacAddressMemory extends AddressMemory implements MacAddress {
 	 */
 	@Override
 	public void setLong(long addr) {
+		// Extract high 16 bits (first 2 bytes of MAC)
 		short high = (short) ((addr >> 32) & 0xFFFF);
-		int low = (int) (addr & 0xFFFF);
+		// Extract low 32 bits (last 4 bytes of MAC)
+		int low = (int) (addr & 0xFFFFFFFFL);
 
-		HIGH.set(asMemorySegment(), activeBytesStart(), high);
-		LOW.set(asMemorySegment(), activeBytesStart(), low);
+		HIGH.setShort(view(), 0, high);
+		LOW.setInt(view(), 0, low);
+	}
+
+	@Override
+	public String toString() {
+		return MacAddress.formatMacAddress(bytes());
 	}
 }

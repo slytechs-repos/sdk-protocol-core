@@ -15,27 +15,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
+package com.slytechs.jnet.protocol.api.dissector;
+
+import com.slytechs.jnet.protocol.api.descriptor.DescriptorType;
 
 /**
- * Provides basic capture length metadata for a packet.
- * Maps to Pcap (pcap_pkthdr.caplen/len), DPDK (rte_mbuf.pkt_len), Napatech (descriptor lengths).
+ * 
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface CaptureInfo {
-    /**
-     * Gets the captured length of the packet (bytes captured by the backend).
-     *
-     * @return the captured length in bytes
-     */
-    int captureLength();
+public interface DissectorPlugin {
 
-    /**
-     * Gets the original wire length of the packet (before capture truncation).
-     *
-     * @return the wire length in bytes
-     */
-    int wireLength();
+	PacketDissector getDissector();
+
+	DescriptorType getDescriptorType();
 }

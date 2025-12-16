@@ -15,7 +15,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.descriptor;
+package com.slytechs.jnet.protocol.api.builtin;
+
+import static com.slytechs.jnet.protocol.api.pack.ProtocolPack.*;
 
 /**
  * 
@@ -23,13 +25,13 @@ package com.slytechs.jnet.protocol.api.descriptor;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface ProtocolClassification {
+public enum Builtin {
+	PAYLOAD()
+	
+	;
+	
+	public interface Constants {
+		int PAYLOAD_ID = BUILTIN_ID | 1;
 
-	long packetType();
-	
-	void setPacketType(long type);
-	
-	int vlanTci();
-	
-	int vlanTciOuter();
+	}
 }

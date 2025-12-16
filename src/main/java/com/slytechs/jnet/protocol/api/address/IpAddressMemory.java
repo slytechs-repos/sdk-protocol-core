@@ -17,9 +17,7 @@
  */
 package com.slytechs.jnet.protocol.api.address;
 
-import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
 
 /**
  * Base class for IP addresses (IPv4 and IPv6).
@@ -31,40 +29,6 @@ public abstract class IpAddressMemory extends AddressMemory implements IpAddress
 	 */
 	public IpAddressMemory(MemoryLayout layout) {
 		super(layout);
-	}
-
-	/**
-	 * @param layout
-	 * @param arena
-	 */
-	public IpAddressMemory(MemoryLayout layout, Arena arena) {
-		super(layout, arena);
-	}
-
-	/**
-	 * @param layout
-	 * @param pointer
-	 */
-	public IpAddressMemory(MemoryLayout layout, MemorySegment pointer) {
-		super(layout, pointer);
-	}
-
-	/**
-	 * @param layout
-	 * @param pointer
-	 * @param arena
-	 */
-	public IpAddressMemory(MemoryLayout layout, MemorySegment pointer, Arena arena) {
-		super(layout, pointer, arena);
-	}
-
-	/**
-	 * @param layout
-	 * @param segment
-	 * @param offset
-	 */
-	public IpAddressMemory(MemoryLayout layout, MemorySegment segment, long offset) {
-		super(layout, segment, offset);
 	}
 
 }
