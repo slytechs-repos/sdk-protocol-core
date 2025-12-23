@@ -112,7 +112,8 @@ public interface PacketDissector {
 	 * @param descriptor the descriptor
 	 * @return number of byte written
 	 */
-	default int writeDescriptor(PacketDescriptor descriptor) {
-		return writeDescriptor(descriptor.buffer());
-	}
+	int writeDescriptor(PacketDescriptor descriptor);
+	
+	PacketDissector setL2FrameType(int type);
+	int l2FrameType();
 }

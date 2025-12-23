@@ -31,7 +31,7 @@ public final class Ip4AddressMemory extends IpAddressMemory implements Ip4Addres
 
 	public static final MemoryLayout LAYOUT = unionLayout(
 			sequenceLayout(LENGTH, U8_BE).withName("byte_array"),
-			U32_BE.withName("int_value"));
+			U32_BE_A1.withName("int_value")).withByteAlignment(1);
 
 	// Use MemoryHandle instead of VarHandle
 	private static final ByteHandle BYTE_ARRAY = new ByteHandle(LAYOUT, "byte_array[]");

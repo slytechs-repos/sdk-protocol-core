@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2024 Sly Technologies Inc.
+ * Copyright 2025 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,10 +15,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.dissector;
+package com.slytechs.jnet.protocol.api.spi;
 
-import com.slytechs.jnet.core.api.memory.ByteBuf;
-import com.slytechs.jnet.protocol.api.descriptor.L2FrameType;
+import java.util.ServiceLoader;
+
+import com.slytechs.jnet.protocol.api.Protocol;
 
 /**
  * 
@@ -26,17 +27,19 @@ import com.slytechs.jnet.protocol.api.descriptor.L2FrameType;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface LazyDissector {
+public interface ProtocolProvider {
 
-	/**
-	 * Returns a bitmask of supported protocol's (their ordinals). Allows for a
-	 * quick check if the dissector is usable for a particular protocol.
-	 *
-	 * @return the 64-bit bitmask
-	 */
-	long supportedBitmask();
+	ServiceLoader<ProtocolProvider> service = ServiceLoader.load(ProtocolProvider.class);
 
-	int dissect(long[] protocolArray, int arrayOffset, ByteBuf packet, L2FrameType l2Type);
+	static Protocol lookupProtocol(int protocolId) {
+		return service.stream()
+				.map(p -> p.get())
+				.map(p -> p.findProtocol(protocolId))
+				.filter(p -> p != null)
+				.findAny()
+				.orElse(null);
+	}
 
-	long lookupProtocolId(int protocolId, long[] protocolArray, int arrayLength);
+	Protocol findProtocol(int protocolId);
+
 }

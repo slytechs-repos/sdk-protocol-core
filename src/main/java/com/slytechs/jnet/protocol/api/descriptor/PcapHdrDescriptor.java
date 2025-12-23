@@ -25,7 +25,6 @@ import com.slytechs.jnet.core.api.format.StructFormattable;
 import com.slytechs.jnet.core.api.memory.ByteBuf;
 import com.slytechs.jnet.core.api.time.TimestampUnit;
 import com.slytechs.jnet.protocol.api.Header;
-import com.slytechs.jnet.protocol.api.builtin.L2FrameType;
 
 import static java.lang.foreign.MemoryLayout.PathElement.*;
 
@@ -72,7 +71,7 @@ public class PcapHdrDescriptor
 	 * Instantiates a new pcap hdr descriptor.
 	 */
 	public PcapHdrDescriptor() {
-		this(L2FrameType.L2_FRAME_TYPE_ETHER);
+		this(L2FrameType.ETHER);
 	}
 
 	/**
@@ -80,7 +79,7 @@ public class PcapHdrDescriptor
 	 *
 	 * @param l2Type the l 2 type
 	 */
-	public PcapHdrDescriptor(L2FrameType l2Type) {
+	public PcapHdrDescriptor(int l2Type) {
 		super(l2Type, TimestampUnit.PCAP_MICRO);
 	}
 
@@ -90,7 +89,7 @@ public class PcapHdrDescriptor
 	 * @param l2Type        the l 2 type
 	 * @param timestampUnit the timestamp unit
 	 */
-	public PcapHdrDescriptor(L2FrameType l2Type, TimestampUnit timestampUnit) {
+	public PcapHdrDescriptor(int l2Type, TimestampUnit timestampUnit) {
 		super(l2Type, timestampUnit);
 	}
 
@@ -113,7 +112,7 @@ public class PcapHdrDescriptor
 	 */
 	@Override
 	public int descriptorId() {
-		return DescriptorType.DESCRIPTOR_TYPE_PCAP_HDR.getValue();
+		return DescriptorType.PCAP_HDR;
 	}
 
 	/**
@@ -230,7 +229,7 @@ public class PcapHdrDescriptor
 	 */
 	@Override
 	public DescriptorType type() {
-		return DescriptorType.DESCRIPTOR_TYPE_PCAP_HDR;
+		return DescriptorTypeInfo.PCAP_HDR;
 	}
 
 	/**
@@ -258,7 +257,7 @@ public class PcapHdrDescriptor
 	@Override
 	public boolean bindProtocol(ByteBuf packet, Header header, int protocolId, int depth) {
 		if (depth == 0) {
-			L2FrameType l2Type = l2FrameType();
+			L2FrameType l2Type = L2FrameTypeInfo.of(l2FrameType());
 			if (l2Type != null && l2Type.protocolId() == protocolId) {
 				long offset = 0;
 				long length = l2Type.baseLength();
@@ -267,6 +266,94 @@ public class PcapHdrDescriptor
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setL2Type(int)
+	 */
+	@Override
+	public void setL2Type(int l2Type) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setTxPort(int)
+	 */
+	@Override
+	public PacketDescriptor setTxPort(int port) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#txPort()
+	 */
+	@Override
+	public int txPort() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#isTxEnabled()
+	 */
+	@Override
+	public boolean isTxEnabled() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setTxEnabled(boolean)
+	 */
+	@Override
+	public PacketDescriptor setTxEnabled(boolean enabled) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setTxImmediate(boolean)
+	 */
+	@Override
+	public PacketDescriptor setTxImmediate(boolean immediate) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#isTxImmediate()
+	 */
+	@Override
+	public boolean isTxImmediate() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#isTxCrcRecalc()
+	 */
+	@Override
+	public boolean isTxCrcRecalc() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#isTxTimestampSync()
+	 */
+	@Override
+	public boolean isTxTimestampSync() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setTxTimestampSync(boolean)
+	 */
+	@Override
+	public NetPacketDescriptor setTxTimestampSync(boolean sync) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setTxCrcRecalc(boolean)
+	 */
+	@Override
+	public NetPacketDescriptor setTxCrcRecalc(boolean recalc) {
+		throw new UnsupportedOperationException("not implemented yet");
 	}
 
 }

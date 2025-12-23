@@ -18,6 +18,8 @@
 package com.slytechs.jnet.protocol.api.address;
 
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemoryLayout.PathElement;
+import java.lang.invoke.VarHandle;
 
 import com.slytechs.jnet.core.api.memory.MemoryHandle.ByteHandle;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.IntHandle;
@@ -34,13 +36,17 @@ public class MacAddressMemory extends AddressMemory implements MacAddress {
 	public static final MemoryLayout LAYOUT = unionLayout(
 			sequenceLayout(LENGTH, U8_BE).withName("byte_array"),
 			structLayout(
-					U16_BE.withName("high"),
-					U32_BE.withName("low")).withName("fast_path"));
+					U16_BE_A1.withName("high"),
+					U32_BE_A1.withName("low")).withName("fast_path")).withByteAlignment(1);
 
 	// Use MemoryHandle instead of VarHandle
+	private static VarHandle H = LAYOUT.varHandle(
+			PathElement.groupElement("byte_array"),
+			PathElement.sequenceElement());
 	private static final ByteHandle BYTE_ARRAY = new ByteHandle(LAYOUT, "byte_array[]");
 	private static final ShortHandle HIGH = new ShortHandle(LAYOUT, "fast_path", "high");
 	private static final IntHandle LOW = new IntHandle(LAYOUT, "fast_path", "low");
+
 
 	public MacAddressMemory() {
 		super(LAYOUT);

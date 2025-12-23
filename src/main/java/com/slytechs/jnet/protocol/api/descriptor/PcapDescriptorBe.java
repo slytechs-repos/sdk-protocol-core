@@ -21,7 +21,6 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 
 import com.slytechs.jnet.core.api.time.TimestampUnit;
-import com.slytechs.jnet.protocol.api.builtin.L2FrameType;
 
 import static java.lang.foreign.MemoryLayout.PathElement.*;
 
@@ -40,7 +39,7 @@ class PcapDescriptorBe extends PcapDescriptor {
 	private static final VarHandle CAPLEN$BE = LAYOUT$COMPACT$BE.varHandle(groupElement("caplen"));
 	private static final VarHandle WIRELEN$BE = LAYOUT$COMPACT$BE.varHandle(groupElement("wirelen"));
 
-	protected PcapDescriptorBe(L2FrameType l2Type, TimestampUnit timestampUnit) {
+	protected PcapDescriptorBe(int l2Type, TimestampUnit timestampUnit) {
 		super(l2Type, timestampUnit);
 	}
 
@@ -108,6 +107,94 @@ class PcapDescriptorBe extends PcapDescriptor {
 	@Override
 	public int wireLength() {
 		return (int) WIRELEN$BE.get(segment(), 0);
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setL2Type(int)
+	 */
+	@Override
+	public void setL2Type(int l2Type) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setTxPort(int)
+	 */
+	@Override
+	public PacketDescriptor setTxPort(int port) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#txPort()
+	 */
+	@Override
+	public int txPort() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#isTxEnabled()
+	 */
+	@Override
+	public boolean isTxEnabled() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setTxEnabled(boolean)
+	 */
+	@Override
+	public PacketDescriptor setTxEnabled(boolean enabled) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setTxImmediate(boolean)
+	 */
+	@Override
+	public PacketDescriptor setTxImmediate(boolean immediate) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#isTxImmediate()
+	 */
+	@Override
+	public boolean isTxImmediate() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#isTxCrcRecalc()
+	 */
+	@Override
+	public boolean isTxCrcRecalc() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#isTxTimestampSync()
+	 */
+	@Override
+	public boolean isTxTimestampSync() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setTxTimestampSync(boolean)
+	 */
+	@Override
+	public NetPacketDescriptor setTxTimestampSync(boolean sync) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setTxCrcRecalc(boolean)
+	 */
+	@Override
+	public NetPacketDescriptor setTxCrcRecalc(boolean recalc) {
+		throw new UnsupportedOperationException("not implemented yet");
 	}
 
 }

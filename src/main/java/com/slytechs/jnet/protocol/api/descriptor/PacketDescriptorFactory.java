@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.jnet.protocol.api.dissector;
+package com.slytechs.jnet.protocol.api.descriptor;
 
 /**
  * 
@@ -23,7 +23,7 @@ package com.slytechs.jnet.protocol.api.dissector;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface L2Dissector {
+public interface PacketDescriptorFactory {
 
-	
+	PacketDescriptor newInstance();
 }

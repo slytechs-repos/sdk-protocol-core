@@ -19,6 +19,7 @@ package com.slytechs.jnet.protocol.api;
 
 import java.lang.foreign.MemoryLayout;
 
+import com.slytechs.jnet.core.api.memory.BindableView;
 import com.slytechs.jnet.core.api.memory.ByteBuf;
 
 /**
@@ -170,7 +171,7 @@ public non-sealed abstract class VariableHeader<T extends HeaderOptions<?>> exte
 	 * </ol>
 	 * 
 	 * @param packet         the packet memory buffer
-	 * @param protocolId     the protocol identifier (must match this header's ID)
+	 * @param id     the protocol identifier (must match this header's ID)
 	 * @param innerDepth     the depth level for tunneled protocols
 	 * @param offset         the offset of this header within the packet
 	 * @param extendedLength the total header length including options
@@ -179,7 +180,7 @@ public non-sealed abstract class VariableHeader<T extends HeaderOptions<?>> exte
 	 */
 	@Override
 	public final boolean bindHeader(
-			ByteBuf packet,
+			BindableView packet,
 			int protocolId,
 			int innerDepth,
 			long offset,

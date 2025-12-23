@@ -30,10 +30,14 @@ module com.slytechs.jnet.protocol.api {
 	exports com.slytechs.jnet.protocol.api.dissector;
 	exports com.slytechs.jnet.protocol.api.format;
 	exports com.slytechs.jnet.protocol.api.table;
-
+	exports com.slytechs.jnet.protocol.api.stack;
+	exports com.slytechs.jnet.protocol.api.stack.processor;
+	exports com.slytechs.jnet.protocol.api.spi;
+ 
 	requires transitive com.slytechs.jnet.core.api;
 	requires java.logging;
 
 	uses com.slytechs.jnet.protocol.api.pack.ProtocolPackPlugin;
     uses com.slytechs.jnet.protocol.api.table.TableProvider;
+    uses com.slytechs.jnet.protocol.api.spi.ProtocolProvider;
 }

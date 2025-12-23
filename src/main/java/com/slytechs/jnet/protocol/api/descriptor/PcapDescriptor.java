@@ -25,7 +25,6 @@ import java.nio.ByteOrder;
 import com.slytechs.jnet.core.api.memory.ByteBuf;
 import com.slytechs.jnet.core.api.time.TimestampUnit;
 import com.slytechs.jnet.protocol.api.Header;
-import com.slytechs.jnet.protocol.api.builtin.L2FrameType;
 
 import static java.lang.foreign.MemoryLayout.*;
 import static java.lang.foreign.MemoryLayout.PathElement.*;
@@ -106,16 +105,16 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor implements
 	public static final MemoryLayout LAYOUT$COMPACT$BE = LAYOUT$NATIVE_ABI.select(groupElement("llp64_be"));
 
 	public static PcapDescriptor of(ByteOrder order) {
-		return of(order, L2FrameType.L2_FRAME_TYPE_ETHER, TimestampUnit.PCAP_MICRO);
+		return of(order, L2FrameType.ETHER, TimestampUnit.PCAP_MICRO);
 	}
 
-	public static PcapDescriptor of(ByteOrder order, L2FrameType l2Type, TimestampUnit timestampUnit) {
+	public static PcapDescriptor of(ByteOrder order, int l2Type, TimestampUnit timestampUnit) {
 		return (order == ByteOrder.BIG_ENDIAN)
 				? new PcapDescriptorBe(l2Type, timestampUnit)
 				: new PcapDescriptorLe(l2Type, timestampUnit);
 	}
 
-	protected PcapDescriptor(L2FrameType l2Type, TimestampUnit timestampUnit) {
+	protected PcapDescriptor(int l2Type, TimestampUnit timestampUnit) {
 		super(l2Type, timestampUnit);
 	}
 
@@ -124,7 +123,7 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor implements
 	 */
 	@Override
 	public int descriptorId() {
-		return DescriptorType.DESCRIPTOR_TYPE_PCAP.getValue();
+		return DescriptorType.PCAP;
 	}
 
 	/**
@@ -156,8 +155,8 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor implements
 	 * @see com.slytechs.jnet.protocol.api.descriptor.Descriptor#type()
 	 */
 	@Override
-	public DescriptorType type() {
-		return DescriptorType.DESCRIPTOR_TYPE_PCAP;
+	public DescriptorTypeInfo type() {
+		return DescriptorTypeInfo.PCAP;
 	}
 
 	/**
@@ -167,7 +166,7 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor implements
 	@Override
 	public boolean bindProtocol(ByteBuf packet, Header header, int protocolId, int depth) {
 		if (depth == 0) {
-			L2FrameType l2Type = l2FrameType();
+			L2FrameType l2Type = L2FrameTypeInfo.of(l2FrameType());
 			if (l2Type != null && l2Type.protocolId() == protocolId) {
 				long offset = 0;
 				long length = l2Type.baseLength();

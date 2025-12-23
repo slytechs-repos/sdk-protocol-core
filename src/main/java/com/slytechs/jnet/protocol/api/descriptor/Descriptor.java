@@ -17,11 +17,6 @@
  */
 package com.slytechs.jnet.protocol.api.descriptor;
 
-import java.lang.foreign.MemorySegment;
-import java.nio.ByteBuffer;
-
-import com.slytechs.jnet.core.api.memory.ByteBuf;
-
 /**
  * Base interface for all descriptor types in the packet processing framework.
  * 
@@ -41,7 +36,7 @@ import com.slytechs.jnet.core.api.memory.ByteBuf;
  *                        │
  *         ┌──────────────┼──────────────┐
  *         │              │              │
- *   PacketDescriptor  HeaderDescriptor  NetTag
+ *   PacketDescriptor  HeaderDescriptor  PacketTag
  *         │              │              │
  *    ┌────┴────┐    ┌────┴────┐    ┌───┴───┐
  *   Type1  Type2   Type1  Type2   IpfTag  TcpTag
@@ -142,19 +137,13 @@ import com.slytechs.jnet.core.api.memory.ByteBuf;
  * 
  * @see PacketDescriptor
  * @see DescriptorType
- * @see NetTag
+ * @see PacketTag
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @since 1.0
  */
 public interface Descriptor {
-
-	MemorySegment segment();
-
-	ByteBuf buffer();
-
-	ByteBuffer byteBuffer();
 
 	/**
 	 * Returns the type of this descriptor.

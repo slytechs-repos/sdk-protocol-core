@@ -18,12 +18,18 @@
 package com.slytechs.jnet.protocol.api.descriptor;
 
 import java.nio.ByteOrder;
+import java.util.Iterator;
+import java.util.stream.Stream;
 
+import com.slytechs.jnet.core.api.memory.BindableView;
 import com.slytechs.jnet.core.api.memory.ByteBuf;
 import com.slytechs.jnet.core.api.time.TimestampUnit;
 import com.slytechs.jnet.protocol.api.Header;
 import com.slytechs.jnet.protocol.api.HeaderAccessor;
-import com.slytechs.jnet.protocol.api.builtin.L2FrameType;
+import com.slytechs.jnet.protocol.api.Protocol;
+import com.slytechs.jnet.protocol.api.ProtocolId;
+import com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor.BindingInfo;
+import com.slytechs.jnet.protocol.api.spi.ProtocolProvider;
 
 /**
  * Descriptor containing packet dissection results and protocol header metadata.
@@ -182,7 +188,36 @@ import com.slytechs.jnet.protocol.api.builtin.L2FrameType;
  * @see PacketFlag
  * @since 1.0
  */
-public interface PacketDescriptor extends Descriptor {
+public interface PacketDescriptor extends Descriptor, Iterable<BindingInfo>, BindableView {
+
+	/**
+	 * Information about find entry in the descriptor. Used for toString not for
+	 * hot-path protocol discovery.
+	 */
+	public record BindingInfo(int order, int id, long offset, long length) {
+		@SuppressWarnings("unchecked")
+		public <T extends Header> T newUnboundHeader() {
+			Protocol protocol = ProtocolProvider.lookupProtocol(id);
+			if (protocol == null)
+				return null;
+
+			Header header = protocol.headerFactory()
+					.proxy()
+					.newHeader();
+
+			return (T) header;
+		}
+
+		public <T extends Header> T newBoundHeader(ByteBuf packet) {
+			T header = newUnboundHeader();
+			if (header == null)
+				return null;
+
+			header.bindHeader(packet, id, 0, offset, length);
+
+			return header;
+		}
+	}
 
 	/** The protocol not found return code from mapProtocol. */
 	long PROTOCOL_NOT_FOUND = -1L;
@@ -235,12 +270,12 @@ public interface PacketDescriptor extends Descriptor {
 	 * 
 	 * If header is not present, or supported, a -1 is returned.
 	 *
-	 * @param packet     the source packet (a memory view) to bind to
-	 * @param header     the header (a memory view) to bind to the packet using the
-	 *                   Header's specific bind method
-	 * @param protocolId the protocol pack specific numeric protocol id
-	 * @param depth      depth of 0 means outer, depth of 1 means inner protocol and
-	 *                   so on
+	 * @param packet the source packet (a memory view) to bind to
+	 * @param header the header (a memory view) to bind to the packet using the
+	 *               Header's specific bind method
+	 * @param id     the protocol pack specific numeric protocol id
+	 * @param depth  depth of 0 means outer, depth of 1 means inner protocol and so
+	 *               on
 	 * @return true if protocol was found and bound
 	 * @see Header#bindPacket(long, long, com.slytechs.jnet.protocol.api.Packet)
 	 */
@@ -288,23 +323,6 @@ public interface PacketDescriptor extends Descriptor {
 	int captureLength();
 
 	/**
-	 * Gets the Layer 2 frame type as an enum constant.
-	 * 
-	 * <p>
-	 * Extracts the L2 frame type from the RX_INFO field (bits 0-4) and returns the
-	 * corresponding L2FrameType enum constant. The frame type identifies the data
-	 * link layer protocol used in the captured packet.
-	 * </p>
-	 * 
-	 * @return the L2 frame type enum constant
-	 * @see L2FrameType
-	 * @see #l2Type()
-	 */
-	default L2FrameType l2FrameType() {
-		return L2FrameType.valueOf(l2Type());
-	}
-
-	/**
 	 * Gets the Layer 2 frame type as an integer value.
 	 * 
 	 * <p>
@@ -329,7 +347,7 @@ public interface PacketDescriptor extends Descriptor {
 	 * @see L2FrameType
 	 * @see #l2FrameType()
 	 */
-	int l2Type();
+	int l2FrameType();
 
 	/**
 	 * Maps a given protocol ID to a offset and length of the protocol header. The
@@ -344,8 +362,8 @@ public interface PacketDescriptor extends Descriptor {
 	 * 
 	 * If header is not present, or supported, a -1 is returned.
 	 *
-	 * @param protocolId the protocol id
-	 * @param depth      TODO
+	 * @param id    the protocol id
+	 * @param depth TODO
 	 * @return the encoded length and offset or -1 if not present
 	 */
 	long mapProtocol(int protocolId, int depth);
@@ -353,6 +371,8 @@ public interface PacketDescriptor extends Descriptor {
 	default ByteOrder order() {
 		return ByteOrder.nativeOrder();
 	}
+
+	void setL2Type(int l2Type);
 
 	/**
 	 * Sets the capture length of the received packet.
@@ -467,4 +487,73 @@ public interface PacketDescriptor extends Descriptor {
 	 * @see #setWireLength(int)
 	 */
 	int wireLength();
+
+	/**
+	 * @see java.lang.Iterable#iterator()
+	 */
+	@Override
+	default Iterator<BindingInfo> iterator() {
+		var info = switch (l2FrameType()) {
+		case L2FrameType.ETHER -> new BindingInfo(0, ProtocolId.ETHERNET, 0, 14);
+
+		default -> throw new IllegalArgumentException("Unexpected value: " + l2FrameType());
+		};
+
+		return Stream.of(info).iterator();
+	}
+
+	/**
+	 * @param port
+	 * @return
+	 */
+	PacketDescriptor setTxPort(int port);
+
+	/**
+	 * @return
+	 */
+	int txPort();
+
+	/**
+	 * @return
+	 */
+	boolean isTxEnabled();
+
+	/**
+	 * @param enabled
+	 * @return
+	 */
+	PacketDescriptor setTxEnabled(boolean enabled);
+
+	/**
+	 * @param immediate
+	 * @return
+	 */
+	PacketDescriptor setTxImmediate(boolean immediate);
+
+	/**
+	 * @return
+	 */
+	boolean isTxImmediate();
+
+	/**
+	 * @return
+	 */
+	boolean isTxCrcRecalc();
+
+	/**
+	 * @return
+	 */
+	boolean isTxTimestampSync();
+
+	/**
+	 * @param sync
+	 * @return
+	 */
+	NetPacketDescriptor setTxTimestampSync(boolean sync);
+
+	/**
+	 * @param recalc
+	 * @return
+	 */
+	NetPacketDescriptor setTxCrcRecalc(boolean recalc);
 }

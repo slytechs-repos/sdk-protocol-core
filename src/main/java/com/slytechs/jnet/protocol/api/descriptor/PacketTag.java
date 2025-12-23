@@ -26,38 +26,38 @@ import java.util.List;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface NetTag {
+public interface PacketTag {
 
 	int RESOURCE_ID_TYPE = 1;
 
 	/**
 	 * Gets the next tag in the chain.
 	 *
-	 * @return the next NetTag, or null if none
+	 * @return the next PacketTag, or null if none
 	 */
-	NetTag next();
+	PacketTag next();
 
-	NetTag setNext(NetTag next);
+	PacketTag setNext(PacketTag next);
 
 	int type();
 
-	static <T extends NetTag> T getTag(NetTag head, int type) {
+	static <T extends PacketTag> T getTag(PacketTag head, int type) {
 		throw new UnsupportedOperationException();
 	}
 
-	static <T extends NetTag> boolean compareTag(NetTag head, T tag) {
+	static <T extends PacketTag> boolean compareTag(PacketTag head, T tag) {
 		return head == tag;
 	}
 
-	static <T extends NetTag> T removeTag(NetTag head, int type) {
+	static <T extends PacketTag> T removeTag(PacketTag head, int type) {
 		throw new UnsupportedOperationException();
 	}
 
-	static <T extends NetTag> List<T> getAllTags(NetTag head, int type) {
+	static <T extends PacketTag> List<T> getAllTags(PacketTag head, int type) {
 		throw new UnsupportedOperationException();
 	}
 
-	static <T extends NetTag> List<T> removeAllTags(NetTag head, int type) {
+	static <T extends PacketTag> List<T> removeAllTags(PacketTag head, int type) {
 		throw new UnsupportedOperationException();
 	}
 }

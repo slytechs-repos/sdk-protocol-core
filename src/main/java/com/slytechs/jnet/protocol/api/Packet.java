@@ -17,10 +17,12 @@
  */
 package com.slytechs.jnet.protocol.api;
 
+import com.slytechs.jnet.core.api.detail.DetailBuilder;
+import com.slytechs.jnet.core.api.detail.Detailable;
 import com.slytechs.jnet.core.api.memory.ByteBuf;
-import com.slytechs.jnet.protocol.api.descriptor.NetTag;
 import com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor;
-import com.slytechs.jnet.protocol.api.descriptor.ReceiveControl;
+import com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor.BindingInfo;
+import com.slytechs.jnet.protocol.api.descriptor.PacketTag;
 import com.slytechs.jnet.protocol.api.descriptor.TransmitControl;
 import com.slytechs.jnet.protocol.api.format.PacketFormat;
 import com.slytechs.jnet.protocol.api.pack.ProtocolPackManager;
@@ -46,7 +48,7 @@ import com.slytechs.jnet.protocol.api.pack.ProtocolPackManager;
  * through {@link MemorySegmentProxy}</li>
  * <li><strong>Packet Descriptor:</strong> Protocol dissection results and
  * header locations</li>
- * <li><strong>NetTag Chain:</strong> Extended metadata and processing
+ * <li><strong>PacketTag Chain:</strong> Extended metadata and processing
  * annotations</li>
  * </ol>
  * 
@@ -116,7 +118,7 @@ import com.slytechs.jnet.protocol.api.pack.ProtocolPackManager;
  * }
  * }</pre>
  * 
- * <h2>NetTag Metadata Chain</h2>
+ * <h2>PacketTag Metadata Chain</h2>
  * 
  * <p>
  * NetTags provide an extensible mechanism for attaching metadata to packets
@@ -146,7 +148,7 @@ import com.slytechs.jnet.protocol.api.pack.ProtocolPackManager;
  * fragTag.setNext(appTag); // Chain tags together
  * 
  * // Traverse tag chain
- * NetTag tag = packet.getTags();
+ * PacketTag tag = packet.getTags();
  * while (tag != null) {
  * 	if (tag instanceof IpfTag) {
  * 		IpfTag ipf = (IpfTag) tag;
@@ -345,7 +347,7 @@ import com.slytechs.jnet.protocol.api.pack.ProtocolPackManager;
  * 
  * @see MemorySegmentProxy
  * @see PacketDescriptor
- * @see NetTag
+ * @see PacketTag
  * @see HeaderAccessor
  * @see PacketFormat
  * 
@@ -353,14 +355,14 @@ import com.slytechs.jnet.protocol.api.pack.ProtocolPackManager;
  * @author Sly Technologies Inc.
  * @since 1.0
  */
-public final class Packet extends ByteBuf implements HeaderAccessor {
+public final class Packet extends ByteBuf implements HeaderAccessor, Detailable {
 
 	/**
-	 * NetTag chain providing protocol-specific metadata and annotations.
+	 * PacketTag chain providing protocol-specific metadata and annotations.
 	 * 
 	 * <p>
 	 * Tags form a singly-linked list where each tag can reference the next tag in
-	 * the chain via {@link NetTag#getNext()}. Tags are used to store information
+	 * the chain via {@link PacketTag#getNext()}. Tags are used to store information
 	 * that extends beyond basic protocol dissection, such as:
 	 * <ul>
 	 * <li>IP fragmentation and reassembly state</li>
@@ -373,7 +375,7 @@ public final class Packet extends ByteBuf implements HeaderAccessor {
 	 * The tag chain is traversed from head to tail, with newer tags typically added
 	 * at the head for O(1) insertion performance.
 	 */
-	protected NetTag headTag;
+	protected PacketTag headTag;
 
 	/**
 	 * Packet descriptor containing dissection results and header locations.
@@ -458,7 +460,7 @@ public final class Packet extends ByteBuf implements HeaderAccessor {
 	 * @throws NullPointerException if tag is {@code null}
 	 * @see #getTags()
 	 */
-	public void addTag(NetTag tag) {
+	public void addTag(PacketTag tag) {
 		this.headTag = tag;
 	}
 
@@ -536,7 +538,7 @@ public final class Packet extends ByteBuf implements HeaderAccessor {
 	public final Header getHeader(int id, int depth) throws HeaderNotFoundException {
 		long encoded = packetDescriptor.mapProtocol(id, depth);
 		if (encoded == PacketDescriptor.PROTOCOL_NOT_FOUND)
-			throw new HeaderNotFoundException("protocolId=0x%08X, depth=%d".formatted(id, depth));
+			throw new HeaderNotFoundException("id=0x%08X, depth=%d".formatted(id, depth));
 
 		int offset = PacketDescriptor.decodeOffset(encoded);
 		int length = PacketDescriptor.decodeLength(encoded);
@@ -636,22 +638,22 @@ public final class Packet extends ByteBuf implements HeaderAccessor {
 		return (T) packetDescriptor;
 	}
 
-	public NetTag getTag() {
+	public PacketTag getTag() {
 		return headTag;
 	}
 
 	/**
-	 * Returns the head of the NetTag chain attached to this packet.
+	 * Returns the head of the PacketTag chain attached to this packet.
 	 * 
 	 * <p>
 	 * NetTags provide extensible metadata that can be attached to packets without
 	 * modifying the packet data itself. Tags are organized in a singly-linked list
-	 * and can be traversed using {@link NetTag#getNext()}.
+	 * and can be traversed using {@link PacketTag#getNext()}.
 	 * 
 	 * <h3>Example: Traversing the Tag Chain</h3>
 	 * 
 	 * <pre>{@code
-	 * NetTag tag = packet.getTags();
+	 * PacketTag tag = packet.getTags();
 	 * while (tag != null) {
 	 * 	if (tag instanceof IpfTag) {
 	 * 		IpfTag ipf = (IpfTag) tag;
@@ -665,9 +667,9 @@ public final class Packet extends ByteBuf implements HeaderAccessor {
 	 * }</pre>
 	 * 
 	 * @return the head of the tag chain, or {@code null} if no tags are attached
-	 * @see #addTag(NetTag)
+	 * @see #addTag(PacketTag)
 	 */
-	public NetTag getTags() {
+	public PacketTag getTags() {
 		return headTag;
 	}
 
@@ -711,15 +713,6 @@ public final class Packet extends ByteBuf implements HeaderAccessor {
 	}
 
 	/**
-	 * Returns true if this packet has receive control information.
-	 * 
-	 * @return true if RX control is available
-	 */
-	public boolean hasReceiveInfo() {
-		return packetDescriptor instanceof ReceiveControl;
-	}
-
-	/**
 	 * {@inheritDoc}
 	 * 
 	 * <p>
@@ -757,20 +750,7 @@ public final class Packet extends ByteBuf implements HeaderAccessor {
 		return encoded != PacketDescriptor.PROTOCOL_NOT_FOUND;
 	}
 
-	/**
-	 * Gets receive control for this packet. Never returns null - returns NoOp
-	 * singleton if not supported.
-	 * 
-	 * @return ReceiveControl instance (never null)
-	 */
-	public ReceiveControl receiveControl() {
-		if (packetDescriptor instanceof ReceiveControl rc)
-			return rc;
-
-		return NoOpReceiveControl.INSTANCE;
-	}
-
-	public boolean removeTag(NetTag tag) {
+	public boolean removeTag(PacketTag tag) {
 		if (headTag == tag) {
 			headTag = null;
 
@@ -854,25 +834,15 @@ public final class Packet extends ByteBuf implements HeaderAccessor {
 	 */
 	@Override
 	public String toString() {
+		return toDetailString();
+	}
+
+	public String toString2() {
 		PacketFormat format = PacketFormat.getDefault();
 		if (format == null)
 			return packetDescriptor.toString();
 
 		return format.formatPacket(this);
-	}
-
-	/**
-	 * Gets transmit control for this packet. Never returns null - returns NoOp
-	 * singleton if not supported. Check canTransmit() to determine if settings will
-	 * have effect.
-	 * 
-	 * @return TransmitControl instance (never null)
-	 */
-	public TransmitControl transmitControl() {
-		if (packetDescriptor instanceof TransmitControl tc)
-			return tc;
-
-		return NoOpTransmitControl.INSTANCE;
 	}
 
 	/**
@@ -922,6 +892,30 @@ public final class Packet extends ByteBuf implements HeaderAccessor {
 	 */
 	public final int wireLength() {
 		return packetDescriptor.wireLength();
+	}
+
+	/**
+	 * @see com.slytechs.jnet.core.api.detail.Detailable#buildDetail(com.slytechs.jnet.core.api.detail.DetailBuilder)
+	 */
+	@Override
+	public void buildDetail(DetailBuilder detail) {
+		for (BindingInfo info : packetDescriptor) {
+			Header header = info.newBoundHeader(this);
+
+			if (header == null) {
+				// Unknown protocol - show placeholder
+				detail.header("Unknown Protocol (0x%04X)".formatted(info.id()), "",
+						info.id(), info.offset(), info.length(), _ -> {});
+				continue;
+			}
+
+			if (header instanceof Detailable d) {
+				d.buildDetail(detail); // Just delegate - buildDetail creates its own header
+			} else {
+				// Fallback for non-Detailable headers
+				detail.header(header.name(), "", info.id(), info.offset(), info.length(), _ -> {});
+			}
+		}
 	}
 
 }

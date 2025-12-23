@@ -17,11 +17,8 @@
  */
 package com.slytechs.jnet.protocol.api.descriptor;
 
-import java.nio.ByteBuffer;
-
 import com.slytechs.jnet.core.api.memory.ByteBuf;
 import com.slytechs.jnet.core.api.time.TimestampUnit;
-import com.slytechs.jnet.protocol.api.builtin.L2FrameType;
 
 /**
  * 
@@ -35,15 +32,19 @@ public abstract class AbstractPacketDescriptor
 
 	protected TimestampUnit timestampUnit;
 	protected long flags = 0;
-	private final L2FrameType l2Type;
+	private int l2FrameType;
 
 	protected AbstractPacketDescriptor(TimestampUnit timestampUnit) {
-		this(L2FrameType.DEFAULT_L2_FRAME_TYPE, timestampUnit);
+		this(L2FrameType.ETHER, timestampUnit);
 	}
 
-	protected AbstractPacketDescriptor(L2FrameType l2Type, TimestampUnit timestampUnit) {
-		this.l2Type = l2Type;
+	protected AbstractPacketDescriptor(int l2Type, TimestampUnit timestampUnit) {
+		this.l2FrameType = l2Type;
 		this.timestampUnit = timestampUnit;
+	}
+
+	protected AbstractPacketDescriptor() {
+		this(L2FrameType.ETHER, TimestampUnit.EPOCH_MILLI);
 	}
 
 	@Override
@@ -51,17 +52,12 @@ public abstract class AbstractPacketDescriptor
 		this.timestampUnit = unit;
 	}
 
-	@Override
-	public int l2Type() {
-		return l2Type.l2TypeId();
-	}
-
 	/**
 	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#l2FrameType()
 	 */
 	@Override
-	public L2FrameType l2FrameType() {
-		return l2Type;
+	public int l2FrameType() {
+		return l2FrameType;
 	}
 
 	/**
@@ -79,22 +75,6 @@ public abstract class AbstractPacketDescriptor
 	@Override
 	public TimestampUnit timestampUnit() {
 		return timestampUnit;
-	}
-
-	/**
-	 * @see com.slytechs.jnet.protocol.api.descriptor.Descriptor#buffer()
-	 */
-	@Override
-	public ByteBuf buffer() {
-		return this;
-	}
-
-	/**
-	 * @see com.slytechs.jnet.protocol.api.descriptor.Descriptor#byteBuffer()
-	 */
-	@Override
-	public ByteBuffer byteBuffer() {
-		return segment().asByteBuffer();
 	}
 
 }

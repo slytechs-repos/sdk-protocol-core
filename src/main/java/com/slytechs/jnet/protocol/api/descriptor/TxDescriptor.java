@@ -169,7 +169,7 @@ public interface TxDescriptor extends Descriptor {
 	 * @return true if IP checksum offload is requested
 	 */
 	default boolean isTxIpChecksumRequested() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_TX_IP_CKSUM) != 0;
+		return (flags() & PacketFlag.TX_IP_CKSUM) != 0;
 	}
 
 	/**
@@ -179,7 +179,7 @@ public interface TxDescriptor extends Descriptor {
 	 * @return true if TCP checksum offload is requested
 	 */
 	default boolean isTxTcpChecksumRequested() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_TX_TCP_CKSUM) != 0;
+		return (flags() & PacketFlag.TX_TCP_CKSUM) != 0;
 	}
 
 	/**
@@ -189,7 +189,7 @@ public interface TxDescriptor extends Descriptor {
 	 * @return true if UDP checksum offload is requested
 	 */
 	default boolean isTxUdpChecksumRequested() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_TX_UDP_CKSUM) != 0;
+		return (flags() & PacketFlag.TX_UDP_CKSUM) != 0;
 	}
 
 	/**
@@ -199,7 +199,7 @@ public interface TxDescriptor extends Descriptor {
 	 * @return true if TSO is requested
 	 */
 	default boolean isTxTcpSegmentationRequested() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_TX_TCP_SEG) != 0;
+		return (flags() & PacketFlag.TX_TCP_SEG) != 0;
 	}
 
 	/**
@@ -209,7 +209,7 @@ public interface TxDescriptor extends Descriptor {
 	 * @return true if USO is requested
 	 */
 	default boolean isTxUdpSegmentationRequested() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_TX_UDP_SEG) != 0;
+		return (flags() & PacketFlag.TX_UDP_SEG) != 0;
 	}
 
 	/**
@@ -219,7 +219,7 @@ public interface TxDescriptor extends Descriptor {
 	 * @return true if VLAN insertion is requested
 	 */
 	default boolean isTxVlanInsertionRequested() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_TX_VLAN) != 0;
+		return (flags() & PacketFlag.TX_VLAN) != 0;
 	}
 
 	/**

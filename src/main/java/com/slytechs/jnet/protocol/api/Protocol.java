@@ -28,7 +28,7 @@ import com.slytechs.jnet.protocol.api.pack.ProtocolPack;
  * @author Sly Technologies Inc.
  */
 public interface Protocol {
-
+	
 	int id();
 
 	String name();

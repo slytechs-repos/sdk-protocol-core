@@ -19,7 +19,7 @@ package com.slytechs.jnet.protocol.api;
 
 import java.lang.foreign.MemoryLayout;
 
-import com.slytechs.jnet.core.api.memory.ByteBuf;
+import com.slytechs.jnet.core.api.memory.BindableView;
 
 /**
  * 
@@ -41,7 +41,7 @@ public non-sealed class FixedHeader extends Header {
 	 * Binds this header to packet data with extension information.
 	 * 
 	 * @param packet     the packet to bind to
-	 * @param protocolId the protocol ID
+	 * @param id the protocol ID
 	 * @param depth      the header depth in packet
 	 * @param offset     the offset within packet
 	 * @param length     the header length
@@ -50,7 +50,7 @@ public non-sealed class FixedHeader extends Header {
 	 */
 	@Override
 	public final boolean bindHeader(
-			ByteBuf packet,
+			BindableView packet,
 			int protocolId,
 			int innerDepth,
 			long offset,

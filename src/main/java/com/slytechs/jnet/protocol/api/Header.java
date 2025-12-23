@@ -19,8 +19,10 @@ package com.slytechs.jnet.protocol.api;
 
 import java.lang.foreign.MemoryLayout;
 
+import com.slytechs.jnet.core.api.memory.BindableView;
 import com.slytechs.jnet.core.api.memory.ByteBuf;
 import com.slytechs.jnet.core.api.memory.MemoryStructure;
+import com.slytechs.jnet.core.api.util.Named;
 import com.slytechs.jnet.protocol.api.pack.ProtocolPackManager;
 
 /**
@@ -29,7 +31,7 @@ import com.slytechs.jnet.protocol.api.pack.ProtocolPackManager;
  */
 public sealed abstract class Header
 		extends ByteBuf
-		implements MemoryStructure
+		implements MemoryStructure, Named
 		permits FixedHeader, VariableHeader, ExtensibleHeader {
 
 	private final int protocolId;
@@ -37,14 +39,21 @@ public sealed abstract class Header
 	private int depth;
 	private Packet packet;
 	private final MemoryLayout layout;
+	private final String name;
 
 	public Header(int id, MemoryLayout layout) {
 		this.protocolId = id;
 		this.layout = layout;
+		this.name = getClass().getSimpleName();
+	}
+
+	@Override
+	public String name() {
+		return name;
 	}
 
 	public boolean bindHeader(
-			ByteBuf packet,
+			BindableView packet,
 			int protocolId,
 			int innerDepth,
 			long offset,

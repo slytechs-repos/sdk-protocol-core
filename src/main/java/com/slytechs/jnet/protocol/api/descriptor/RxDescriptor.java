@@ -69,7 +69,7 @@ public interface RxDescriptor extends Descriptor {
 	 * @return true if IP checksum is good
 	 */
 	default boolean isIpChecksumGood() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_RX_IP_CKSUM_GOOD) != 0;
+		return (flags() & PacketFlag.RX_IP_CKSUM_GOOD) != 0;
 	}
 
 	/**
@@ -79,7 +79,7 @@ public interface RxDescriptor extends Descriptor {
 	 * @return true if IP checksum is bad
 	 */
 	default boolean isIpChecksumBad() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_RX_IP_CKSUM_BAD) != 0;
+		return (flags() & PacketFlag.RX_IP_CKSUM_BAD) != 0;
 	}
 
 	/**
@@ -89,7 +89,7 @@ public interface RxDescriptor extends Descriptor {
 	 * @return true if L4 checksum is good
 	 */
 	default boolean isL4ChecksumGood() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_RX_L4_CKSUM_GOOD) != 0;
+		return (flags() & PacketFlag.RX_L4_CKSUM_GOOD) != 0;
 	}
 
 	/**
@@ -99,7 +99,7 @@ public interface RxDescriptor extends Descriptor {
 	 * @return true if L4 checksum is bad
 	 */
 	default boolean isL4ChecksumBad() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_RX_L4_CKSUM_BAD) != 0;
+		return (flags() & PacketFlag.RX_L4_CKSUM_BAD) != 0;
 	}
 
 	/**
@@ -109,7 +109,7 @@ public interface RxDescriptor extends Descriptor {
 	 * @return true if FCS is present
 	 */
 	default boolean isFcsPresent() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_RX_FCS) != 0;
+		return (flags() & PacketFlag.RX_FCS) != 0;
 	}
 
 	/**
@@ -119,6 +119,6 @@ public interface RxDescriptor extends Descriptor {
 	 * @return true if RSS hash is present
 	 */
 	default boolean isRssHashPresent() {
-		return (flags() & PacketFlag.Constants.PACKET_FLAG_RX_RSS_HASH) != 0;
+		return (flags() & PacketFlag.RX_RSS_HASH) != 0;
 	}
 }

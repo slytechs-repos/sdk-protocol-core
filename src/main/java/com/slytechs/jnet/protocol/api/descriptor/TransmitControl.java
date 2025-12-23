@@ -26,7 +26,7 @@ package com.slytechs.jnet.protocol.api.descriptor;
  * packets are transmitted by network interfaces, including port selection,
  * timing control, and hardware offload features. This interface is implemented
  * by packet descriptors that support transmission capabilities, such as
- * {@code NetPacketDescriptor}, {@code DpdkDescriptor}, and
+ * {@code NetPacketDescriptorDeprecated}, {@code DpdkDescriptor}, and
  * {@code NapatechDescriptor}.
  * 
  * <h2>Design Philosophy</h2>

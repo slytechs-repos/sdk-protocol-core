@@ -508,9 +508,9 @@ public interface ExtendedHeaderAccessor {
 	 * 
 	 * 	public void updateStatistics(HeaderAccessor packet) {
 	 * 		// Check all protocols efficiently
-	 * 		for (int protocolId : MONITORED_PROTOCOLS) {
-	 * 			if (packet.isPresent(protocolId)) {
-	 * 				counters.computeIfAbsent(protocolId,
+	 * 		for (int id : MONITORED_PROTOCOLS) {
+	 * 			if (packet.isPresent(id)) {
+	 * 				counters.computeIfAbsent(id,
 	 * 						k -> new AtomicLong()).incrementAndGet();
 	 * 			}
 	 * 		}

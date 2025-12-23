@@ -17,8 +17,6 @@
  */
 package com.slytechs.jnet.protocol.api.dissector;
 
-import static com.slytechs.jnet.protocol.api.ProtocolIds.*;
-
 import java.lang.foreign.MemoryLayout;
 
 import com.slytechs.jnet.core.api.format.StructFormat;
@@ -26,21 +24,25 @@ import com.slytechs.jnet.core.api.format.StructFormattable;
 import com.slytechs.jnet.core.api.memory.ByteBuf;
 import com.slytechs.jnet.core.api.memory.Memory;
 import com.slytechs.jnet.core.api.time.TimestampUnit;
-import com.slytechs.jnet.protocol.api.descriptor.Net3PacketDescriptor;
+import com.slytechs.jnet.protocol.api.IpProto;
+import com.slytechs.jnet.protocol.api.ProtocolId;
+import com.slytechs.jnet.protocol.api.descriptor.L2FrameType;
+import com.slytechs.jnet.protocol.api.descriptor.L2FrameTypeInfo;
+import com.slytechs.jnet.protocol.api.descriptor.NetPacketDescriptor;
 
 /**
  * Zero-allocation dissector for Net3PacketDescriptor.
  * 
  * <p>
- * High-performance dissector that parses packet headers and stores results
- * in a compact descriptor format. Headers parse their own options/extensions;
- * the dissector only records offset and extended length (total including
- * options).
+ * High-performance dissector that parses packet headers and stores results in a
+ * compact descriptor format. Headers parse their own options/extensions; the
+ * dissector only records offset and extended length (total including options).
  * </p>
  * 
  * <h2>Supported Protocols</h2>
  * <ul>
- * <li><b>Layer 2:</b> Ethernet II, IEEE 802.3 (LLC/SNAP), VLAN (802.1Q/QinQ), MPLS</li>
+ * <li><b>Layer 2:</b> Ethernet II, IEEE 802.3 (LLC/SNAP), VLAN (802.1Q/QinQ),
+ * MPLS</li>
  * <li><b>Layer 3:</b> IPv4, IPv6 (with extensions), ARP, IPsec (AH/ESP)</li>
  * <li><b>Layer 4:</b> TCP, UDP, ICMP, ICMPv6</li>
  * </ul>
@@ -49,6 +51,7 @@ import com.slytechs.jnet.protocol.api.descriptor.Net3PacketDescriptor;
  * <p>
  * Common protocols get O(1) lookup via inline slots:
  * </p>
+ * 
  * <pre>
  * [0] Ethernet  [1] VLAN  [2] IPv4  [3] IPv6
  * [4] TCP       [5] UDP   [6] ICMP  [7] ARP
@@ -60,9 +63,9 @@ import com.slytechs.jnet.protocol.api.descriptor.Net3PacketDescriptor;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public class Net3PacketDissector implements PacketDissector, StructFormattable {
+public class Net3PacketDissector extends BasePacketDissector implements PacketDissector, StructFormattable {
 
-	public static final MemoryLayout LAYOUT = Net3PacketDescriptor.LAYOUT;
+	public static final MemoryLayout LAYOUT = NetPacketDescriptor.LAYOUT;
 
 	// Maximum protocols to track
 	private static final int MAX_PROTOCOLS = 32;
@@ -93,15 +96,7 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 	private long protoBitmap = 0;
 
 	// Packet metadata
-	private long timestamp;
-	private int captureLength;
-	private int wireLength;
-	private TimestampUnit timestampUnit = TimestampUnit.EPOCH_NANO;
 	private final ByteBuf internalView = new ByteBuf();
-
-	// RX/TX flags
-	private int rxFlags = 0;
-	private int txFlags = 0;
 
 	// Last IP header info (for transport dissection)
 	private int lastIpProtocol = 0;
@@ -139,9 +134,27 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 	private static final int INLINE_ICMP = 6;
 	private static final int INLINE_ARP = 7;
 
+	// EtherTypes (Layer 2 next-protocol indicators)
+	private static final int ETHER_TYPE_IPV4 = 0x0800;
+	private static final int ETHER_TYPE_IPV6 = 0x86DD;
+	private static final int ETHER_TYPE_VLAN = 0x8100;
+	private static final int ETHER_TYPE_QINQ = 0x88A8;
+	private static final int ETHER_TYPE_MPLS = 0x8847;
+	private static final int ETHER_TYPE_MPLS_MC = 0x8848;
+	private static final int ETHER_TYPE_ARP = 0x0806;
+
+	// IEEE 802.3 length/type boundary (values <= 1500 are lengths, not types)
+	private static final int IEEE_802_3_MAX_LENGTH = 1500;
+
+	// ═══════════════════════════════════════════════════════════════════════
+	// L2 Frame Type Support
+	// ═══════════════════════════════════════════════════════════════════════
+
 	@Override
 	public int dissectPacket(ByteBuf buffer, long timestamp, int caplen, int wirelen) {
 		recycle();
+		
+		super.dissectPacket(buffer, timestamp, caplen, wirelen);
 
 		this.timestamp = timestamp;
 		this.captureLength = caplen;
@@ -150,35 +163,85 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 		buffer.position(0);
 		buffer.limit(caplen);
 
-		// Dissect Layer 2
-		int nextProto = dissectEthernet(buffer, 0);
-		int offset = 14;
+		// Dispatch based on L2 frame type
+		int nextProto;
+		int offset;
 
-		// Handle VLAN tags
-		while ((nextProto == ETHER_TYPE_VLAN || nextProto == ETHER_TYPE_QINQ) && offset + 4 <= caplen) {
-			offset = dissectVlan(buffer, offset, vlanCount);
-			vlanCount++;
-			buffer.position(offset - 2);
-			nextProto = buffer.getShortBE() & 0xFFFF;
+		switch (l2FrameType) {
+		case L2FrameType.ETHER -> {
+			nextProto = dissectEthernet(buffer, 0);
+			offset = protocolExtendedLengths[0]; // Ethernet recorded its own length (14 or 22)
+		}
+
+		case L2FrameType.SLL -> {
+			nextProto = dissectLinuxSll(buffer, 0);
+			offset = 16;
+		}
+
+		case L2FrameType.SLL2 -> {
+			nextProto = dissectLinuxSll2(buffer, 0);
+			offset = 20;
+		}
+
+		case L2FrameType.LOOPBACK -> {
+			nextProto = dissectNull(buffer, 0);
+			offset = 4;
+		}
+
+		case L2FrameType.RAW_IP4 -> {
+			// No L2 header - peek IP version
+			offset = 0;
+			if (caplen > 0) {
+				buffer.position(0);
+				int version = (buffer.get() >> 4) & 0x0F;
+				nextProto = (version == 4) ? ETHER_TYPE_IPV4 : (version == 6) ? ETHER_TYPE_IPV6 : 0;
+			} else {
+				nextProto = 0;
+			}
+		}
+
+		case L2FrameType.PPP, L2FrameType.PPP_HDLC -> {
+			nextProto = dissectPpp(buffer, 0);
+			offset = L2FrameTypeInfo.of(l2FrameType).baseLength();
+		}
+
+		default -> {
+			// Unknown L2 - record as payload, no further dissection
+			addProtocol(ProtocolId.PAYLOAD, 0, caplen, 0);
+			prepareTableEntries();
+			return caplen;
+		}
+		}
+
+		// Handle VLAN tags (only after Ethernet-like L2)
+		if (l2FrameType == L2FrameType.ETHER ||
+				l2FrameType == L2FrameType.SLL ||
+				l2FrameType == L2FrameType.SLL2) {
+
+			while ((nextProto == ETHER_TYPE_VLAN || nextProto == ETHER_TYPE_QINQ)
+					&& offset + 4 <= caplen) {
+				offset = dissectVlan(buffer, offset, vlanCount);
+				vlanCount++;
+				buffer.position(offset - 2);
+				nextProto = buffer.getShortBE() & 0xFFFF;
+			}
 		}
 
 		// Handle MPLS labels
 		if (nextProto == ETHER_TYPE_MPLS || nextProto == ETHER_TYPE_MPLS_MC) {
 			offset = dissectMpls(buffer, offset);
-			// After MPLS, peek at first nibble to determine IP version
 			if (offset < caplen) {
 				buffer.position(offset);
 				int version = (buffer.get() >> 4) & 0x0F;
-				nextProto = (version == 4) ? ETHER_TYPE_IPV4 : 
-				            (version == 6) ? ETHER_TYPE_IPV6 : 0;
+				nextProto = (version == 4) ? ETHER_TYPE_IPV4 : (version == 6) ? ETHER_TYPE_IPV6 : 0;
 			}
 		}
 
 		// Dissect Layer 3
 		switch (nextProto) {
-			case ETHER_TYPE_IPV4 -> offset = dissectIPv4(buffer, offset);
-			case ETHER_TYPE_IPV6 -> offset = dissectIPv6(buffer, offset);
-			case ETHER_TYPE_ARP -> offset = dissectARP(buffer, offset);
+		case ETHER_TYPE_IPV4 -> offset = dissectIPv4(buffer, offset);
+		case ETHER_TYPE_IPV6 -> offset = dissectIPv6(buffer, offset);
+		case ETHER_TYPE_ARP -> offset = dissectARP(buffer, offset);
 		}
 
 		// Dissect Layer 4 / IPsec
@@ -190,6 +253,66 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 		return caplen;
 	}
 
+	// ═══════════════════════════════════════════════════════════════════════
+	// New L2 Dissectors
+	// ═══════════════════════════════════════════════════════════════════════
+
+	private int dissectLinuxSll(ByteBuf buffer, int offset) {
+		if (offset + 16 > captureLength)
+			return 0;
+
+		addProtocol(ProtocolId.SLL, offset, 16, 0);
+
+		// Protocol type at offset 14-15
+		buffer.position(offset + 14);
+		return buffer.getShortBE() & 0xFFFF;
+	}
+
+	private int dissectLinuxSll2(ByteBuf buffer, int offset) {
+		if (offset + 20 > captureLength)
+			return 0;
+
+		addProtocol(ProtocolId.SLL2, offset, 20, 0);
+
+		// Protocol type at offset 0-1 in SLL2
+		buffer.position(offset);
+		return buffer.getShortBE() & 0xFFFF;
+	}
+
+	private int dissectNull(ByteBuf buffer, int offset) {
+		if (offset + 4 > captureLength)
+			return 0;
+
+		addProtocol(ProtocolId.LOOPBACK, offset, 4, 0);
+
+		// BSD null header: 4-byte AF family (host byte order!)
+		buffer.position(offset);
+		int af = buffer.getInt(); // Note: LE for BSD loopback
+
+		return switch (af) {
+		case 2 -> ETHER_TYPE_IPV4; // AF_INET
+		case 24, 28, 30 -> ETHER_TYPE_IPV6; // AF_INET6 (varies by OS)
+		default -> 0;
+		};
+	}
+
+	private int dissectPpp(ByteBuf buffer, int offset) {
+		if (offset + 4 > captureLength)
+			return 0;
+
+		addProtocol(ProtocolId.PPP, offset, 4, 0);
+
+		// PPP protocol field at offset 2-3
+		buffer.position(offset + 2);
+		int pppProto = buffer.getShortBE() & 0xFFFF;
+
+		return switch (pppProto) {
+		case 0x0021 -> ETHER_TYPE_IPV4; // PPP_IP
+		case 0x0057 -> ETHER_TYPE_IPV6; // PPP_IPV6
+		default -> 0;
+		};
+	}
+
 	@Override
 	public void recycle() {
 		protocolCount = 0;
@@ -198,8 +321,6 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 		encounterOrder = 0;
 		protoBitmap = 0;
 		extendedIndex = 0;
-		rxFlags = 0;
-		txFlags = 0;
 		lastIpProtocol = 0;
 		lastIpOffset = 0;
 		lastIpHeaderLen = 0;
@@ -213,13 +334,7 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 	@Override
 	public int writeDescriptor(ByteBuf buffer) {
 		buffer.position(0);
-		
-		// NetPacketDescriptor base (16 bytes)
-		buffer.putLong(timestamp);
-		buffer.putShort((short) captureLength);
-		buffer.putShort((short) rxFlags);
-		buffer.putShort((short) wireLength);
-		buffer.putShort((short) txFlags);
+		super.writeDescriptor(buffer);
 
 		// Net3 extensions
 		buffer.putLong(protoBitmap);
@@ -229,9 +344,9 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 				((mplsCount & MPLS_COUNT_MASK) << MPLS_COUNT_SHIFT);
 		buffer.putShort((short) protoCounts);
 
-		buffer.putShort((short) 0);  // extended offset (updated below if needed)
+		buffer.putShort((short) 0); // extended offset (updated below if needed)
 		buffer.putShort((short) extendedIndex);
-		buffer.putShort((short) 0);  // reserved
+		buffer.putShort((short) 0); // reserved
 
 		// Inline table (64 bytes)
 		for (int i = 0; i < 8; i++) {
@@ -267,7 +382,8 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 	// ═══════════════════════════════════════════════════════════════════════
 
 	private void addProtocol(int id, int offset, int extendedLength, int instance) {
-		if (protocolCount >= MAX_PROTOCOLS) return;
+		if (protocolCount >= MAX_PROTOCOLS)
+			return;
 
 		int idx = protocolCount;
 		protocolIds[idx] = id;
@@ -298,7 +414,8 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 	// ═══════════════════════════════════════════════════════════════════════
 
 	private int dissectEthernet(ByteBuf buffer, int offset) {
-		if (offset + 14 > captureLength) return 0;
+		if (offset + 14 > captureLength)
+			return 0;
 
 		buffer.position(offset + 12);
 		int etherType = buffer.getShortBE() & 0xFFFF;
@@ -306,7 +423,7 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 		if (etherType <= IEEE_802_3_MAX_LENGTH) {
 			// IEEE 802.3 with LLC/SNAP
 			if (offset + 17 > captureLength) {
-				addProtocol(PROTO_ID_ETHERNET, offset, 14, 0);
+				addProtocol(ProtocolId.ETHERNET, offset, 14, 0);
 				return 0;
 			}
 
@@ -317,29 +434,30 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 			if (dsap == (byte) 0xAA && ssap == (byte) 0xAA) {
 				// SNAP: LLC (3) + OUI (3) + Type (2) = 8 bytes
 				if (offset + 22 > captureLength) {
-					addProtocol(PROTO_ID_ETHERNET, offset, 17, 0);
+					addProtocol(ProtocolId.ETHERNET, offset, 17, 0);
 					return 0;
 				}
 				buffer.position(offset + 20);
 				etherType = buffer.getShortBE() & 0xFFFF;
-				addProtocol(PROTO_ID_ETHERNET, offset, 22, 0);
+				addProtocol(ProtocolId.ETHERNET, offset, 22, 0);
 			} else {
 				// Just LLC
-				addProtocol(PROTO_ID_ETHERNET, offset, 17, 0);
+				addProtocol(ProtocolId.ETHERNET, offset, 17, 0);
 				return 0; // No EtherType, can't continue
 			}
 		} else {
 			// Ethernet II
-			addProtocol(PROTO_ID_ETHERNET, offset, 14, 0);
+			addProtocol(ProtocolId.ETHERNET, offset, 14, 0);
 		}
 
 		return etherType;
 	}
 
 	private int dissectVlan(ByteBuf buffer, int offset, int instance) {
-		if (offset + 4 > captureLength) return offset;
-		
-		addProtocol(PROTO_ID_VLAN, offset, 4, instance);
+		if (offset + 4 > captureLength)
+			return offset;
+
+		addProtocol(ProtocolId.VLAN, offset, 4, instance);
 		return offset + 4;
 	}
 
@@ -348,8 +466,8 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 		while (offset + 4 <= captureLength) {
 			buffer.position(offset);
 			int labelEntry = buffer.getIntBE();
-			
-			addProtocol(PROTO_ID_MPLS, offset, 4, mplsCount);
+
+			addProtocol(ProtocolId.MPLS, offset, 4, mplsCount);
 			mplsCount++;
 			offset += 4;
 
@@ -359,7 +477,8 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 			}
 
 			// Safety: max 8 labels
-			if (mplsCount >= 8) break;
+			if (mplsCount >= 8)
+				break;
 		}
 		return offset;
 	}
@@ -369,18 +488,19 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 	// ═══════════════════════════════════════════════════════════════════════
 
 	private int dissectIPv4(ByteBuf buffer, int offset) {
-		if (offset + 20 > captureLength) return offset;
+		if (offset + 20 > captureLength)
+			return offset;
 
 		buffer.position(offset);
 		byte verIhl = buffer.get();
 		int headerLen = (verIhl & 0x0F) * 4;
 
 		if (offset + headerLen > captureLength) {
-			addProtocol(PROTO_ID_IPV4, offset, 20, 0);
+			addProtocol(ProtocolId.IPv4, offset, 20, 0);
 			return offset + 20;
 		}
 
-		addProtocol(PROTO_ID_IPV4, offset, headerLen, 0);
+		addProtocol(ProtocolId.IPv4, offset, headerLen, 0);
 
 		// Check fragmentation
 		buffer.position(offset + 6);
@@ -401,7 +521,8 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 	}
 
 	private int dissectIPv6(ByteBuf buffer, int offset) {
-		if (offset + 40 > captureLength) return offset;
+		if (offset + 40 > captureLength)
+			return offset;
 
 		int totalLength = 40;
 		buffer.position(offset + 6);
@@ -431,7 +552,7 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 			nextHeader = extNextHeader;
 		}
 
-		addProtocol(PROTO_ID_IPV6, offset, totalLength, 0);
+		addProtocol(ProtocolId.IPv6, offset, totalLength, 0);
 
 		lastIpProtocol = nextHeader;
 		lastIpOffset = offset;
@@ -442,23 +563,24 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 
 	private boolean isIPv6Extension(int nextHeader) {
 		return switch (nextHeader) {
-			case 0 -> true;   // Hop-by-Hop
-			case 43 -> true;  // Routing
-			case 44 -> true;  // Fragment
-			case 50 -> false; // ESP - handled separately
-			case 51 -> false; // AH - handled separately
-			case 60 -> true;  // Destination Options
-			case 135 -> true; // Mobility
-			case 139 -> true; // HIP
-			case 140 -> true; // Shim6
-			default -> false;
+		case 0 -> true; // Hop-by-Hop
+		case 43 -> true; // Routing
+		case 44 -> true; // Fragment
+		case 50 -> false; // ESP - handled separately
+		case 51 -> false; // AH - handled separately
+		case 60 -> true; // Destination Options
+		case 135 -> true; // Mobility
+		case 139 -> true; // HIP
+		case 140 -> true; // Shim6
+		default -> false;
 		};
 	}
 
 	private int dissectARP(ByteBuf buffer, int offset) {
-		if (offset + 28 > captureLength) return offset;
-		
-		addProtocol(PROTO_ID_ARP, offset, 28, 0);
+		if (offset + 28 > captureLength)
+			return offset;
+
+		addProtocol(ProtocolId.ARP, offset, 28, 0);
 		return offset + 28;
 	}
 
@@ -468,67 +590,74 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 
 	private void dissectTransportOrIpsec(ByteBuf buffer, int offset) {
 		switch (lastIpProtocol) {
-			case IP_PROTO_TCP -> dissectTcp(buffer, offset);
-			case IP_PROTO_UDP -> dissectUdp(buffer, offset);
-			case IP_PROTO_ICMP -> dissectIcmp(buffer, offset);
-			case IP_PROTO_ICMPV6 -> dissectIcmpv6(buffer, offset);
-			case IP_PROTO_AH -> dissectIpsecAh(buffer, offset);
-			case IP_PROTO_ESP -> dissectIpsecEsp(buffer, offset);
+		case IpProto.TCP -> dissectTcp(buffer, offset);
+		case IpProto.UDP -> dissectUdp(buffer, offset);
+		case IpProto.ICMPV4 -> dissectIcmp(buffer, offset);
+		case IpProto.ICMPV6 -> dissectIcmpv6(buffer, offset);
+		case IpProto.AH -> dissectIpsecAh(buffer, offset);
+		case IpProto.ESP -> dissectIpsecEsp(buffer, offset);
 		}
 	}
 
 	private void dissectTcp(ByteBuf buffer, int offset) {
-		if (offset + 20 > captureLength) return;
+		if (offset + 20 > captureLength)
+			return;
 
 		buffer.position(offset + 12);
 		int dataOffset = (buffer.get() >> 4) & 0x0F;
 		int tcpLen = dataOffset * 4;
 
-		if (tcpLen < 20) tcpLen = 20;
-		if (offset + tcpLen > captureLength) tcpLen = captureLength - offset;
+		if (tcpLen < 20)
+			tcpLen = 20;
+		if (offset + tcpLen > captureLength)
+			tcpLen = captureLength - offset;
 
-		addProtocol(PROTO_ID_TCP, offset, tcpLen, 0);
+		addProtocol(ProtocolId.TCP, offset, tcpLen, 0);
 	}
 
 	private void dissectUdp(ByteBuf buffer, int offset) {
-		if (offset + 8 > captureLength) return;
-		
-		addProtocol(PROTO_ID_UDP, offset, 8, 0);
+		if (offset + 8 > captureLength)
+			return;
+
+		addProtocol(ProtocolId.UDP, offset, 8, 0);
 	}
 
 	private void dissectIcmp(ByteBuf buffer, int offset) {
-		if (offset + 8 > captureLength) return;
+		if (offset + 8 > captureLength)
+			return;
 
 		// ICMP header is at least 8 bytes, but message can be longer
 		// For now, record just the header
-		addProtocol(PROTO_ID_ICMP, offset, 8, 0);
+		addProtocol(ProtocolId.ICMP, offset, 8, 0);
 	}
 
 	private void dissectIcmpv6(ByteBuf buffer, int offset) {
-		if (offset + 8 > captureLength) return;
-		
-		addProtocol(PROTO_ID_ICMPV6, offset, 8, 0);
+		if (offset + 8 > captureLength)
+			return;
+
+		addProtocol(ProtocolId.ICMPv6, offset, 8, 0);
 	}
 
 	private void dissectIpsecAh(ByteBuf buffer, int offset) {
-		if (offset + 12 > captureLength) return;
+		if (offset + 12 > captureLength)
+			return;
 
 		buffer.position(offset + 1);
 		int payloadLen = buffer.get() & 0xFF;
 		int ahLen = (payloadLen + 2) * 4;
 
 		if (offset + ahLen > captureLength) {
-			addProtocol(PROTO_ID_IPSEC_AH, offset, 12, 0);
+			addProtocol(ProtocolId.AH, offset, 12, 0);
 			return;
 		}
 
-		addProtocol(PROTO_ID_IPSEC_AH, offset, ahLen, 0);
+		addProtocol(ProtocolId.AH, offset, ahLen, 0);
 
 		// Get next header and continue dissection
 		buffer.position(offset);
 		int nextHeader = buffer.get() & 0xFF;
 		lastIpProtocol = nextHeader;
-		
+
 		int nextOffset = offset + ahLen;
 		if (nextOffset < captureLength) {
 			dissectTransportOrIpsec(buffer, nextOffset);
@@ -536,12 +665,13 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 	}
 
 	private void dissectIpsecEsp(ByteBuf buffer, int offset) {
-		if (offset + 8 > captureLength) return;
+		if (offset + 8 > captureLength)
+			return;
 
 		// ESP header is 8 bytes, but payload is encrypted
 		// We can only record the header, cannot parse further
-		addProtocol(PROTO_ID_IPSEC_ESP, offset, 8, 0);
-		
+		addProtocol(IpProto.ESP, offset, 8, 0);
+
 		// Note: Cannot continue dissection - payload is encrypted
 	}
 
@@ -572,42 +702,45 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 		entry |= ((long) (protocolEncounterOrder[idx] & ENCOUNTER_ORDER_MASK)) << ENCOUNTER_ORDER_SHIFT;
 		entry |= ((long) (protocolInstances[idx] & INSTANCE_NUM_MASK)) << INSTANCE_NUM_SHIFT;
 
-		if (protocolIsFragment[idx]) entry |= IS_FRAGMENT_BIT;
-		if (protocolIsTunneled[idx]) entry |= IS_TUNNELED_BIT;
-		if (protocolHasError[idx]) entry |= HAS_ERRORS_BIT;
+		if (protocolIsFragment[idx])
+			entry |= IS_FRAGMENT_BIT;
+		if (protocolIsTunneled[idx])
+			entry |= IS_TUNNELED_BIT;
+		if (protocolHasError[idx])
+			entry |= HAS_ERRORS_BIT;
 
 		return entry;
 	}
 
 	private int getInlineSlot(int protocolId) {
 		return switch (protocolId) {
-			case PROTO_ID_ETHERNET -> INLINE_ETHERNET;
-			case PROTO_ID_VLAN -> INLINE_VLAN;
-			case PROTO_ID_IPV4 -> INLINE_IPV4;
-			case PROTO_ID_IPV6 -> INLINE_IPV6;
-			case PROTO_ID_TCP -> INLINE_TCP;
-			case PROTO_ID_UDP -> INLINE_UDP;
-			case PROTO_ID_ICMP, PROTO_ID_ICMPV6 -> INLINE_ICMP;
-			case PROTO_ID_ARP -> INLINE_ARP;
-			default -> -1;  // MPLS, IPsec go to extended table
+		case ProtocolId.ETHERNET -> INLINE_ETHERNET;
+		case ProtocolId.VLAN -> INLINE_VLAN;
+		case ProtocolId.IPv4 -> INLINE_IPV4;
+		case ProtocolId.IPv6 -> INLINE_IPV6;
+		case ProtocolId.TCP -> INLINE_TCP;
+		case ProtocolId.UDP -> INLINE_UDP;
+		case ProtocolId.ICMP, ProtocolId.ICMPv6 -> INLINE_ICMP;
+		case ProtocolId.ARP -> INLINE_ARP;
+		default -> -1; // MPLS, IPsec go to extended table
 		};
 	}
 
 	private int getProtocolBitPosition(int protocolId) {
 		return switch (protocolId) {
-			case PROTO_ID_ETHERNET -> 0;
-			case PROTO_ID_VLAN -> 1;
-			case PROTO_ID_IPV4 -> 2;
-			case PROTO_ID_IPV6 -> 3;
-			case PROTO_ID_TCP -> 4;
-			case PROTO_ID_UDP -> 5;
-			case PROTO_ID_ICMP, PROTO_ID_ICMPV6 -> 6;
-			case PROTO_ID_ARP -> 7;
-			// Extended bitmap positions (8+)
-			case PROTO_ID_MPLS -> 8;
-			case PROTO_ID_IPSEC_AH -> 9;
-			case PROTO_ID_IPSEC_ESP -> 10;
-			default -> -1;
+		case ProtocolId.ETHERNET -> 0;
+		case ProtocolId.VLAN -> 1;
+		case ProtocolId.IPv4 -> 2;
+		case ProtocolId.IPv6 -> 3;
+		case ProtocolId.TCP -> 4;
+		case ProtocolId.UDP -> 5;
+		case ProtocolId.ICMP, ProtocolId.ICMPv6 -> 6;
+		case ProtocolId.ARP -> 7;
+		// Extended bitmap positions (8+)
+		case ProtocolId.MPLS -> 8;
+		case ProtocolId.AH -> 9;
+		case ProtocolId.ESP -> 10;
+		default -> -1;
 		};
 	}
 
@@ -645,7 +778,16 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 		p.println("protoBitmap", String.format("0x%016X", protoBitmap));
 
 		p.println("=== Inline Table ===");
-		String[] slotNames = {"Ethernet", "VLAN", "IPv4", "IPv6", "TCP", "UDP", "ICMP", "ARP"};
+		String[] slotNames = {
+				"Ethernet",
+				"VLAN",
+				"IPv4",
+				"IPv6",
+				"TCP",
+				"UDP",
+				"ICMP",
+				"ARP"
+		};
 
 		for (int i = 0; i < 8; i++) {
 			if (inlineUsed[i] && inlineEntries[i] != 0) {
@@ -669,29 +811,11 @@ public class Net3PacketDissector implements PacketDissector, StructFormattable {
 				int instance = (int) ((entry >> INSTANCE_NUM_SHIFT) & INSTANCE_NUM_MASK);
 
 				p.println(String.format("  [%d] %s: offset=%d, length=%d, instance=%d",
-						i, getProtocolName(id), offset, length, instance));
+						i, ProtocolId.nameOf(id), offset, length, instance));
 			}
 		}
 
 		return p;
-	}
-
-	private String getProtocolName(int protocolId) {
-		return switch (protocolId) {
-			case PROTO_ID_ETHERNET -> "Ethernet";
-			case PROTO_ID_VLAN -> "VLAN";
-			case PROTO_ID_MPLS -> "MPLS";
-			case PROTO_ID_IPV4 -> "IPv4";
-			case PROTO_ID_IPV6 -> "IPv6";
-			case PROTO_ID_TCP -> "TCP";
-			case PROTO_ID_UDP -> "UDP";
-			case PROTO_ID_ICMP -> "ICMP";
-			case PROTO_ID_ICMPV6 -> "ICMPv6";
-			case PROTO_ID_ARP -> "ARP";
-			case PROTO_ID_IPSEC_AH -> "IPsec-AH";
-			case PROTO_ID_IPSEC_ESP -> "IPsec-ESP";
-			default -> String.format("Unknown(0x%04X)", protocolId);
-		};
 	}
 
 	@Override

@@ -69,6 +69,8 @@ public interface HeaderOption {
      * @return option name
      */
     String optionName();
+    
+    String optionAbbr();
 
     /**
      * Builds detailed output for this option.

@@ -20,46 +20,61 @@ package com.slytechs.jnet.protocol.api.descriptor;
 import static com.slytechs.jnet.core.api.memory.MemoryStructure.*;
 
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.Iterator;
 
+import com.slytechs.jnet.core.api.detail.DetailBuilder;
+import com.slytechs.jnet.core.api.detail.Detailable;
+import com.slytechs.jnet.core.api.detail.ExpertLevel;
 import com.slytechs.jnet.core.api.format.StructFormat;
-import com.slytechs.jnet.core.api.format.StructFormattable;
+import com.slytechs.jnet.core.api.memory.BindableView;
+import com.slytechs.jnet.core.api.memory.BoundView;
 import com.slytechs.jnet.core.api.memory.ByteBuf;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.LongHandle;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
 import com.slytechs.jnet.core.api.time.TimestampUnit;
 import com.slytechs.jnet.protocol.api.Header;
-import com.slytechs.jnet.protocol.api.builtin.L2FrameType;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 
 import static java.lang.foreign.MemoryLayout.*;
+import static java.lang.foreign.MemoryLayout.PathElement.*;
 
 /**
- * Minimal pcap-compatible 16-byte packet descriptor.
+ * SDK Packet Descriptor with protocol dissection table.
  * 
  * <p>
- * This descriptor provides a pcap-compatible packet header that can be written
- * directly to pcap files while encoding additional metadata in the unused
- * portions of the standard pcap record format. The descriptor maintains full
- * compatibility with tools that read pcap files - they will simply ignore the
- * extra encoded information.
+ * This is the standard SDK descriptor that stores protocol dissection results
+ * with O(1) access for 8 common protocols via an inline table, plus extended
+ * table support. Includes RX/TX metadata for capture and transmission control.
  * </p>
  * 
- * <h2>Memory Layout</h2>
+ * <h2>Memory Layout (96 bytes)</h2>
  * 
  * <pre>
  * Offset  Size  Field            Description
- * ------------------------------------------------------
- * 0x00    8     timestamp        Pcap timestamp (ts_sec + ts_usec/nsec)
- * 0x08    2     caplen          Captured length (pcap caplen)
- * 0x0A    2     rx_info         RX metadata (repurposed pcap space)
- * 0x0C    2     len             Wire length (pcap len)
- * 0x0E    2     tx_info         TX metadata (repurposed pcap space)
+ * -------------------------------------------------------
+ * 0x00    8     timestamp        Capture timestamp
+ * 0x08    2     caplen           Captured length
+ * 0x0A    2     rx_info          RX metadata (port, l2type, ts_unit)
+ * 0x0C    2     wirelen          Wire length
+ * 0x0E    2     tx_info          TX metadata (port, flags)
+ * 0x10    8     proto_bitmap     Fast protocol presence check
+ * 0x18    2     proto_counts     Protocol/VLAN/MPLS counts
+ * 0x1A    2     extended_offset  Offset to extended table
+ * 0x1C    2     extended_size    Size of extended table
+ * 0x1E    2     reserved         Reserved
+ * 0x20    64    inline_table[8]  8 protocol entries (8 bytes each)
  * </pre>
  * 
- * <h2>RX_INFO Bit Layout (16 bits) - Optimized</h2>
+ * <h2>RX_INFO Bit Layout (16 bits)</h2>
  * 
  * <pre>
  * Bits [15-10]: RX_PORT (6 bits) - Receive port number (0-63)
- * Bits [9-3]:   L2_FRAME_TYPE (7 bits) - Layer 2 frame type (0-127)
+ * Bit [9]:      L2_EXTENSION - Has L2 extensions (VLAN, MPLS)
+ * Bits [8-3]:   L2_FRAME_TYPE (6 bits) - Layer 2 frame type (0-63)
  * Bits [2-0]:   TIMESTAMP_UNIT (3 bits) - Timestamp unit encoding (0-7)
  * </pre>
  * 
@@ -68,311 +83,205 @@ import static java.lang.foreign.MemoryLayout.*;
  * <pre>
  * Bits [15-8]: TX_PORT (8 bits) - Transmit port number (0-255)
  * Bit [7]:     TX_ENABLED - Packet should be transmitted
- * Bit [6]:     TX_IMMEDIATE - Transmit immediately
+ * Bit [6]:     TX_IMMEDIATE - Transmit immediately  
  * Bit [5]:     TX_CRC_RECALC - Recalculate CRC on transmit
  * Bit [4]:     TX_TIMESTAMP_SYNC - Sync transmission with timestamp
- * Bits [3-0]:  Reserved - Future use
+ * Bits [3-0]:  Reserved
  * </pre>
  * 
- * <h2>Usage Example</h2>
+ * <h2>Protocol Entry Format (64 bits)</h2>
  * 
- * <pre>{@code
- * // During capture
- * NetPacketDescriptor desc = new NetPacketDescriptor(TimestampUnit.PCAP_MICRO);
- * desc.setTimestamp(System.currentTimeMillis());
- * desc.setCaptureLength(packet.length());
- * desc.setWireLength(originalLength);
- * desc.setRxPort(interfaceNumber);
- * desc.setL2FrameType(L2FrameType.L2_FRAME_TYPE_ETHER.ordinal());
- * 
- * // Configure for retransmission
- * desc.setTxPort(5);
- * desc.setTxEnabled(true);
- * desc.setTxImmediate(true);
- * 
- * // Write to pcap file (fully compatible)
- * byte[] pcapRecord = desc.toPcapHeader();
- * }</pre>
+ * <pre>
+ * Bits [0-15]:  Protocol ID
+ * Bits [16-31]: Header offset (16 bits)
+ * Bits [32-47]: Header length (16 bits)
+ * Bits [48-55]: Encounter order (8 bits)
+ * Bits [56-58]: Instance number (3 bits)
+ * Bit [59]:     Fragment flag
+ * Bit [60]:     Tunneled flag
+ * Bit [61]:     Error flag
+ * Bits [62-63]: Reserved
+ * </pre>
  *
- * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Mark Bednarczyk
  * @author Sly Technologies Inc.
- * @since 1.0
  */
 public class NetPacketDescriptor
-		extends AbstractPacketDescriptor
-		implements PacketDescriptor, StructFormattable, TransmitControl, ReceiveControl {
+		implements PacketDescriptor, Detailable, BindableView {
 
-	/**
-	 * Memory layout definition - 16 bytes, pcap compatible.
-	 */
+	// ========== Memory Layout (96 bytes) ==========
+
 	public static final MemoryLayout LAYOUT = structLayout(
-			U64.withName("timestamp"), // 0x00-0x07: pcap timestamp
-			U16.withName("caplen"), // 0x08-0x09: pcap caplen
-			U16.withName("rx_info"), // 0x0A-0x0B: RX metadata
-			U16.withName("len"), // 0x0C-0x0D: pcap len
-			U16.withName("tx_info") // 0x0E-0x0F: TX metadata
+			// Base fields (16 bytes) - pcap compatible
+			structLayout(
+					U64.withName("timestamp"), // 0x00: 8 bytes
+					U16.withName("caplen"), // 0x08: 2 bytes
+					U16.withName("rx_info"), // 0x0A: 2 bytes
+					U16.withName("wirelen"), // 0x0C: 2 bytes
+					U16.withName("tx_info") // 0x0E: 2 bytes
+			).withName("base"),
+
+			// Protocol dissection fields (16 bytes)
+			U64.withName("proto_bitmap"), // 0x10: 8 bytes
+			U16.withName("proto_counts"), // 0x18: 2 bytes
+			U16.withName("extended_offset"), // 0x1A: 2 bytes
+			U16.withName("extended_size"), // 0x1C: 2 bytes
+			U16.withName("reserved"), // 0x1E: 2 bytes
+
+			// Inline protocol table (64 bytes)
+			sequenceLayout(8, U64).withName("inline_table") // 0x20: 64 bytes
 	);
 
-	// MemoryHandles for direct memory access
-	private static final LongHandle TIMESTAMP = new LongHandle(LAYOUT, "timestamp");
-	private static final ShortHandle CAPLEN = new ShortHandle(LAYOUT, "caplen");
-	private static final ShortHandle RX_INFO = new ShortHandle(LAYOUT, "rx_info");
-	private static final ShortHandle LEN = new ShortHandle(LAYOUT, "len");
-	private static final ShortHandle TX_INFO = new ShortHandle(LAYOUT, "tx_info");
+	public static final int BYTE_SIZE = (int) LAYOUT.byteSize(); // 96 bytes
 
-	// RX_INFO bit layout (16 bits)
+	/** Base layout (16 bytes) - pcap compatible, reusable by other descriptors */
+	public static final MemoryLayout BASE_LAYOUT = LAYOUT.select(groupElement("base"));
+
+	// ========== Type-safe Handles (JIT-inlinable) ==========
+
+	// Base fields - using dot notation for nested struct
+	private static final LongHandle TIMESTAMP = new LongHandle(LAYOUT, "base", "timestamp");
+	private static final ShortHandle CAPLEN = new ShortHandle(LAYOUT, "base", "caplen");
+	private static final ShortHandle RX_INFO = new ShortHandle(LAYOUT, "base", "rx_info");
+	private static final ShortHandle WIRELEN = new ShortHandle(LAYOUT, "base", "wirelen");
+	private static final ShortHandle TX_INFO = new ShortHandle(LAYOUT, "base", "tx_info");
+
+	// Protocol dissection fields
+	private static final LongHandle PROTO_BITMAP = new LongHandle(LAYOUT, "proto_bitmap");
+	private static final ShortHandle PROTO_COUNTS = new ShortHandle(LAYOUT, "proto_counts");
+	private static final ShortHandle EXTENDED_OFFSET = new ShortHandle(LAYOUT, "extended_offset");
+	private static final ShortHandle EXTENDED_SIZE = new ShortHandle(LAYOUT, "extended_size");
+
+	// Inline table - array access with [] syntax
+	private static final LongHandle INLINE_TABLE = new LongHandle(LAYOUT, "inline_table[]");
+
+	// ========== RX_INFO bit layout ==========
+
 	private static final int RX_PORT_SHIFT = 10;
 	private static final int RX_PORT_MASK = 0x3F; // 6 bits: 64 ports
-
 	private static final int L2_EXTENSION_BIT = 9; // 1 bit: has L2 extensions
-
 	private static final int L2_FRAME_TYPE_SHIFT = 3;
-	private static final int L2_FRAME_TYPE_MASK = 0x3F; // 6 bits: 64 types (reduced from 7)
-
+	private static final int L2_FRAME_TYPE_MASK = 0x3F; // // 6 bits: 64 types
 	private static final int TIMESTAMP_UNIT_SHIFT = 0;
-	private static final int TIMESTAMP_UNIT_MASK = 0x7; // 3 bits: 8 units
+	private static final int TIMESTAMP_UNIT_MASK = 0x7; //3 bits: 8 units
 
-	// TX_INFO bit layout (16 bits)
+	// ========== TX_INFO bit layout ==========
+
 	private static final int TX_PORT_SHIFT = 8;
-	private static final int TX_PORT_MASK = 0xFF; // 8 bits: 256 ports
-
+	private static final int TX_PORT_MASK = 0xFF; // 8 bits
 	private static final int TX_ENABLED_BIT = 7;
 	private static final int TX_IMMEDIATE_BIT = 6;
 	private static final int TX_CRC_RECALC_BIT = 5;
 	private static final int TX_TIMESTAMP_SYNC_BIT = 4;
-	// Bits 3-0: Reserved for future use
 
-	/**
-	 * Default timestamp unit for pcap files.
-	 */
-	private static final TimestampUnit DEFAULT_TIMESTAMP_UNIT = TimestampUnit.PCAP_MICRO;
+	// ========== Protocol entry bit layout ==========
 
-	/**
-	 * Creates a new NetPacketDescriptor with L2 frame type and timestamp unit.
-	 *
-	 * @param l2Type the layer 2 frame type
-	 * @param unit   the timestamp unit to use
-	 */
-	public NetPacketDescriptor(L2FrameType l2Type, TimestampUnit unit) {
-		super(l2Type, unit);
-		setL2FrameType(l2Type.l2TypeId());
-		setTimestampUnit(unit);
+	private static final long PROTOCOL_ID_MASK = 0xFFFFL;
+	private static final int HEADER_OFFSET_SHIFT = 16;
+	private static final int HEADER_OFFSET_MASK = 0xFFFF;
+	private static final int HEADER_LENGTH_SHIFT = 32;
+	private static final int HEADER_LENGTH_MASK = 0xFFFF;
+	private static final int ENCOUNTER_ORDER_SHIFT = 48;
+	private static final int ENCOUNTER_ORDER_MASK = 0xFF;
+	private static final int INSTANCE_NUM_SHIFT = 56;
+	private static final int INSTANCE_NUM_MASK = 0x7;
+	private static final long IS_FRAGMENT_BIT = 1L << 59;
+	private static final long IS_TUNNELED_BIT = 1L << 60;
+	private static final long HAS_ERRORS_BIT = 1L << 61;
+
+	// ========== Proto counts bit layout ==========
+
+	private static final int PROTOCOL_COUNT_MASK = 0xFF;
+	private static final int VLAN_COUNT_SHIFT = 8;
+	private static final int VLAN_COUNT_MASK = 0xF;
+	private static final int MPLS_COUNT_SHIFT = 12;
+	private static final int MPLS_COUNT_MASK = 0xF;
+
+	// ========== Inline table slots ==========
+
+	private static final int INLINE_ETHERNET = 0;
+	private static final int INLINE_VLAN = 1;
+	private static final int INLINE_IPV4 = 2;
+	private static final int INLINE_IPV6 = 3;
+	private static final int INLINE_TCP = 4;
+	private static final int INLINE_UDP = 5;
+	private static final int INLINE_ICMP = 6;
+	private static final int INLINE_ARP = 7;
+	private static final int INLINE_TABLE_SIZE = 8;
+
+	private static final String[] INLINE_SLOT_NAMES = {
+			"Ethernet",
+			"VLAN",
+			"IPv4",
+			"IPv6",
+			"TCP",
+			"UDP",
+			"ICMP",
+			"ARP"
+	};
+
+	// ========== Instance fields ==========
+
+	private TimestampUnit timestampUnit = TimestampUnit.EPOCH_MILLI;
+	private int extendedIndex = 0;
+	private int encounterOrder = 0;
+
+	// ========== Constructors ==========
+
+	public NetPacketDescriptor() {
+		this(L2FrameType.ETHER, TimestampUnit.EPOCH_MILLI);
 	}
 
-	/**
-	 * Creates a new NetPacketDescriptor with specified timestamp unit.
-	 *
-	 * @param unit the timestamp unit to use
-	 */
 	public NetPacketDescriptor(TimestampUnit unit) {
-		super(unit);
-		setTimestampUnit(unit);
+		this(L2FrameType.ETHER, unit);
+	}
+
+	public NetPacketDescriptor(int l2Type, TimestampUnit unit) {
+		this.timestampUnit = unit;
+	}
+
+	// ========== PacketDescriptor - Timestamp ==========
+
+	@Override
+	public long timestamp() {
+		return TIMESTAMP.getLong(view());
 	}
 
 	@Override
-	public boolean bindProtocol(ByteBuf packet, Header header, int protocolId, int depth) {
-		if (depth == 0) {
-			L2FrameType l2Type = l2FrameType();
-			if (l2Type != null && l2Type.protocolId() == protocolId) {
-				long offset = 0;
-				long length = l2Type.baseLength();
-
-				// Check extension flag for any L2 type that supports extensions
-				if (hasL2Extensions()) {
-					length = calculateL2ExtendedLength(packet, l2Type);
-				}
-
-				return header.bindHeader(packet, protocolId, depth, offset, length);
-			}
-		}
-		return false;
+	public void setTimestamp(long timestamp) {
+		TIMESTAMP.setLong(view(), timestamp);
 	}
 
-	private int calculateEthernetExtendedLength(ByteBuf packet) {
-		int length = 14; // Base Ethernet
-		int etherType = packet.getShort(12) & 0xFFFF;
-
-		// Process VLAN tags
-		while (etherType == 0x8100 || etherType == 0x88A8) {
-			length += 4;
-			etherType = packet.getShort(length - 2) & 0xFFFF;
+	@Override
+	public void setTimestamp(long timestamp, TimestampUnit unit) {
+		if (unit != timestampUnit) {
+			timestamp = timestampUnit.convert(timestamp, unit);
 		}
-
-		// Process MPLS labels
-		if (etherType == 0x8847 || etherType == 0x8848) {
-			while ((packet.get(length + 2) & 0x01) == 0) {
-				length += 4;
-			}
-			length += 4; // Last label
-		}
-
-		return length;
+		setTimestamp(timestamp);
 	}
 
-	/**
-	 * Calculates the extended L2 length based on frame type and extensions.
-	 * 
-	 * @param packet the packet buffer
-	 * @param l2Type the base L2 frame type
-	 * @return the extended length including all extensions
-	 */
-	private int calculateL2ExtendedLength(ByteBuf packet, L2FrameType l2Type) {
-		switch (l2Type) {
-		case L2_FRAME_TYPE_ETHER:
-			return calculateEthernetExtendedLength(packet);
-
-		case L2_FRAME_TYPE_IEEE80211:
-			return calculateWifiExtendedLength(packet);
-
-		// Add other L2 types that support extensions
-
-		default:
-			return l2Type.baseLength(); // No extension processing
-		}
+	@Override
+	public TimestampUnit timestampUnit() {
+		return timestampUnit;
 	}
 
-	private int calculateWifiExtendedLength(ByteBuf packet) {
-		// Basic 802.11 frame processing
-		int fc = packet.getShort(0) & 0xFFFF;
-		int type = (fc >> 2) & 0x3;
-		int subtype = (fc >> 4) & 0xF;
-
-		int length = 24; // Base MAC header
-
-		// Add QoS field if present
-		if (type == 2 && (subtype & 0x8) != 0) {
-			length += 2;
-		}
-
-		// Add HT Control if present
-		if ((fc & 0x8000) != 0) {
-			length += 4;
-		}
-
-		return length;
+	@Override
+	public void setTimestampUnit(TimestampUnit unit) {
+		this.timestampUnit = unit;
+		setTimestampUnitEncoded(unit);
 	}
+
+	private void setTimestampUnitEncoded(TimestampUnit unit) {
+		int info = rxInfo() & ~(TIMESTAMP_UNIT_MASK << TIMESTAMP_UNIT_SHIFT);
+		info |= ((unit.ordinal() & TIMESTAMP_UNIT_MASK) << TIMESTAMP_UNIT_SHIFT);
+		setRxInfo(info);
+	}
+
+	// ========== PacketDescriptor - Lengths ==========
 
 	@Override
 	public int captureLength() {
 		return CAPLEN.getShort(view()) & 0xFFFF;
-	}
-
-	// ========== RX metadata accessors ==========
-
-	@Override
-	public int descriptorId() {
-		return DescriptorType.DESCRIPTOR_TYPE_NET.getValue();
-	}
-
-	@Override
-	public StructFormat format(StructFormat p) {
-		return p.println("NetPacketDescriptor")
-				.println("  timestamp: %d (%s)", timestamp(), timestampUnit())
-				.println("  caplen: %d", captureLength())
-				.println("  len: %d", wireLength())
-				.println("  rxPort: %d", rxPort())
-				.println("  l2FrameType: %d (%s)", l2Type(), l2FrameType())
-				.println("  l2Extensions: %b", hasL2Extensions())
-				.println("  txPort: %d", txPort())
-				.println("  txEnabled: %b", isTxEnabled())
-				.println("  txImmediate: %b", isTxImmediate())
-				.println("  txCrcRecalc: %b", isTxCrcRecalc())
-				.println("  txTimestampSync: %b", isTxTimestampSync());
-	}
-
-	/**
-	 * Imports descriptor from pcap header bytes.
-	 * 
-	 * @param pcapHeader 16-byte pcap header
-	 * @throws IllegalArgumentException if header is not 16 bytes
-	 */
-	public void fromPcapHeader(byte[] pcapHeader) {
-		if (pcapHeader.length < 16) {
-			throw new IllegalArgumentException("Pcap header must be at least 16 bytes");
-		}
-		segment().asSlice(view().start(), 16).asByteBuffer().put(pcapHeader, 0, 16);
-	}
-
-	/**
-	 * Checks if the L2 frame has extensions that need processing.
-	 * 
-	 * @return true if L2 extensions are present
-	 */
-	@Override
-	public boolean hasL2Extensions() {
-		return (rxInfo() & (1 << L2_EXTENSION_BIT)) != 0;
-	}
-
-	/**
-	 * Checks if CRC should be recalculated on transmit.
-	 * 
-	 * @return true if CRC recalculation is enabled
-	 */
-	@Override
-	public boolean isTxCrcRecalc() {
-		return (txInfo() & (1 << TX_CRC_RECALC_BIT)) != 0;
-	}
-
-	// ========== TX metadata accessors ==========
-
-	/**
-	 * Checks if transmission is enabled.
-	 * 
-	 * @return true if TX is enabled
-	 */
-	@Override
-	public boolean isTxEnabled() {
-		return (txInfo() & (1 << TX_ENABLED_BIT)) != 0;
-	}
-
-	/**
-	 * Checks if immediate transmission is requested.
-	 * 
-	 * @return true if immediate TX is set
-	 */
-	@Override
-	public boolean isTxImmediate() {
-		return (txInfo() & (1 << TX_IMMEDIATE_BIT)) != 0;
-	}
-
-	/**
-	 * Checks if transmission should sync with timestamp.
-	 * 
-	 * @return true if timestamp sync is enabled
-	 */
-	@Override
-	public boolean isTxTimestampSync() {
-		return (txInfo() & (1 << TX_TIMESTAMP_SYNC_BIT)) != 0;
-	}
-
-	@Override
-	public L2FrameType l2FrameType() {
-		int type = (rxInfo() >> L2_FRAME_TYPE_SHIFT) & L2_FRAME_TYPE_MASK;
-		return L2FrameType.valueOf(type);
-	}
-
-	@Override
-	public int l2Type() {
-		return (rxInfo() >> L2_FRAME_TYPE_SHIFT) & L2_FRAME_TYPE_MASK;
-	}
-
-	@Override
-	public long length() {
-		return LAYOUT.byteSize();
-	}
-
-	private int rxInfo() {
-		return RX_INFO.getShort(view()) & 0xFFFF;
-	}
-
-	/**
-	 * Gets the receive port number.
-	 * 
-	 * @return the RX port number (0-63)
-	 */
-	@Override
-	public int rxPort() {
-		return (rxInfo() >> RX_PORT_SHIFT) & RX_PORT_MASK;
 	}
 
 	@Override
@@ -380,13 +289,71 @@ public class NetPacketDescriptor
 		CAPLEN.setShort(view(), (short) (length & 0xFFFF));
 	}
 
-	// ========== Protocol binding ==========
+	@Override
+	public int wireLength() {
+		return WIRELEN.getShort(view()) & 0xFFFF;
+	}
 
-	/**
-	 * Sets whether the L2 frame has extensions.
-	 * 
-	 * @param hasExtensions true if extensions are present
-	 */
+	@Override
+	public void setWireLength(int length) {
+		WIRELEN.setShort(view(), (short) (length & 0xFFFF));
+	}
+
+	// ========== PacketDescriptor - L2 Type ==========
+
+	@Override
+	public int l2FrameType() {
+		return (rxInfo() >> L2_FRAME_TYPE_SHIFT) & L2_FRAME_TYPE_MASK;
+	}
+
+	@Override
+	public void setL2Type(int l2Type) {
+		int info = rxInfo() & ~(L2_FRAME_TYPE_MASK << L2_FRAME_TYPE_SHIFT);
+		info |= ((l2Type & L2_FRAME_TYPE_MASK) << L2_FRAME_TYPE_SHIFT);
+		setRxInfo(info);
+	}
+
+	// ========== PacketDescriptor - Misc ==========
+
+	@Override
+	public ByteOrder order() {
+		return ByteOrder.nativeOrder();
+	}
+
+	@Override
+	public long length() {
+		return LAYOUT.byteSize();
+	}
+
+	@Override
+	public int descriptorId() {
+		return DescriptorType.NET;
+	}
+
+	@Override
+	public DescriptorTypeInfo type() {
+		return DescriptorTypeInfo.NET;
+	}
+
+	// ========== RX Port & Extensions ==========
+
+	public int rxPort() {
+		return (rxInfo() >> RX_PORT_SHIFT) & RX_PORT_MASK;
+	}
+
+	public void setRxPort(int port) {
+		if (port > RX_PORT_MASK) {
+			throw new IllegalArgumentException("RX port must be 0-63, got: " + port);
+		}
+		int info = rxInfo() & ~(RX_PORT_MASK << RX_PORT_SHIFT);
+		info |= ((port & RX_PORT_MASK) << RX_PORT_SHIFT);
+		setRxInfo(info);
+	}
+
+	public boolean hasL2Extensions() {
+		return (rxInfo() & (1 << L2_EXTENSION_BIT)) != 0;
+	}
+
 	public void setL2Extensions(boolean hasExtensions) {
 		int info = rxInfo();
 		if (hasExtensions) {
@@ -397,71 +364,82 @@ public class NetPacketDescriptor
 		setRxInfo(info);
 	}
 
-	// ========== Utility methods ==========
-
-	/**
-	 * Sets the Layer 2 frame type.
-	 * 
-	 * @param type the L2 frame type index (0-63)
-	 * @throws IllegalArgumentException if type > 63
-	 */
-	public void setL2FrameType(int type) {
-		if (type > L2_FRAME_TYPE_MASK) {
-			throw new IllegalArgumentException("L2 frame type must be 0-63, got: " + type);
-		}
-		int info = rxInfo() & ~(L2_FRAME_TYPE_MASK << L2_FRAME_TYPE_SHIFT);
-		info |= ((type & L2_FRAME_TYPE_MASK) << L2_FRAME_TYPE_SHIFT);
-		setRxInfo(info);
+	private int rxInfo() {
+		return RX_INFO.getShort(view()) & 0xFFFF;
 	}
 
 	private void setRxInfo(int info) {
 		RX_INFO.setShort(view(), (short) (info & 0xFFFF));
 	}
 
-	/**
-	 * Sets the receive port number.
-	 * 
-	 * @param port the RX port number (0-63)
-	 * @throws IllegalArgumentException if port > 63
-	 */
-	public void setRxPort(int port) {
-		if (port > RX_PORT_MASK) {
-			throw new IllegalArgumentException("RX port must be 0-63, got: " + port);
+	// ========== TransmitControl implementation ==========
+
+	@Override
+	public int txPort() {
+		return (txInfo() >> TX_PORT_SHIFT) & TX_PORT_MASK;
+	}
+
+	@Override
+	public NetPacketDescriptor setTxPort(int port) {
+		if (port > TX_PORT_MASK) {
+			throw new IllegalArgumentException("TX port must be 0-255, got: " + port);
 		}
-		int info = rxInfo() & ~(RX_PORT_MASK << RX_PORT_SHIFT);
-		info |= ((port & RX_PORT_MASK) << RX_PORT_SHIFT);
-		setRxInfo(info);
+		int info = txInfo() & ~(TX_PORT_MASK << TX_PORT_SHIFT);
+		info |= ((port & TX_PORT_MASK) << TX_PORT_SHIFT);
+		setTxInfo(info);
+		return this;
 	}
 
 	@Override
-	public void setTimestamp(long timestamp) {
-		TIMESTAMP.setLong(view(), timestamp);
+	public boolean isTxEnabled() {
+		return (txInfo() & (1 << TX_ENABLED_BIT)) != 0;
 	}
 
-	/**
-	 * @see com.slytechs.jnet.protocol.api.descriptor.PacketDescriptor#setTimestamp(long,
-	 *      com.slytechs.jnet.core.api.time.TimestampUnit)
-	 */
 	@Override
-	public void setTimestamp(long timestamp, TimestampUnit unit) {
-		// Convert timestamp to current unit if needed
-		if (unit != timestampUnit()) {
-			timestamp = unit.convert(timestamp, timestampUnit());
-		}
-		setTimestamp(timestamp);
+	public NetPacketDescriptor setTxEnabled(boolean enabled) {
+		setTxBit(TX_ENABLED_BIT, enabled);
+		return this;
 	}
 
-	/**
-	 * Sets the timestamp unit.
-	 * 
-	 * @param unit the timestamp unit to use
-	 */
 	@Override
-	public void setTimestampUnit(TimestampUnit unit) {
-		int info = rxInfo() & ~(TIMESTAMP_UNIT_MASK << TIMESTAMP_UNIT_SHIFT);
-		info |= ((unit.ordinal() & TIMESTAMP_UNIT_MASK) << TIMESTAMP_UNIT_SHIFT);
-		setRxInfo(info);
-		super.setTimestampUnit(unit);
+	public boolean isTxImmediate() {
+		return (txInfo() & (1 << TX_IMMEDIATE_BIT)) != 0;
+	}
+
+	@Override
+	public NetPacketDescriptor setTxImmediate(boolean immediate) {
+		setTxBit(TX_IMMEDIATE_BIT, immediate);
+		return this;
+	}
+
+	@Override
+	public boolean isTxCrcRecalc() {
+		return (txInfo() & (1 << TX_CRC_RECALC_BIT)) != 0;
+	}
+
+	@Override
+	public NetPacketDescriptor setTxCrcRecalc(boolean recalc) {
+		setTxBit(TX_CRC_RECALC_BIT, recalc);
+		return this;
+	}
+
+	@Override
+	public boolean isTxTimestampSync() {
+		return (txInfo() & (1 << TX_TIMESTAMP_SYNC_BIT)) != 0;
+	}
+
+	@Override
+	public NetPacketDescriptor setTxTimestampSync(boolean sync) {
+		setTxBit(TX_TIMESTAMP_SYNC_BIT, sync);
+		return this;
+	}
+
+	private int txInfo() {
+		return TX_INFO.getShort(view()) & 0xFFFF;
+	}
+
+	private void setTxInfo(int info) {
+		TX_INFO.setShort(view(), (short) (info & 0xFFFF));
 	}
 
 	private void setTxBit(int bit, boolean value) {
@@ -474,136 +452,495 @@ public class NetPacketDescriptor
 		setTxInfo(info);
 	}
 
-	// ========== Private helper methods ==========
+	// ========== Protocol Table ==========
 
-	/**
-	 * Sets whether to recalculate CRC on transmit.
-	 * 
-	 * @param recalc true to recalculate CRC
-	 */
-	@Override
-	public TransmitControl setTxCrcRecalc(boolean recalc) {
-		setTxBit(TX_CRC_RECALC_BIT, recalc);
-
-		return this;
+	public void addProtocol(int protocolId, int offset, int length) {
+		addProtocolInstance(protocolId, offset, length, 0);
 	}
 
-	/**
-	 * Sets whether transmission is enabled.
-	 * 
-	 * @param enabled true to enable transmission
-	 */
-	@Override
-	public TransmitControl setTxEnabled(boolean enabled) {
-		setTxBit(TX_ENABLED_BIT, enabled);
+	public void addProtocolInstance(int protocolId, int offset, int length, int instanceNum) {
+		long entry = buildProtocolEntry(protocolId, offset, length,
+				encounterOrder++, instanceNum, false, false, false);
 
-		return this;
-	}
+		int inlineSlot = getInlineSlot(protocolId);
 
-	/**
-	 * Sets whether to transmit immediately.
-	 * 
-	 * @param immediate true for immediate transmission
-	 */
-	@Override
-	public TransmitControl setTxImmediate(boolean immediate) {
-		setTxBit(TX_IMMEDIATE_BIT, immediate);
-
-		return this;
-	}
-
-	private void setTxInfo(int info) {
-		TX_INFO.setShort(view(), (short) (info & 0xFFFF));
-	}
-
-	/**
-	 * Sets the transmit port number.
-	 * 
-	 * @param port the TX port number (0-255)
-	 */
-	@Override
-	public TransmitControl setTxPort(int port) {
-		if (port > TX_PORT_MASK) {
-			throw new IllegalArgumentException("TX port must be 0-255, got: " + port);
+		if (inlineSlot >= 0) {
+			INLINE_TABLE.setLongAtIndex(view(), inlineSlot, entry);
+		} else {
+			writeProtocolToExtended(entry);
 		}
-		int info = txInfo() & ~(TX_PORT_MASK << TX_PORT_SHIFT);
-		info |= ((port & TX_PORT_MASK) << TX_PORT_SHIFT);
-		setTxInfo(info);
 
-		return this;
+		incrementProtocolCount();
+		updateBitmap(protocolId);
+
+		if (protocolId == ProtocolId.VLAN) {
+			incrementVlanCount();
+		}
 	}
+
+	private long buildProtocolEntry(int protocolId, int offset, int length,
+			int encounterOrder, int instanceNum, boolean isFragment,
+			boolean isTunneled, boolean hasError) {
+
+		long entry = protocolId & PROTOCOL_ID_MASK;
+		entry |= ((long) (offset & HEADER_OFFSET_MASK)) << HEADER_OFFSET_SHIFT;
+		entry |= ((long) (length & HEADER_LENGTH_MASK)) << HEADER_LENGTH_SHIFT;
+		entry |= ((long) (encounterOrder & ENCOUNTER_ORDER_MASK)) << ENCOUNTER_ORDER_SHIFT;
+		entry |= ((long) (instanceNum & INSTANCE_NUM_MASK)) << INSTANCE_NUM_SHIFT;
+		if (isFragment)
+			entry |= IS_FRAGMENT_BIT;
+		if (isTunneled)
+			entry |= IS_TUNNELED_BIT;
+		if (hasError)
+			entry |= HAS_ERRORS_BIT;
+		return entry;
+	}
+
+	private int getInlineSlot(int protocolId) {
+		return switch (protocolId & 0xFFFF) {
+		case ProtocolId.ETHERNET -> INLINE_ETHERNET;
+		case ProtocolId.VLAN -> INLINE_VLAN;
+		case ProtocolId.IPv4 -> INLINE_IPV4;
+		case ProtocolId.IPv6 -> INLINE_IPV6;
+		case ProtocolId.TCP -> INLINE_TCP;
+		case ProtocolId.UDP -> INLINE_UDP;
+		case ProtocolId.ICMP -> INLINE_ICMP;
+		case ProtocolId.ARP -> INLINE_ARP;
+		default -> -1;
+		};
+	}
+
+	private void writeProtocolToExtended(long entry) {
+		MemorySegment extended = getExtendedSegment();
+		extended.set(ValueLayout.JAVA_LONG, extendedIndex * 8, entry);
+		extendedIndex++;
+		EXTENDED_SIZE.setShort(view(), (short) extendedIndex);
+	}
+
+	@Override
+	public long mapProtocol(int protocolId, int depth) {
+		if (depth == 0) {
+			int inlineSlot = getInlineSlot(protocolId);
+			if (inlineSlot >= 0) {
+				long entry = INLINE_TABLE.getLongAtIndex(view(), inlineSlot);
+				if (entry != 0) {
+					int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+					int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+					return PacketDescriptor.encodeLengthAndOffset(length, offset);
+				}
+			}
+		}
+		return mapProtocolExtended(protocolId, depth);
+	}
+
+	private long mapProtocolExtended(int protocolId, int depth) {
+		short extSize = EXTENDED_SIZE.getShort(view());
+		if (extSize > 0) {
+			MemorySegment extended = getExtendedSegment();
+			int matchCount = 0;
+
+			for (int i = 0; i < extSize; i++) {
+				long entry = extended.get(ValueLayout.JAVA_LONG, i * 8);
+				if ((entry & PROTOCOL_ID_MASK) == protocolId) {
+					int instance = (int) ((entry >> INSTANCE_NUM_SHIFT) & INSTANCE_NUM_MASK);
+					if (instance == depth || matchCount == depth) {
+						int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+						int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+						return PacketDescriptor.encodeLengthAndOffset(length, offset);
+					}
+					matchCount++;
+				}
+			}
+		}
+		return PacketDescriptor.PROTOCOL_NOT_FOUND;
+	}
+
+	@Override
+	public boolean bindProtocol(ByteBuf packet, Header header, int protocolId, int depth) {
+		int inlineSlot = getInlineSlot(protocolId);
+
+		if (inlineSlot >= 0 && depth == 0) {
+			long entry = INLINE_TABLE.getLongAtIndex(view(), inlineSlot);
+			if (entry != 0) {
+				int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+				int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+				return header.bindHeader(packet, protocolId, depth, offset, length);
+			}
+		}
+
+		// Search extended table
+		short extSize = EXTENDED_SIZE.getShort(view());
+		if (extSize > 0) {
+			MemorySegment extended = getExtendedSegment();
+			int matchCount = 0;
+
+			for (int i = 0; i < extSize; i++) {
+				long entry = extended.get(ValueLayout.JAVA_LONG, i * 8);
+				if ((entry & PROTOCOL_ID_MASK) == protocolId) {
+					int instance = (int) ((entry >> INSTANCE_NUM_SHIFT) & INSTANCE_NUM_MASK);
+					if (instance == depth || matchCount == depth) {
+						int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+						int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+						return header.bindHeader(packet, protocolId, depth, offset, length);
+					}
+					matchCount++;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	// ========== Fast presence checks ==========
+
+	public boolean hasEthernet() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_ETHERNET) != 0;
+	}
+
+	public boolean hasVlan() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_VLAN) != 0;
+	}
+
+	public boolean hasIpv4() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_IPV4) != 0;
+	}
+
+	public boolean hasIpv6() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_IPV6) != 0;
+	}
+
+	public boolean hasTcp() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_TCP) != 0;
+	}
+
+	public boolean hasUdp() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_UDP) != 0;
+	}
+
+	public boolean hasIcmp() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_ICMP) != 0;
+	}
+
+	public boolean hasArp() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_ARP) != 0;
+	}
+
+	// ========== Protocol counts ==========
+
+	public int getProtocolCount() {
+		return PROTO_COUNTS.getShort(view()) & PROTOCOL_COUNT_MASK;
+	}
+
+	public int getVlanCount() {
+		return (PROTO_COUNTS.getShort(view()) >> VLAN_COUNT_SHIFT) & VLAN_COUNT_MASK;
+	}
+
+	public int getMplsCount() {
+		return (PROTO_COUNTS.getShort(view()) >> MPLS_COUNT_SHIFT) & MPLS_COUNT_MASK;
+	}
+
+	private void incrementProtocolCount() {
+		int counts = PROTO_COUNTS.getShort(view()) & 0xFFFF;
+		int protoCount = (counts & PROTOCOL_COUNT_MASK) + 1;
+		counts = (counts & ~PROTOCOL_COUNT_MASK) | (protoCount & PROTOCOL_COUNT_MASK);
+		PROTO_COUNTS.setShort(view(), (short) counts);
+	}
+
+	private void incrementVlanCount() {
+		int counts = PROTO_COUNTS.getShort(view()) & 0xFFFF;
+		int vlanCount = ((counts >> VLAN_COUNT_SHIFT) & VLAN_COUNT_MASK) + 1;
+		counts = (counts & ~(VLAN_COUNT_MASK << VLAN_COUNT_SHIFT))
+				| ((vlanCount & VLAN_COUNT_MASK) << VLAN_COUNT_SHIFT);
+		PROTO_COUNTS.setShort(view(), (short) counts);
+	}
+
+	// ========== Bitmap ==========
+
+	public long getProtoBitmap() {
+		return PROTO_BITMAP.getLong(view());
+	}
+
+	private void setProtoBitmap(long bitmap) {
+		PROTO_BITMAP.setLong(view(), bitmap);
+	}
+
+	private void updateBitmap(int protocolId) {
+		int bitPos = getBitmapPosition(protocolId);
+		if (bitPos >= 0) {
+			long bitmap = getProtoBitmap();
+			bitmap |= (1L << bitPos);
+			setProtoBitmap(bitmap);
+		}
+	}
+
+	private int getBitmapPosition(int protocolId) {
+		return switch (protocolId & 0xFFFF) {
+		case ProtocolId.ETHERNET -> 0;
+		case ProtocolId.VLAN -> 1;
+		case ProtocolId.IPv4 -> 2;
+		case ProtocolId.IPv6 -> 3;
+		case ProtocolId.TCP -> 4;
+		case ProtocolId.UDP -> 5;
+		case ProtocolId.ICMP -> 6;
+		case ProtocolId.ARP -> 7;
+		default -> -1;
+		};
+	}
+
+	// ========== Extended table ==========
+
+	private short getExtendedOffset() {
+		return EXTENDED_OFFSET.getShort(view());
+	}
+
+	private short getExtendedSize() {
+		return EXTENDED_SIZE.getShort(view());
+	}
+
+	private MemorySegment getExtendedSegment() {
+		int offset = captureLength() + getExtendedOffset();
+		return view().segment().asSlice(view().start() + offset);
+	}
+
+	// ========== Reset ==========
+
+	public void reset() {
+		extendedIndex = 0;
+		encounterOrder = 0;
+		setProtoBitmap(0);
+		PROTO_COUNTS.setShort(view(), (short) 0);
+		EXTENDED_SIZE.setShort(view(), (short) 0);
+
+		// Clear inline table
+		for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
+			INLINE_TABLE.setLongAtIndex(view(), i, 0L);
+		}
+	}
+
+	// ========== Iterable ==========
+
+	@Override
+	public Iterator<BindingInfo> iterator() {
+		var list = new ArrayList<BindingInfo>();
+
+		for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
+			long entry = INLINE_TABLE.getLongAtIndex(view(), i);
+			if (entry != 0) {
+				int id = (int) (entry & PROTOCOL_ID_MASK);
+				int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+				int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+				int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
+				list.add(new BindingInfo(order, id, offset, length));
+			}
+		}
+
+		// Add extended table entries
+		short extSize = getExtendedSize();
+		if (extSize > 0) {
+			MemorySegment extended = getExtendedSegment();
+			for (int i = 0; i < extSize; i++) {
+				long entry = extended.get(ValueLayout.JAVA_LONG, i * 8);
+				int id = (int) (entry & PROTOCOL_ID_MASK);
+				int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+				int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+				int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
+				list.add(new BindingInfo(order, id, offset, length));
+			}
+		}
+
+		// Sort by encounter order
+		list.sort((a, b) -> Integer.compare(a.order(), b.order()));
+
+		return list.iterator();
+	}
+
+	// ========== Formatting ==========
+
+	public StructFormat format(StructFormat p) {
+		p.openln("NetPacketDescriptor").indent();
+
+		p.println("timestamp", timestamp())
+				.println("timestampUnit", timestampUnit())
+				.println("captureLength", captureLength())
+				.println("wireLength", wireLength())
+				.println("rxPort", rxPort())
+				.println("l2FrameType", l2FrameType())
+				.println("l2Extensions", hasL2Extensions())
+				.println("txPort", txPort())
+				.println("txEnabled", isTxEnabled())
+				.println("txImmediate", isTxImmediate());
+
+		p.println("--- Protocol Table ---")
+				.println("protocolCount", getProtocolCount())
+				.println("vlanCount", getVlanCount())
+				.println("mplsCount", getMplsCount())
+				.println("protoBitmap", String.format("0x%016X", getProtoBitmap()));
+
+		p.println("--- Inline Table ---");
+		for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
+			long entry = INLINE_TABLE.getLongAtIndex(view(), i);
+			if (entry != 0) {
+				int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+				int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+				int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
+				p.println(String.format("  [%d] %s: offset=%d, length=%d, order=%d",
+						i, INLINE_SLOT_NAMES[i], offset, length, order));
+			}
+		}
+
+		return p.close();
+	}
+
+	// ========== Detail Building ==========
+
+	private static final int DESCRIPTOR_ID = DescriptorType.NET;
 
 	/**
-	 * Sets whether to sync transmission with timestamp.
+	 * Builds a detailed tree representation of this descriptor for UI display.
 	 * 
-	 * @param sync true to sync with timestamp
+	 * @param b the detail builder
 	 */
 	@Override
-	public TransmitControl setTxTimestampSync(boolean sync) {
-		setTxBit(TX_TIMESTAMP_SYNC_BIT, sync);
+	public void buildDetail(DetailBuilder b) {
+		b.header("Net Packet Descriptor", "NET", DESCRIPTOR_ID, 0, BYTE_SIZE, h -> {
 
-		return this;
+			// Summary line
+			h.summaryf("cap=%d wire=%d ts=%d %s",
+					captureLength(), wireLength(), timestamp(),
+					timestampUnit().name());
+
+			// Base section (pcap-compatible 16 bytes)
+			h.section("Base", "base", s -> {
+				s.field("Timestamp", timestamp(),
+						String.format("%d (%s)", timestamp(), timestampUnit()),
+						DetailBuilder.longAt(0x00));
+				s.field("Capture Length", captureLength(), DetailBuilder.shortAt(0x08));
+				s.field("Wire Length", wireLength(), DetailBuilder.shortAt(0x0C));
+
+				// RX Info expandable
+				int rxInfoVal = rxInfo();
+				s.section("RX Info", "rx", rx -> {
+					rx.fieldHex("Raw", rxInfoVal, 4, DetailBuilder.shortAt(0x0A));
+					rx.field("RX Port", rxPort());
+					rx.field("L2 Frame Type", l2FrameType(), L2FrameType.nameOf(l2FrameType()));
+					rx.field("L2 Extensions", hasL2Extensions());
+					rx.field("Timestamp Unit", timestampUnit().name());
+				});
+
+				// TX Info expandable
+				int txInfoVal = txInfo();
+				s.section("TX Info", "tx", tx -> {
+					tx.fieldHex("Raw", txInfoVal, 4, DetailBuilder.shortAt(0x0E));
+					tx.field("TX Port", txPort());
+					tx.field("TX Enabled", isTxEnabled());
+					tx.field("TX Immediate", isTxImmediate());
+					tx.field("TX CRC Recalc", isTxCrcRecalc());
+					tx.field("TX Timestamp Sync", isTxTimestampSync());
+				});
+			});
+
+			// Protocol dissection section
+			h.section("Protocol Dissection", "proto", s -> {
+				s.fieldHex("Protocol Bitmap", (int) (getProtoBitmap() & 0xFFFFFFFF), 8,
+						formatBitmapFlags(), DetailBuilder.longAt(0x10));
+				s.field("Protocol Count", getProtocolCount(), DetailBuilder.shortAt(0x18));
+				s.field("VLAN Count", getVlanCount());
+				s.field("MPLS Count", getMplsCount());
+				s.field("Extended Offset", getExtendedOffset(), DetailBuilder.shortAt(0x1A));
+				s.field("Extended Size", getExtendedSize(), DetailBuilder.shortAt(0x1C));
+			});
+
+			// Inline table section
+			h.section("Inline Protocol Table", "inline", s -> {
+				for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
+					long entry = INLINE_TABLE.getLongAtIndex(view(), i);
+					if (entry != 0) {
+						int protoId = (int) (entry & PROTOCOL_ID_MASK);
+						int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+						int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+						int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
+						int instance = (int) ((entry >> INSTANCE_NUM_SHIFT) & INSTANCE_NUM_MASK);
+						boolean fragment = (entry & IS_FRAGMENT_BIT) != 0;
+						boolean tunneled = (entry & IS_TUNNELED_BIT) != 0;
+						boolean error = (entry & HAS_ERRORS_BIT) != 0;
+
+						s.section(INLINE_SLOT_NAMES[i], INLINE_SLOT_NAMES[i].toLowerCase(), slot -> {
+							slot.fieldHex("Protocol ID", protoId, 4);
+							slot.field("Offset", offset);
+							slot.field("Length", length);
+							slot.field("Order", order);
+							if (instance > 0)
+								slot.field("Instance", instance);
+							if (fragment)
+								slot.field("Fragment", true);
+							if (tunneled)
+								slot.field("Tunneled", true);
+							if (error)
+								slot.expert(ExpertLevel.ERROR, "Protocol parse error");
+						});
+					}
+				}
+			});
+
+			// Extended table section (if populated)
+//			short extSize = getExtendedSize();
+//			if (extSize > 0) {
+//				h.section("Extended Protocol Table", "extended", s -> {
+//					MemorySegment extended = getExtendedSegment();
+//					for (int i = 0; i < extSize; i++) {
+//						long entry = extended.get(ValueLayout.JAVA_LONG, i * 8);
+//						int protoId = (int) (entry & PROTOCOL_ID_MASK);
+//						int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+//						int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+//						int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
+//
+//						s.fieldf("Entry[%d]", protoId,
+//								"id=0x%04X off=%d len=%d order=%d",
+//								protoId, offset, length, order);
+//					}
+//				});
+//			}
+		});
 	}
 
-	@Override
-	public void setWireLength(int length) {
-		LEN.setShort(view(), (short) (length & 0xFFFF));
-	}
+	private String formatBitmapFlags() {
+		long bitmap = getProtoBitmap();
+		if (bitmap == 0)
+			return "none";
 
-	@Override
-	public long timestamp() {
-		return TIMESTAMP.getLong(view());
-	}
-
-	/**
-	 * Gets the timestamp unit encoding.
-	 * 
-	 * @return the timestamp unit
-	 */
-	@Override
-	public TimestampUnit timestampUnit() {
-		int ordinal = (rxInfo() >> TIMESTAMP_UNIT_SHIFT) & TIMESTAMP_UNIT_MASK;
-		TimestampUnit[] values = TimestampUnit.values();
-		return (ordinal < values.length) ? values[ordinal] : DEFAULT_TIMESTAMP_UNIT;
-	}
-
-	/**
-	 * Exports descriptor as pcap-compatible header.
-	 * 
-	 * @return 16-byte array containing pcap header
-	 */
-	public byte[] toPcapHeader() {
-		byte[] header = new byte[16];
-		segment().asSlice(view().start(), 16).asByteBuffer().get(header);
-		return header;
+		StringBuilder sb = new StringBuilder();
+		if ((bitmap & (1L << 0)) != 0)
+			sb.append("ETH ");
+		if ((bitmap & (1L << 1)) != 0)
+			sb.append("VLAN ");
+		if ((bitmap & (1L << 2)) != 0)
+			sb.append("IPv4 ");
+		if ((bitmap & (1L << 3)) != 0)
+			sb.append("IPv6 ");
+		if ((bitmap & (1L << 4)) != 0)
+			sb.append("TCP ");
+		if ((bitmap & (1L << 5)) != 0)
+			sb.append("UDP ");
+		if ((bitmap & (1L << 6)) != 0)
+			sb.append("ICMP ");
+		if ((bitmap & (1L << 7)) != 0)
+			sb.append("ARP ");
+		return sb.toString().trim();
 	}
 
 	@Override
 	public String toString() {
-		return format(new StructFormat()).toString();
+		return toDetailString();
 	}
 
-	private int txInfo() {
-		return TX_INFO.getShort(view()) & 0xFFFF;
-	}
+	private final BoundView view = new BoundView();
 
 	/**
-	 * Gets the transmit port number.
-	 * 
-	 * @return the TX port number (0-255)
+	 * @see com.slytechs.jnet.core.api.memory.BindableView#boundView()
 	 */
 	@Override
-	public int txPort() {
-		return (txInfo() >> TX_PORT_SHIFT) & TX_PORT_MASK;
+	public BoundView boundView() {
+		return view;
 	}
 
-	@Override
-	public DescriptorType type() {
-		return DescriptorType.DESCRIPTOR_TYPE_NET;
-	}
-
-	@Override
-	public int wireLength() {
-		return LEN.getShort(view()) & 0xFFFF;
-	}
 }
