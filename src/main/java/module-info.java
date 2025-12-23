@@ -34,8 +34,8 @@ module com.slytechs.jnet.protocol.api {
 	exports com.slytechs.jnet.protocol.api.stack.processor;
 	exports com.slytechs.jnet.protocol.api.spi;
  
-	requires transitive com.slytechs.jnet.core.api;
 	requires java.logging;
+	requires transitive com.slytechs.jnet.core.api;
 
 	uses com.slytechs.jnet.protocol.api.pack.ProtocolPackPlugin;
     uses com.slytechs.jnet.protocol.api.table.TableProvider;
