@@ -19,25 +19,25 @@
  * 
  */
 
-module com.slytechs.jnet.protocol.api {
-	exports com.slytechs.jnet.protocol.api;
-	exports com.slytechs.jnet.protocol.api.address;
-	exports com.slytechs.jnet.protocol.api.flag;
-	exports com.slytechs.jnet.protocol.api.checksum;
-	exports com.slytechs.jnet.protocol.api.pack;
-	exports com.slytechs.jnet.protocol.api.builtin;
-	exports com.slytechs.jnet.protocol.api.descriptor;
-	exports com.slytechs.jnet.protocol.api.dissector;
-	exports com.slytechs.jnet.protocol.api.format;
-	exports com.slytechs.jnet.protocol.api.table;
-	exports com.slytechs.jnet.protocol.api.stack;
-	exports com.slytechs.jnet.protocol.api.stack.processor;
-	exports com.slytechs.jnet.protocol.api.spi;
+module com.slytechs.sdk.protocol.core {
+	exports com.slytechs.sdk.protocol.core;
+	exports com.slytechs.sdk.protocol.core.address;
+	exports com.slytechs.sdk.protocol.core.flag;
+	exports com.slytechs.sdk.protocol.core.checksum;
+	exports com.slytechs.sdk.protocol.core.pack;
+	exports com.slytechs.sdk.protocol.core.builtin;
+	exports com.slytechs.sdk.protocol.core.descriptor;
+	exports com.slytechs.sdk.protocol.core.dissector;
+	exports com.slytechs.sdk.protocol.core.format;
+	exports com.slytechs.sdk.protocol.core.table;
+	exports com.slytechs.sdk.protocol.core.stack;
+	exports com.slytechs.sdk.protocol.core.stack.processor;
+	exports com.slytechs.sdk.protocol.core.spi;
  
 	requires java.logging;
-	requires transitive com.slytechs.jnet.core.api;
+	requires transitive com.slytechs.sdk.common;
 
-	uses com.slytechs.jnet.protocol.api.pack.ProtocolPackPlugin;
-    uses com.slytechs.jnet.protocol.api.table.TableProvider;
-    uses com.slytechs.jnet.protocol.api.spi.ProtocolProvider;
+	uses com.slytechs.sdk.protocol.core.pack.ProtocolPackPlugin;
+    uses com.slytechs.sdk.protocol.core.table.TableProvider;
+    uses com.slytechs.sdk.protocol.core.spi.ProtocolProvider;
 }
