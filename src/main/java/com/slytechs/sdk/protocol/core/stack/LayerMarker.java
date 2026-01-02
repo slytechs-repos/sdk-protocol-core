@@ -15,45 +15,31 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core.descriptor;
-
-import com.slytechs.sdk.common.time.TimestampUnit;
+package com.slytechs.sdk.protocol.core.stack;
 
 /**
+ * Marker interface for protocol layer classification.
  * 
+ * <p>
+ * Layer markers are used to classify protocol configurations by their OSI
+ * layer. This enables bulk operations like disabling all L5+ protocols for
+ * jNetPcap (which caps at L4).
+ * </p>
+ * 
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * // Disable all application layer protocols
+ * stack.disableLayer(L5Protocol.class);
+ * 
+ * // Protocol config implementing layer marker
+ * public class HttpProtocolConfig extends ProtocolConfig implements L5Protocol {
+ *     // ...
+ * }
+ * }</pre>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface PcapHeader extends PacketDescriptor {
-
-	@Override
-	int captureLength();
-
-	@Override
-	int wireLength();
-
-	int tvUSec();
-
-	int tvSec();
-
-	void setTvSec(int epochSeconds);
-
-	void setTvUSec(int useconds);
-
-	@Override
-	void setCaptureLength(int length);
-
-	@Override
-	void setWireLength(int length);
-
-	@Override
-	TimestampUnit timestampUnit();
-
-	@Override
-	default long timestamp() {
-		long timestamp = timestampUnit().ofSecond(tvSec(), tvUSec());
-
-		return timestamp;
-	}
+public interface LayerMarker {
+    // Marker interface - no methods
 }

@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,13 +17,24 @@
  */
 package com.slytechs.sdk.protocol.core.descriptor;
 
-/**
- * 
- *
- * @author Mark Bednarczyk [mark@slytechs.com]
- * @author Sly Technologies Inc.
- */
-public interface PacketDescriptorFactory {
+import com.slytechs.sdk.common.memory.BindableView;
+import com.slytechs.sdk.protocol.core.Header;
 
-	PacketDescriptor newInstance();
+public interface HeaderBinding {
+
+	/**
+	 * Unsupported header binding instance. This instance always returns false on
+	 * bindHeader.
+	 */
+	HeaderBinding INSTANCE = new HeaderBinding() {
+
+		@Override
+		public boolean bindHeader(BindableView packet, Header header, int l2FrameType, int protocolId, int depth) {
+			return false;
+		}
+
+	};
+
+	boolean bindHeader(BindableView packet, Header header,
+			int l2FrameType, int protocolId, int depth);
 }

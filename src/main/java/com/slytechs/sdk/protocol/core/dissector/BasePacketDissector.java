@@ -19,7 +19,7 @@ package com.slytechs.sdk.protocol.core.dissector;
 
 import java.lang.foreign.MemoryLayout;
 
-import com.slytechs.sdk.common.memory.ByteBuf;
+import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.common.memory.Memory;
 import com.slytechs.sdk.common.memory.MemoryView;
 import com.slytechs.sdk.common.memory.MemoryHandle.LongHandle;
@@ -100,7 +100,7 @@ public class BasePacketDissector implements PacketDissector {
 	private boolean hasL2Extensions;
 	private boolean dissected = false;
 
-	private final ByteBuf buf = new ByteBuf();
+	private final MemoryBuffer buf = new MemoryBuffer();
 
 	/**
 	 * Creates a new BasePacketDissector with default Ethernet L2 type.
@@ -136,7 +136,7 @@ public class BasePacketDissector implements PacketDissector {
 	 * @param caplen captured length
 	 * @return true if Ethernet extensions are detected
 	 */
-	private boolean detectEthernetExtensions(ByteBuf packet, int caplen) {
+	private boolean detectEthernetExtensions(MemoryBuffer packet, int caplen) {
 		if (caplen < 14) {
 			return false; // Not enough data for Ethernet header
 		}
@@ -157,7 +157,7 @@ public class BasePacketDissector implements PacketDissector {
 	 * @param caplen captured length
 	 * @return true if extensions are detected
 	 */
-	private boolean detectL2Extensions(ByteBuf packet, int caplen) {
+	private boolean detectL2Extensions(MemoryBuffer packet, int caplen) {
 		switch (l2FrameType) {
 		case L2FrameType.ETHER:
 			return detectEthernetExtensions(packet, caplen);
@@ -178,7 +178,7 @@ public class BasePacketDissector implements PacketDissector {
 	 * @param caplen captured length
 	 * @return true if WiFi extensions are detected
 	 */
-	private boolean detectWifiExtensions(ByteBuf packet, int caplen) {
+	private boolean detectWifiExtensions(MemoryBuffer packet, int caplen) {
 		if (caplen < 2) {
 			return false; // Not enough data for frame control
 		}
@@ -195,7 +195,7 @@ public class BasePacketDissector implements PacketDissector {
 	}
 
 	@Override
-	public int dissectPacket(ByteBuf packet, long timestamp, int caplen, int wirelen) {
+	public int dissectPacket(MemoryBuffer packet, long timestamp, int caplen, int wirelen) {
 		// Store the provided metadata
 		this.timestamp = timestamp;
 		this.captureLength = caplen;
@@ -213,7 +213,7 @@ public class BasePacketDissector implements PacketDissector {
 	@Override
 	public int dissectPacket(Memory packet, long timestamp, int caplen, int wirelen) {
 		// Create temporary buffer view - no allocation
-		ByteBuf buffer = new ByteBuf();
+		MemoryBuffer buffer = new MemoryBuffer();
 		buffer.bind(packet);
 		return dissectPacket(buffer, timestamp, caplen, wirelen);
 	}
@@ -344,7 +344,7 @@ public class BasePacketDissector implements PacketDissector {
 	}
 
 	@Override
-	public int writeDescriptor(ByteBuf buffer) {
+	public int writeDescriptor(MemoryBuffer buffer) {
 		if (!dissected) {
 			return 0; // Nothing to write
 		}

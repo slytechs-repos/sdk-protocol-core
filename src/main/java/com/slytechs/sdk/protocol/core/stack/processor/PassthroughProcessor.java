@@ -89,4 +89,12 @@ public class PassthroughProcessor implements Processor {
 		throw new UnsupportedOperationException("not implemented yet");
 	}
 
+	/**
+	 * @see com.slytechs.sdk.protocol.core.stack.processor.Processor#clearState()
+	 */
+	@Override
+	public void clearState() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
 }

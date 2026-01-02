@@ -205,7 +205,11 @@ public interface Descriptor {
 	 * @return the descriptor type, never {@code null}
 	 * @see DescriptorType
 	 */
-	DescriptorType type();
+	default DescriptorType descriptorType() {
+		return descriptorInfo();
+	}
+
+	DescriptorInfo descriptorInfo();
 
 	/**
 	 * Returns the unique identifier for this descriptor.
@@ -250,7 +254,9 @@ public interface Descriptor {
 	 * 
 	 * @return the descriptor identifier, typically non-negative
 	 */
-	int descriptorId();
+	default int descriptorId() {
+		return descriptorInfo().descriptorId();
+	}
 
 	/**
 	 * Returns the total length of this descriptor in bytes.

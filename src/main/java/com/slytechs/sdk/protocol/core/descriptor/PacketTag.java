@@ -40,6 +40,8 @@ public interface PacketTag {
 	PacketTag setNext(PacketTag next);
 
 	int type();
+	
+	PacketTag copy();
 
 	static <T extends PacketTag> T getTag(PacketTag head, int type) {
 		throw new UnsupportedOperationException();

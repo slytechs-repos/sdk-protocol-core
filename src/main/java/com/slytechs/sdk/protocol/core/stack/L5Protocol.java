@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2024 Sly Technologies Inc.
+ * Copyright 2025 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,35 +15,27 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core.descriptor;
+package com.slytechs.sdk.protocol.core.stack;
 
 /**
- * Descriptor type constants.
+ * Marker interface for Layer 5+ (Application) protocol configurations.
+ * 
+ * <p>
+ * L5 protocols include: HTTP, TLS, DNS, DHCP, SSH, etc.
+ * </p>
+ * 
+ * <p>
+ * jNetPcap caps at L4, so L5+ protocols are automatically disabled when
+ * using ProtocolStack with jNetPcap:
+ * </p>
+ * <pre>{@code
+ * // In NetPcap.create():
+ * stack.disableLayer(L5Protocol.class);
+ * }</pre>
  *
- * @author Mark Bednarczyk
+ * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface DescriptorType {
-
-	/** Pcap file header - kernel format (24-byte on x64 padded) */
-	int PCAP_PADDED = 0;
-
-	/** Pcap packet - file format (16-byte c-struct packed) */
-	int PCAP_PACKED = 1;
-
-	/** SDK packet descriptor - full protocol table (~96 bytes)*/
-	int NET = 2;
-
-	/** Napatech native */
-	int NTAPI = 14;
-
-	/** DPDK native */
-	int DPDK = 15;
-
-	/**
-	 * Gets the descriptor type constant.
-	 *
-	 * @return the descriptor type
-	 */
-	int descriptorId();
+public interface L5Protocol extends LayerMarker {
+    // Marker interface
 }

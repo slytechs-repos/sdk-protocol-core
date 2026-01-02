@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,15 +17,30 @@
  */
 package com.slytechs.sdk.protocol.core;
 
+import java.lang.foreign.MemorySegment;
+import java.nio.ByteOrder;
+
 import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
-import com.slytechs.sdk.common.memory.ByteBuf;
+import com.slytechs.sdk.common.memory.BindableView;
+import com.slytechs.sdk.common.memory.BoundView;
+import com.slytechs.sdk.common.memory.FixedMemory;
+import com.slytechs.sdk.common.memory.Memory;
+import com.slytechs.sdk.common.memory.ScopedMemory;
+import com.slytechs.sdk.common.memory.pool.Persistable;
+import com.slytechs.sdk.common.memory.pool.Pool;
+import com.slytechs.sdk.common.memory.pool.PoolEntry;
+import com.slytechs.sdk.common.memory.pool.Poolable;
+import com.slytechs.sdk.common.memory.pool.SlabAllocator;
+import com.slytechs.sdk.common.time.Timestamp;
+import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
+import com.slytechs.sdk.protocol.core.descriptor.NetPacketDescriptor;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
-import com.slytechs.sdk.protocol.core.descriptor.PacketTag;
-import com.slytechs.sdk.protocol.core.descriptor.TransmitControl;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor.BindingInfo;
-import com.slytechs.sdk.protocol.core.format.PacketFormat;
-import com.slytechs.sdk.protocol.core.pack.ProtocolPackManager;
+import com.slytechs.sdk.protocol.core.descriptor.PacketTag;
+import com.slytechs.sdk.protocol.core.descriptor.PcapDescriptorPacked;
+import com.slytechs.sdk.protocol.core.descriptor.PcapDescriptorPadded;
+import com.slytechs.sdk.protocol.core.stack.PacketPool;
 
 /**
  * High-performance network packet representation with zero-copy access to
@@ -35,726 +50,778 @@ import com.slytechs.sdk.protocol.core.pack.ProtocolPackManager;
  * The {@code Packet} class is the central abstraction for network packet
  * processing in the protocol framework. It provides efficient, zero-copy access
  * to packet data stored in native memory segments while maintaining protocol
- * dissection results and metadata. This class extends
- * {@link MemorySegmentProxy} for flexible memory access across chained segments
- * without the overhead of buffer-style positioning.
+ * dissection results and metadata.
+ * </p>
  * 
  * <h2>Architecture Overview</h2>
  * 
  * <p>
  * A {@code Packet} instance consists of three key components:
+ * </p>
  * <ol>
  * <li><strong>Memory Binding:</strong> Direct access to native packet data
- * through {@link MemorySegmentProxy}</li>
+ * through {@link BoundView}</li>
  * <li><strong>Packet Descriptor:</strong> Protocol dissection results and
  * header locations</li>
  * <li><strong>PacketTag Chain:</strong> Extended metadata and processing
  * annotations</li>
  * </ol>
  * 
- * <h2>Memory Management</h2>
+ * <h2>Pool Types</h2>
  * 
  * <p>
- * The {@code Packet} class leverages the {@link MemorySegmentProxy} superclass
- * for efficient memory access. This design enables:
- * <ul>
- * <li>Zero-copy access to packet data in native memory (DPDK mbufs, Napatech
- * buffers, etc.)</li>
- * <li>Support for fragmented packets across multiple memory segments</li>
- * <li>Efficient protocol parsing without data copying</li>
- * <li>Sustained throughput exceeding 100 million packets per second</li>
- * </ul>
+ * Packets are typically allocated from pools for zero-allocation hot paths.
+ * Three pool configurations are available via {@link PacketPool}:
+ * </p>
  * 
- * <h3>Binding to Native Memory</h3>
+ * <table>
+ * <caption>Packet Pool Types</caption>
+ * <tr>
+ * <th>Type</th>
+ * <th>Data Memory</th>
+ * <th>Descriptor</th>
+ * <th>Use Case</th>
+ * </tr>
+ * <tr>
+ * <td>Fixed</td>
+ * <td>FixedMemory</td>
+ * <td>FixedMemory</td>
+ * <td>Copied packets, persistence</td>
+ * </tr>
+ * <tr>
+ * <td>Scoped</td>
+ * <td>ScopedMemory</td>
+ * <td>ScopedMemory</td>
+ * <td>Zero-copy native capture</td>
+ * </tr>
+ * <tr>
+ * <td>Hybrid</td>
+ * <td>ScopedMemory</td>
+ * <td>FixedMemory</td>
+ * <td>Zero-copy with descriptor conversion</td>
+ * </tr>
+ * </table>
  * 
- * <pre>{@code
- * // Example: Binding packet to DPDK mbuf
- * Packet packet = new Packet();
- * MemorySegment mbufData = DpdkUtil.getMbufDataSegment(mbufPtr);
+ * <h2>Usage Examples</h2>
  * 
- * // Bind packet to native memory (zero-copy)
- * packet.bindMemory(mbufData, 0, packetLength);
- * 
- * // Set packet descriptor for protocol dissection
- * PacketDescriptor descriptor = dissector.dissect(packet);
- * packet.setPacketDescriptor(descriptor);
- * 
- * // Access packet data efficiently
- * byte[] ethDst = new byte[6];
- * packet.getBytes(0, ethDst); // Read destination MAC
- * int etherType = packet.getShortBE(12) & 0xFFFF; // Read EtherType
- * }</pre>
- * 
- * <h2>Protocol Dissection</h2>
- * 
- * <p>
- * The {@code PacketDescriptor} maintains the results of packet dissection,
- * recording the presence and location of each protocol header. This enables
- * constant-time header lookups and efficient protocol-specific processing.
- * 
- * <h3>Header Access Patterns</h3>
+ * <h3>Pooled Packet Processing (Zero-Copy)</h3>
  * 
  * <pre>{@code
- * // Access headers by protocol ID
- * if (packet.isPresent(CoreProtocol.IPv4)) {
- * 	Header ipv4 = packet.getHeader(CoreProtocol.IPv4);
- * 	int srcAddr = ipv4.getInt(12); // Source IP address
- * 	int dstAddr = ipv4.getInt(16); // Destination IP address
- * }
+ * Pool<Packet> pool = PacketPool.ofScoped();
  * 
- * // Access headers using typed instances
- * Tcp tcp = new Tcp();
+ * // Capture loop
+ * Packet packet = pool.allocate();
+ * packet.memory().bind(nativeSegment, offset, length);
+ * 
+ * // Process packet
  * if (packet.hasHeader(tcp)) {
- * 	packet.getHeader(tcp); // Binds tcp instance to packet data
- * 	int srcPort = tcp.sourcePort();
- * 	int dstPort = tcp.destinationPort();
- * 	boolean syn = tcp.flags().SYN();
+ * 	processTcp(packet, tcp);
  * }
  * 
- * // Access headers at specific depths (for tunneled protocols)
- * if (packet.isPresent(CoreProtocol.IPv4, 1)) { // Inner IPv4 header
- * 	Header innerIp = packet.getHeader(CoreProtocol.IPv4, 1);
- * 	// Process inner IP header in tunnel
- * }
+ * // Return to pool
+ * packet.recycle();
  * }</pre>
  * 
- * <h2>PacketTag Metadata Chain</h2>
- * 
- * <p>
- * NetTags provide an extensible mechanism for attaching metadata to packets
- * without modifying the packet data itself. Common uses include:
- * <ul>
- * <li>IP fragmentation descriptors and reassembly state</li>
- * <li>TCP stream tracking and reassembly markers</li>
- * <li>Application-layer protocol annotations</li>
- * <li>Quality of Service (QoS) markings</li>
- * <li>Security classifications and policy tags</li>
- * </ul>
- * 
- * <h3>Working with NetTags</h3>
+ * <h3>Packet Copying</h3>
  * 
  * <pre>{@code
- * // Add IP fragmentation tag
- * IpfTag fragTag = new IpfTag();
- * fragTag.setFragmentOffset(185);
- * fragTag.setMoreFragments(true);
- * fragTag.setIdentification(0x1234);
- * packet.addTag(fragTag);
+ * // Create independent copy (not pooled)
+ * Packet copy = packet.copy();
  * 
- * // Add custom application tag
- * ApplicationTag appTag = new ApplicationTag();
- * appTag.setFlowId(flowId);
- * appTag.setTimestamp(System.nanoTime());
- * fragTag.setNext(appTag); // Chain tags together
- * 
- * // Traverse tag chain
- * PacketTag tag = packet.getTags();
- * while (tag != null) {
- * 	if (tag instanceof IpfTag) {
- * 		IpfTag ipf = (IpfTag) tag;
- * 		// Process IP fragmentation info
- * 	}
- * 	tag = tag.getNext();
- * }
+ * // Copy to pooled target
+ * Pool<Packet> copyPool = PacketPool.ofFixed();
+ * Packet target = copyPool.allocate(packet.captureLength());
+ * packet.copyTo(target);
  * }</pre>
  * 
- * <h2>Packet Formatting</h2>
+ * <h2>Pooled Packet Warning</h2>
  * 
  * <p>
- * The {@code toString()} method provides intelligent packet formatting based on
- * the configured {@link PacketFormat}. This enables flexible output for
- * debugging, logging, and analysis.
- * 
- * <pre>{@code
- * // Set default formatter
- * PacketFormat.setDefault(new PrettyPacketFormat());
- * 
- * // Packet toString() uses configured formatter
- * System.out.println(packet); // Pretty-printed packet details
- * 
- * // Use specific formatter
- * JsonPacketFormat jsonFormat = new JsonPacketFormat();
- * String json = jsonFormat.formatPacket(packet);
- * 
- * // Custom inline formatting
- * packet.toString(); // Uses default formatter or descriptor.toString()
- * }</pre>
- * 
- * <h2>Performance Characteristics</h2>
- * 
- * <p>
- * The {@code Packet} class is designed for extreme performance in
- * high-throughput packet processing scenarios:
- * 
- * <h3>Zero-Allocation Operations</h3>
- * <ul>
- * <li>All header access methods return reusable instances</li>
- * <li>No memory allocation during packet processing</li>
- * <li>Direct native memory access via MemorySegmentProxy</li>
- * <li>Constant-time header lookups via PacketDescriptor</li>
- * </ul>
- * 
- * <h3>Cache-Friendly Design</h3>
- * <ul>
- * <li>Compact object layout minimizes cache misses</li>
- * <li>Descriptor caches dissection results</li>
- * <li>Sequential memory access patterns</li>
- * <li>NUMA-aware memory binding support</li>
- * </ul>
+ * <b>Important:</b> Pooled packets have pre-allocated memory structures managed
+ * by the pool. Manually rebinding a pooled packet's memory destroys this
+ * structure and corrupts the pool. Use {@link #isPooled()} to check before
+ * manual rebinding. Pool-managed packets should only be rebound by the pool
+ * itself during allocation.
+ * </p>
  * 
  * <h2>Thread Safety</h2>
  * 
  * <p>
  * The {@code Packet} class is <strong>NOT thread-safe</strong>. Each thread
- * should use its own {@code Packet} instances. For multi-threaded processing:
- * <ul>
- * <li>Use thread-local packet pools</li>
- * <li>Implement per-core packet processing (DPDK-style)</li>
- * <li>Use lock-free queues for packet handoff between threads</li>
- * <li>Reference counting (via MemorySegmentProxy) is thread-safe</li>
- * </ul>
- * 
- * <h2>Usage Examples</h2>
- * 
- * <h3>Basic Packet Processing</h3>
- * 
- * <pre>{@code
- * public class PacketProcessor {
- * 	private final Packet packet = new Packet();
- * 	private final Dissector dissector = new CoreDissector();
- * 
- * 	public void processPacket(MemorySegment data, int length) {
- * 		// Bind to packet data
- * 		packet.bindMemory(data, 0, length);
- * 
- * 		// Dissect packet
- * 		PacketDescriptor desc = dissector.dissect(packet);
- * 		packet.setPacketDescriptor(desc);
- * 
- * 		// Process based on protocol
- * 		if (packet.isPresent(CoreProtocol.TCP)) {
- * 			processTcp(packet);
- * 		} else if (packet.isPresent(CoreProtocol.UDP)) {
- * 			processUdp(packet);
- * 		}
- * 
- * 		// Clean up
- * 		packet.unbindMemory();
- * 	}
- * }
- * }</pre>
- * 
- * <h3>Deep Packet Inspection</h3>
- * 
- * <pre>{@code
- * public class DpiEngine {
- * 	private final Ethernet eth = new Ethernet();
- * 	private final Ip4 ip4 = new Ip4();
- * 	private final Tcp tcp = new Tcp();
- * 
- * 	public void inspectPacket(Packet packet) {
- * 		// Layer 2 inspection
- * 		if (packet.hasHeader(eth)) {
- * 			packet.getHeader(eth);
- * 			byte[] srcMac = eth.source();
- * 			byte[] dstMac = eth.destination();
- * 			int vlanId = eth.vlanId(); // 0 if no VLAN
- * 		}
- * 
- * 		// Layer 3 inspection
- * 		if (packet.hasHeader(ip4)) {
- * 			packet.getHeader(ip4);
- * 			InetAddress src = ip4.sourceAddress();
- * 			InetAddress dst = ip4.destinationAddress();
- * 			int ttl = ip4.ttl();
- * 
- * 			// Check for fragmentation
- * 			if (ip4.isFragmented()) {
- * 				handleFragment(packet);
- * 			}
- * 		}
- * 
- * 		// Layer 4 inspection
- * 		if (packet.hasHeader(tcp)) {
- * 			packet.getHeader(tcp);
- * 			int srcPort = tcp.sourcePort();
- * 			int dstPort = tcp.destinationPort();
- * 			long seqNum = tcp.sequenceNumber();
- * 
- * 			// Deep inspection of payload
- * 			if (tcp.payloadLength() > 0) {
- * 				inspectPayload(packet, tcp.payloadOffset());
- * 			}
- * 		}
- * 	}
- * }
- * }</pre>
- * 
- * <h3>Packet Modification and Forwarding</h3>
- * 
- * <pre>{@code
- * public class PacketForwarder {
- * 	private final MemoryPool<ByteBuf> pool;
- * 
- * 	public void forwardWithNat(Packet packet, InetAddress newSrc) {
- * 		// Access IP header
- * 		Ip4 ip4 = new Ip4();
- * 		if (!packet.hasHeader(ip4)) {
- * 			return; // Not IPv4
- * 		}
- * 		packet.getHeader(ip4);
- * 
- * 		// Modify source address (in-place if possible)
- * 		int offset = ip4.offset() + 12; // Source IP offset
- * 		packet.putInt(offset, newSrc.toInt());
- * 
- * 		// Recalculate checksum
- * 		int checksum = calculateIpChecksum(packet, ip4.offset());
- * 		packet.putShort(ip4.offset() + 10, (short) checksum);
- * 
- * 		// Forward packet
- * 		transmit(packet);
- * 	}
- * }
- * }</pre>
- * 
- * <h2>Best Practices</h2>
- * 
- * <ol>
- * <li><strong>Reuse Packet instances:</strong> Create once, bind many
- * times</li>
- * <li><strong>Use typed headers:</strong> Prefer {@code tcp.sourcePort()} over
- * raw offsets</li>
- * <li><strong>Check header presence:</strong> Always verify with
- * {@code hasHeader()} before access</li>
- * <li><strong>Handle fragmentation:</strong> Check and process IP fragments
- * appropriately</li>
- * <li><strong>Clean up resources:</strong> Call {@code unbindMemory()} when
- * done</li>
- * <li><strong>Monitor metrics:</strong> Track processing rates and errors</li>
- * </ol>
- * 
- * <h2>Integration with Protocol Packs</h2>
- * 
- * <p>
- * The {@code Packet} class works seamlessly with protocol pack modules:
- * <ul>
- * <li><strong>core-protocols:</strong> Ethernet, IP, TCP, UDP, ICMP, etc.</li>
- * <li><strong>web-protocols:</strong> HTTP, HTTP/2, WebSocket, etc.</li>
- * <li><strong>enterprise-protocols:</strong> LDAP, SMB, database protocols</li>
- * <li><strong>telecom-protocols:</strong> SIP, RTP, Diameter, etc.</li>
- * </ul>
- * 
- * @see MemorySegmentProxy
- * @see PacketDescriptor
- * @see PacketTag
- * @see HeaderAccessor
- * @see PacketFormat
- * 
+ * should use its own {@code Packet} instances via thread-local pools.
+ * </p>
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @since 1.0
+ * @see PacketPool
+ * @see PacketDescriptor
+ * @see BoundView
  */
-public final class Packet extends ByteBuf implements HeaderAccessor, Detailable {
+public class Packet extends BoundView
+		implements Poolable, Persistable<Packet>, Detailable {
 
 	/**
-	 * PacketTag chain providing protocol-specific metadata and annotations.
-	 * 
-	 * <p>
-	 * Tags form a singly-linked list where each tag can reference the next tag in
-	 * the chain via {@link PacketTag#getNext()}. Tags are used to store information
-	 * that extends beyond basic protocol dissection, such as:
-	 * <ul>
-	 * <li>IP fragmentation and reassembly state</li>
-	 * <li>TCP stream tracking information</li>
-	 * <li>Application-layer protocol markers</li>
-	 * <li>Custom user-defined metadata</li>
-	 * </ul>
-	 * 
-	 * <p>
-	 * The tag chain is traversed from head to tail, with newer tags typically added
-	 * at the head for O(1) insertion performance.
+	 * The Constant DEFAULT_DESCRIPTOR_TYPE set to NetPacketDescriptor type. Net
+	 * descriptor type is the most versitile descriptor type, capable of storing
+	 * full packet dissection table as well as, TX settings, color, hash and many
+	 * flag types.
 	 */
-	protected PacketTag headTag;
+	private static final DescriptorInfo DEFAULT_DESCRIPTOR_TYPE = DescriptorInfo.NET;
 
 	/**
-	 * Packet descriptor containing dissection results and header locations.
-	 * 
-	 * <p>
-	 * The descriptor is produced by a {@code Dissector} and contains:
-	 * <ul>
-	 * <li>Bitmask of detected protocols</li>
-	 * <li>Offset and length of each header</li>
-	 * <li>Protocol-specific flags and metadata</li>
-	 * <li>Payload offset and length</li>
-	 * </ul>
-	 * 
-	 * <p>
-	 * Different descriptor types provide varying levels of detail:
-	 * <ul>
-	 * <li>{@code TYPE1}: Basic protocol presence flags</li>
-	 * <li>{@code TYPE2}: Detailed header offsets and lengths</li>
-	 * <li>{@code TYPE3}: Extended metadata and annotations</li>
-	 * </ul>
+	 * The Constant DEFAULT_PACKET_LENGTH. The packet length with TSO (TCP Segment
+	 * Offload, a common NIC feature) can be up to 64KB when TCP segments are
+	 * reassembled before capture.
 	 */
-	protected PacketDescriptor packetDescriptor;
+	private static final long DEFAULT_PACKET_LENGTH = 65_536;
 
 	/**
-	 * Constructs a new packet instance.
-	 * 
-	 * <p>
-	 * The packet is created in an unbound state and must be bound to memory using
-	 * {@link MemorySegmentProxy#bindMemory} before use. This allows packet
-	 * instances to be reused across multiple packet captures for zero-allocation
-	 * processing.
-	 * 
-	 * <h3>Typical Usage Pattern</h3>
-	 * 
-	 * <pre>{@code
-	 * Packet packet = new Packet(); // Create once
-	 * 
-	 * while (capturing) {
-	 * 	MemorySegment data = captureNext();
-	 * 	packet.bindMemory(data, 0, length); // Bind to new data
-	 * 	processPacket(packet);
-	 * 	packet.unbindMemory(); // Prepare for reuse
-	 * }
-	 * }</pre>
+	 * Creates a descriptor of the specified type.
 	 */
-	public Packet() {}
+	private static PacketDescriptor createDescriptor(DescriptorInfo type) {
+		return switch (type) {
+		case NET -> new NetPacketDescriptor();
+		case PCAP_PACKED -> PcapDescriptorPacked.of(ByteOrder.nativeOrder());
+		case PCAP_PADDED -> new PcapDescriptorPadded();
+		default -> throw new IllegalArgumentException("Unsupported descriptor type: " + type);
+		};
+	}
 
 	/**
-	 * Adds a new tag to the head of the tag chain.
+	 * Creates a fixed packet with slab-allocated memory.
 	 * 
 	 * <p>
-	 * The new tag becomes the head of the chain, with its {@code next} pointer set
-	 * to the previous head (if any). This provides O(1) insertion performance. Tags
-	 * can be used to annotate packets with additional metadata such as:
-	 * <ul>
-	 * <li>IP fragmentation information</li>
-	 * <li>TCP stream association</li>
-	 * <li>Application protocol detection results</li>
-	 * <li>QoS and policy markings</li>
-	 * <li>Custom processing annotations</li>
-	 * </ul>
+	 * Both data and descriptor use {@link FixedMemory} allocated from the provided
+	 * slab allocator. Data is copied into this memory and persists across recycle
+	 * cycles.
+	 * </p>
+	 *
+	 * @param allocator the slab allocator for memory allocation
+	 * @return a new fixed packet
+	 */
+	public static Packet ofFixed(SlabAllocator allocator) {
+		return ofFixedType(allocator, DEFAULT_PACKET_LENGTH, DEFAULT_DESCRIPTOR_TYPE); // Default jumbo frame size
+	}
+
+	/**
+	 * Creates a fixed packet with slab-allocated memory of specified size.
+	 *
+	 * @param allocator the slab allocator for memory allocation
+	 * @param dataSize  the size of the data buffer in bytes
+	 * @return a new fixed packet
+	 */
+	public static Packet ofFixed(SlabAllocator allocator, long dataSize) {
+		return ofFixedType(allocator, dataSize, DEFAULT_DESCRIPTOR_TYPE);
+	}
+
+	/**
+	 * Creates a fixed packet with slab-allocated memory.
 	 * 
-	 * <h3>Example: Adding Multiple Tags</h3>
+	 * <p>
+	 * Both data and descriptor use {@link FixedMemory} allocated from the provided
+	 * slab allocator. Data is copied into this memory and persists across recycle
+	 * cycles.
+	 * </p>
+	 *
+	 * @param allocator the slab allocator for memory allocation
+	 * @return a new fixed packet
+	 */
+	public static Packet ofFixedType(SlabAllocator allocator, DescriptorInfo type) {
+		return ofFixedType(allocator, DEFAULT_PACKET_LENGTH, type); // Default jumbo frame size
+	}
+
+	/**
+	 * Creates a fixed packet with slab-allocated memory of specified size.
+	 *
+	 * @param allocator the slab allocator for memory allocation
+	 * @param dataSize  the size of the data buffer in bytes
+	 * @return a new fixed packet
+	 */
+	public static Packet ofFixedType(SlabAllocator allocator, long dataSize, DescriptorInfo type) {
+		PacketDescriptor descriptor = createDescriptor(type);
+		MemorySegment dataSeg = allocator.allocate(dataSize, 8);
+		MemorySegment descSeg = allocator.allocate(descriptor.length(), 8);
+
+		FixedMemory dataMemory = new FixedMemory(dataSeg);
+		FixedMemory descMemory = new FixedMemory(descSeg);
+		descriptor.bind(descMemory);
+
+		Packet packet = new Packet(dataMemory, descriptor);
+		packet.poolEntry.bindSlab(allocator, dataSeg);
+
+		return packet;
+	}
+
+	/**
+	 * Creates a hybrid packet with scoped data and fixed descriptor.
 	 * 
-	 * <pre>{@code
-	 * // Add fragmentation tag
-	 * IpfTag fragTag = new IpfTag();
-	 * fragTag.setFragmentOffset(185);
-	 * fragTag.setMoreFragments(true);
-	 * packet.addTag(fragTag);
+	 * <p>
+	 * Data uses {@link ScopedMemory} for zero-copy native access, while the
+	 * descriptor uses {@link FixedMemory} for persistence. Useful when native
+	 * descriptors need conversion while data remains zero-copy.
+	 * </p>
+	 *
+	 * @return a new hybrid packet
+	 */
+	public static Packet ofHybrid() {
+		return ofHybridType(DEFAULT_DESCRIPTOR_TYPE);
+	}
+
+	/**
+	 * Creates a hybrid packet with scoped data and fixed descriptor.
 	 * 
-	 * // Add stream tracking tag
-	 * TcpStreamTag streamTag = new TcpStreamTag();
-	 * streamTag.setStreamId(12345);
-	 * streamTag.setSequenceNumber(seq);
-	 * packet.addTag(streamTag);
+	 * <p>
+	 * Data uses {@link ScopedMemory} for zero-copy native access, while the
+	 * descriptor uses {@link FixedMemory} for persistence. Useful when native
+	 * descriptors need conversion while data remains zero-copy.
+	 * </p>
+	 *
+	 * @return a new hybrid packet
+	 */
+	public static Packet ofHybridType(DescriptorInfo type) {
+		PacketDescriptor descriptor = createDescriptor(type);
+		ScopedMemory dataMemory = new ScopedMemory();
+		FixedMemory descMemory = new FixedMemory(descriptor.length());
+		descriptor.bind(descMemory);
+
+		return new Packet(dataMemory, descriptor);
+	}
+
+	/**
+	 * Creates a scoped packet for zero-copy capture.
 	 * 
-	 * // Tags are now chained: streamTag -> fragTag -> null
-	 * }</pre>
+	 * <p>
+	 * Both data and descriptor use {@link ScopedMemory} that binds directly to
+	 * native segments without copying. Ideal for high-speed capture where packets
+	 * don't need to persist beyond immediate processing.
+	 * </p>
+	 *
+	 * @return a new scoped packet
+	 */
+	public static Packet ofScoped() {
+		return ofScopedType(DEFAULT_DESCRIPTOR_TYPE);
+
+	}
+
+	/**
+	 * Creates a scoped packet for zero-copy capture.
 	 * 
-	 * @param tag the tag to add to the packet; must not be {@code null}
-	 * @throws NullPointerException if tag is {@code null}
-	 * @see #getTags()
+	 * <p>
+	 * Both data and descriptor use {@link ScopedMemory} that binds directly to
+	 * native segments without copying. Ideal for high-speed capture where packets
+	 * don't need to persist beyond immediate processing.
+	 * </p>
+	 *
+	 * @return a new scoped packet
+	 */
+	public static Packet ofScopedType(DescriptorInfo type) {
+		ScopedMemory dataMemory = new ScopedMemory();
+		ScopedMemory descMemory = new ScopedMemory();
+		PacketDescriptor descriptor = createDescriptor(type);
+		descriptor.bind(descMemory);
+
+		return new Packet(dataMemory, descriptor);
+	}
+
+	/** The packet descriptor containing dissection results. */
+	private PacketDescriptor packetDescriptor;
+
+	// =========================================================================
+	// Factory Methods
+	// =========================================================================
+
+	/** Head of the packet tag chain for extended metadata. */
+	private PacketTag headTag;
+
+	/**
+	 * Pool entry for pool lifecycle management.
+	 * 
+	 * <p>
+	 * Handles allocation/recycle callbacks and maintains pool linkage. The inner
+	 * class pattern gives callbacks access to packet fields.
+	 * </p>
+	 */
+	private final PoolEntry poolEntry = new PoolEntry() {
+
+		@Override
+		protected void onAllocate() {
+			// Ready for new use - bindings preserved from pool structure
+		}
+
+		@Override
+		protected void onEvict() {
+			super.onEvict();
+			// Additional cleanup if needed when permanently removed from pool
+		}
+
+		@Override
+		protected void onRecycle() {
+			// Reset packet state for reuse
+			headTag = null;
+
+			if (isPooled()) {
+				// Pooled packets: preserve data/descriptor view structures,
+				// only unbind scoped segments (FixedMemory.unbindIfScoped is no-op)
+				boundMemory().unbindIfScoped();
+				packetDescriptor.boundMemory().unbindIfScoped();
+			} else {
+				// Non-pooled packets: full unbind, view can be reused elsewhere
+				unbind();
+			}
+		}
+	};
+
+	/**
+	 * Constructs an unbound packet.
+	 * 
+	 * <p>
+	 * The packet must be bound to memory before use, either directly via
+	 * {@link #bind(Memory)} or through pool allocation.
+	 * </p>
+	 */
+	public Packet() {
+		this.packetDescriptor = new NetPacketDescriptor();
+	}
+
+	/**
+	 * Constructs a packet with the specified descriptor type.
+	 *
+	 * @param descriptorType the descriptor type to use
+	 */
+	public Packet(DescriptorInfo descriptorType) {
+		this.packetDescriptor = createDescriptor(descriptorType);
+	}
+
+	// =========================================================================
+	// Pool Management
+	// =========================================================================
+
+	/**
+	 * Constructs a packet with pre-allocated memory structures.
+	 * 
+	 * <p>
+	 * Used by pool factories to create packets with specific memory configurations.
+	 * </p>
+	 *
+	 * @param dataMemory the memory for packet data
+	 * @param descriptor the packet descriptor
+	 */
+	protected Packet(Memory dataMemory, PacketDescriptor descriptor) {
+		this.packetDescriptor = descriptor;
+		if (dataMemory != null) {
+			super.bind(dataMemory);
+		}
+	}
+
+	/**
+	 * Adds a tag to the packet tag chain.
+	 *
+	 * @param tag the tag to add
 	 */
 	public void addTag(PacketTag tag) {
-		this.headTag = tag;
+		assert tag != null : "Tag cannot be null";
+		tag.setNext(headTag);
+		headTag = tag;
 	}
 
 	/**
-	 * Returns true if this packet supports transmission control.
-	 * 
-	 * @return true if TX control is available and functional
-	 */
-	public boolean canTransmit() {
-		return packetDescriptor instanceof TransmitControl;
-	}
-
-	/**
-	 * Returns the captured length of the packet in bytes.
+	 * {@inheritDoc}
 	 * 
 	 * <p>
-	 * The capture length represents the number of bytes actually captured and
-	 * available for processing. This may be less than the wire length if the
-	 * capture was truncated due to snapshot length settings.
-	 * 
-	 * <h3>Relationship to Wire Length</h3>
-	 * 
-	 * <pre>{@code
-	 * int capLen = packet.captureLength(); // Bytes available
-	 * int wireLen = packet.wireLength(); // Original packet size
-	 * 
-	 * if (capLen < wireLen) {
-	 * 	System.out.println("Packet was truncated: " +
-	 * 			(wireLen - capLen) + " bytes missing");
-	 * }
-	 * }</pre>
-	 * 
-	 * @return the number of bytes captured
-	 * @see #wireLength()
+	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
+	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
+	 * rebinding.
+	 * </p>
+	 *
+	 * @param view the view to bind to
+	 * @throws AssertionError if assertions enabled and packet is pooled
 	 */
-	public final int captureLength() {
+	@Override
+	public void bind(BindableView view) {
+		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
+		super.bind(view);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * <p>
+	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
+	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
+	 * rebinding.
+	 * </p>
+	 *
+	 * @param view   the view to bind to
+	 * @param offset the offset within the view's active data
+	 * @throws AssertionError if assertions enabled and packet is pooled
+	 */
+	@Override
+	public void bind(BindableView view, long offset) {
+		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
+		super.bind(view, offset);
+	}
+
+	// =========================================================================
+	// Binding Overrides (with pool protection assertions)
+	// =========================================================================
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * <p>
+	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
+	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
+	 * rebinding.
+	 * </p>
+	 *
+	 * @param view   the view to bind to
+	 * @param offset the offset within the view's active data
+	 * @param length the length of the new view
+	 * @throws AssertionError if assertions enabled and packet is pooled
+	 */
+	@Override
+	public void bind(BindableView view, long offset, long length) {
+		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
+		super.bind(view, offset, length);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * <p>
+	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
+	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
+	 * rebinding.
+	 * </p>
+	 *
+	 * @param memory the memory to bind to
+	 * @throws AssertionError if assertions enabled and packet is pooled
+	 */
+	@Override
+	public void bind(Memory memory) {
+		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
+		super.bind(memory);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * <p>
+	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
+	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
+	 * rebinding.
+	 * </p>
+	 *
+	 * @param memory the memory to bind to
+	 * @param offset the offset within the memory's active data
+	 * @throws AssertionError if assertions enabled and packet is pooled
+	 */
+	@Override
+	public void bind(Memory memory, long offset) {
+		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
+		super.bind(memory, offset);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * <p>
+	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
+	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
+	 * rebinding.
+	 * </p>
+	 *
+	 * @param memory the memory to bind to
+	 * @param offset the offset within the memory's active data
+	 * @param length the length of the view
+	 * @throws AssertionError if assertions enabled and packet is pooled
+	 */
+	@Override
+	public void bind(Memory memory, long offset, long length) {
+		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
+		super.bind(memory, offset, length);
+	}
+
+	@Override
+	public void buildDetail(DetailBuilder detail) {
+		for (BindingInfo info : packetDescriptor) {
+			Header header = info.newBoundHeader(this);
+
+			if (header == null) {
+				detail.header("Unknown Protocol (0x%04X)".formatted(info.id()), "",
+						info.id(), info.offset(), info.length(), _ -> {});
+				continue;
+			}
+
+			if (header instanceof Detailable d) {
+				d.buildDetail(detail);
+			} else {
+				detail.header(header.name(), "", info.id(), info.offset(), info.length(), _ -> {});
+			}
+		}
+	}
+
+	/**
+	 * Returns the capture length in bytes.
+	 * 
+	 * <p>
+	 * This is the number of bytes actually captured and available in the packet
+	 * data. May be less than {@link #wireLength()} if the packet was truncated
+	 * during capture.
+	 * </p>
+	 *
+	 * @return the captured length in bytes
+	 */
+	public int captureLength() {
 		return packetDescriptor.captureLength();
 	}
 
 	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * Retrieves a header by its protocol ID at a specific depth. Depth is used for
-	 * tunneled protocols where the same protocol may appear multiple times in a
-	 * packet (e.g., IP-in-IP tunneling, VLAN stacking).
-	 * 
-	 * <h3>Depth Semantics</h3>
-	 * <ul>
-	 * <li>Depth 0: Outermost (first) occurrence</li>
-	 * <li>Depth 1: Second occurrence</li>
-	 * <li>Depth 2: Third occurrence, etc.</li>
-	 * </ul>
-	 * 
-	 * <h3>Example: Accessing Tunneled Headers</h3>
-	 * 
-	 * <pre>{@code
-	 * // GRE tunnel: Outer IP -> GRE -> Inner IP -> TCP
-	 * Header outerIp = packet.getHeader(CoreProtocol.IPv4, 0);
-	 * Header innerIp = packet.getHeader(CoreProtocol.IPv4, 1);
-	 * 
-	 * // Q-in-Q VLAN stacking
-	 * Header outerVlan = packet.getHeader(CoreProtocol.VLAN, 0);
-	 * Header innerVlan = packet.getHeader(CoreProtocol.VLAN, 1);
-	 * }</pre>
-	 * 
-	 * @param id    the protocol ID constant
-	 * @param depth the occurrence depth (0 for first, 1 for second, etc.)
-	 * @return the header instance bound to packet data
-	 * @throws HeaderNotFoundException if the header is not present at the specified
-	 *                                 depth
-	 * @see #isPresent(int, int)
+	 * Clears all tags from this packet.
 	 */
-	@Override
-	public final Header getHeader(int id, int depth) throws HeaderNotFoundException {
-		long encoded = packetDescriptor.mapProtocol(id, depth);
-		if (encoded == PacketDescriptor.PROTOCOL_NOT_FOUND)
-			throw new HeaderNotFoundException("id=0x%08X, depth=%d".formatted(id, depth));
-
-		int offset = PacketDescriptor.decodeOffset(encoded);
-		int length = PacketDescriptor.decodeLength(encoded);
-
-		Header header = ProtocolPackManager.findProtocol(id)
-				.orElseThrow(HeaderNotFoundException::new)
-				.headerFactory()
-				.binding()
-				.newHeader(segment(), offset);
-
-		header.bind(header, offset, length);
-
-		return header;
+	public void clearTags() {
+		headTag = null;
 	}
 
 	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * Binds the provided header instance to this packet's data at the specified
-	 * depth. This combines the reusability of typed headers with support for
-	 * tunneled protocols.
-	 * 
-	 * <h3>Example: Processing Tunneled Protocols</h3>
-	 * 
-	 * <pre>{@code
-	 * Ip4 outerIp = new Ip4();
-	 * Ip4 innerIp = new Ip4();
-	 * 
-	 * // Process GRE tunnel
-	 * if (packet.hasHeader(outerIp, 0) && packet.hasHeader(innerIp, 1)) {
-	 * 	packet.getHeader(outerIp, 0); // Bind to outer IP
-	 * 	packet.getHeader(innerIp, 1); // Bind to inner IP
-	 * 
-	 * 	System.out.println("Tunnel: " + outerIp.source() +
-	 * 			" -> " + outerIp.destination());
-	 * 	System.out.println("Inner: " + innerIp.source() +
-	 * 			" -> " + innerIp.destination());
-	 * }
-	 * }</pre>
-	 * 
-	 * @param <T>    the specific header type
-	 * @param header the header instance to bind to packet data
-	 * @param depth  the occurrence depth (0 for first, 1 for second, etc.)
-	 * @return the same header instance, now bound to packet data
-	 * @throws HeaderNotFoundException if the header is not present at the specified
-	 *                                 depth
-	 * @see #hasHeader(Header, int)
+	 * @see com.slytechs.sdk.common.memory.pool.Persistable#copy()
 	 */
 	@Override
-	public final <T extends Header> T getHeader(T header, int depth) throws HeaderNotFoundException {
-		if (!hasHeader(header, depth))
-			throw new HeaderNotFoundException(header.getClass().getSimpleName());
+	public Packet copy() {
+		long length = boundMemory().segment().byteSize();
+		Packet target = newUnbound();
 
-		return header;
+		Memory fixedPacket = Memory.of(length);
+		target.bind(fixedPacket);
+
+		Memory fixedDesc = Memory.of(packetDescriptor.length());
+		target.packetDescriptor.bind(fixedDesc);
+
+		return copyTo(target);
+	}
+
+	/**
+	 * Copies this packet's data and descriptor into the target packet.
+	 * 
+	 * <p>
+	 * The target packet must have sufficient capacity for both data and descriptor.
+	 * This method is useful for copying into pooled packets to avoid allocation.
+	 * </p>
+	 * 
+	 * <pre>{@code
+	 * Pool<Packet> copyPool = PacketPool.ofFixed();
+	 * Packet target = copyPool.allocate(packet.captureLength());
+	 * packet.copyTo(target);
+	 * // target now contains copy of packet data
+	 * }</pre>
+	 *
+	 * @param target the target packet to copy into
+	 * @throws IllegalArgumentException if target has insufficient capacity
+	 */
+	@Override
+	public Packet copyTo(Packet target) {
+		assert target != null : "Target packet cannot be null";
+		assert target.boundMemory().segment().byteSize() >= this.captureLength()
+				: "Target packet has insufficient data capacity, boundMemory length=" + target.boundMemory()
+						+ ", captureLength=" + this.captureLength();
+		assert target.packetDescriptor.boundMemory().segment().byteSize() >= this.packetDescriptor.boundMemory()
+				.segment().byteSize()
+				: "Target packet has insufficient descriptor capacity";
+
+		// Copy packet data
+		Persistable.super.copyTo(target);
+
+		// Copy descriptor
+		packetDescriptor.copyTo(target.descriptor());
+
+		// Copy tags if present
+		if (headTag != null) {
+			target.headTag = headTag.copy();
+		} else {
+			target.headTag = null;
+		}
+
+		return target;
 	}
 
 	/**
 	 * Returns the packet descriptor containing dissection results.
 	 * 
 	 * <p>
-	 * The packet descriptor stores the results of protocol dissection including
-	 * header locations, protocol flags, and metadata. Different descriptor types
-	 * provide varying levels of detail:
-	 * 
-	 * <ul>
-	 * <li>{@code PacketDescriptorType.TYPE1}: Basic protocol presence</li>
-	 * <li>{@code PacketDescriptorType.TYPE2}: Detailed header information</li>
-	 * <li>{@code PacketDescriptorType.TYPE3}: Extended metadata</li>
-	 * </ul>
-	 * 
-	 * <p>
-	 * The descriptor can be cast to specific types for additional functionality:
-	 * 
-	 * <pre>{@code
-	 * // Get descriptor with specific type
-	 * Type2Descriptor desc = packet.getPacketDescriptor();
-	 * 
-	 * // Access type-specific features
-	 * int headerCount = desc.headerCount();
-	 * for (int i = 0; i < headerCount; i++) {
-	 * 	int id = desc.headerId(i);
-	 * 	int offset = desc.headerOffset(i);
-	 * 	int length = desc.headerLength(i);
-	 * 	System.out.printf("Header %d: offset=%d, length=%d%n",
-	 * 			id, offset, length);
-	 * }
-	 * }</pre>
-	 * 
-	 * @param <T> the specific descriptor type
-	 * @return the packet descriptor cast to the requested type
-	 * @see #setPacketDescriptor(PacketDescriptor)
-	 * @see PacketDescriptor
+	 * The descriptor provides protocol presence information and header
+	 * offset/length data for efficient header access.
+	 * </p>
+	 *
+	 * @return the packet descriptor
 	 */
-	@SuppressWarnings("unchecked")
-	public final <T extends PacketDescriptor> T getPacketDescriptor() {
-		return (T) packetDescriptor;
-	}
-
-	public PacketTag getTag() {
-		return headTag;
+	public PacketDescriptor descriptor() {
+		return packetDescriptor;
 	}
 
 	/**
-	 * Returns the head of the PacketTag chain attached to this packet.
-	 * 
-	 * <p>
-	 * NetTags provide extensible metadata that can be attached to packets without
-	 * modifying the packet data itself. Tags are organized in a singly-linked list
-	 * and can be traversed using {@link PacketTag#getNext()}.
-	 * 
-	 * <h3>Example: Traversing the Tag Chain</h3>
-	 * 
-	 * <pre>{@code
-	 * PacketTag tag = packet.getTags();
-	 * while (tag != null) {
-	 * 	if (tag instanceof IpfTag) {
-	 * 		IpfTag ipf = (IpfTag) tag;
-	 * 		System.out.println("Fragment offset: " + ipf.getFragmentOffset());
-	 * 	} else if (tag instanceof TcpStreamTag) {
-	 * 		TcpStreamTag stream = (TcpStreamTag) tag;
-	 * 		System.out.println("Stream ID: " + stream.getStreamId());
-	 * 	}
-	 * 	tag = tag.getNext();
-	 * }
-	 * }</pre>
-	 * 
-	 * @return the head of the tag chain, or {@code null} if no tags are attached
-	 * @see #addTag(PacketTag)
+	 * @see com.slytechs.sdk.common.memory.pool.Persistable#duplicate(com.slytechs.sdk.common.memory.pool.Persistable)
+	 */
+	@Override
+	public Packet duplicate(Packet target) {
+		Persistable.super.duplicate(target);
+
+		// Descriptor shared
+		packetDescriptor.boundMemory().incrementRef();
+		target.packetDescriptor.bind(this.packetDescriptor.boundView());
+
+		target.headTag = this.headTag;
+		return target;
+	}
+
+	/**
+	 * Returns the head of the packet tag chain.
+	 *
+	 * @return the first tag, or null if no tags
 	 */
 	public PacketTag getTags() {
 		return headTag;
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * Binds a header instance to this packet if the protocol is present.
 	 * 
 	 * <p>
-	 * Checks if the specified header type is present at the given depth. This is
-	 * used for tunneled protocols where the same header type may appear multiple
-	 * times.
-	 * 
-	 * <h3>Example: Detecting Tunnels</h3>
+	 * This is the primary zero-allocation header access pattern. The same header
+	 * instance can be reused across packets.
+	 * </p>
 	 * 
 	 * <pre>{@code
-	 * Ip4 ip = new Ip4();
-	 * 
-	 * boolean isTunneled = packet.hasHeader(ip, 0) && packet.hasHeader(ip, 1);
-	 * if (isTunneled) {
-	 * 	System.out.println("IP-in-IP tunnel detected");
+	 * Tcp tcp = new Tcp();
+	 * if (packet.hasHeader(tcp)) {
+	 * 	int srcPort = tcp.srcPort();
+	 * 	int dstPort = tcp.dstPort();
 	 * }
-	 * 
-	 * // Check for Q-in-Q VLAN stacking
-	 * Vlan vlan = new Vlan();
-	 * int vlanDepth = 0;
-	 * while (packet.hasHeader(vlan, vlanDepth)) {
-	 * 	vlanDepth++;
-	 * }
-	 * System.out.println("VLAN stack depth: " + vlanDepth);
 	 * }</pre>
-	 * 
-	 * @param header the header instance to check
-	 * @param depth  the occurrence depth to check
-	 * @return {@code true} if the header is present at the specified depth
-	 * @see #getHeader(Header, int)
+	 *
+	 * @param header the header instance to bind
+	 * @return true if the header was bound (protocol present)
 	 */
-	@Override
-	public final boolean hasHeader(Header header, int depth) {
-		int protocolId = header.getProtocolId();
-
-		return packetDescriptor.bindProtocol(this, header, protocolId, depth);
+	public boolean hasHeader(Header header) {
+		return hasHeader(header, 0);
 	}
 
 	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * Checks if a protocol is present at the specified depth. This method combines
-	 * the efficiency of ID-based checks with support for tunneled protocols.
-	 * 
-	 * <h3>Example: Tunnel Detection</h3>
-	 * 
-	 * <pre>{@code
-	 * // Detect IP-in-IP tunnel
-	 * boolean hasOuterIP = packet.isPresent(CoreProtocol.IPv4, 0);
-	 * boolean hasInnerIP = packet.isPresent(CoreProtocol.IPv4, 1);
-	 * 
-	 * if (hasOuterIP && hasInnerIP) {
-	 * 	System.out.println("IP-in-IP tunnel detected");
-	 * }
-	 * 
-	 * // Count MPLS label stack depth
-	 * int labelDepth = 0;
-	 * while (packet.isPresent(CoreProtocol.MPLS, labelDepth)) {
-	 * 	labelDepth++;
-	 * }
-	 * System.out.println("MPLS stack depth: " + labelDepth);
-	 * }</pre>
-	 * 
-	 * @param id    the protocol ID constant
-	 * @param depth the occurrence depth to check
-	 * @return {@code true} if the protocol is present at the specified depth
-	 * @see #getHeader(int, int)
+	 * Binds a header instance at the specified depth.
+	 *
+	 * @param header the header instance to bind
+	 * @param depth  the occurrence depth (0 = first/outer)
+	 * @return true if the header was bound
 	 */
-	@Override
-	public final boolean isPresent(int id, int depth) {
-		long encoded = packetDescriptor.mapProtocol(id, depth);
-
-		return encoded != PacketDescriptor.PROTOCOL_NOT_FOUND;
+	public boolean hasHeader(Header header, int depth) {
+		return packetDescriptor.bindHeader(this, header, header.getProtocolId(), depth);
 	}
 
+	/**
+	 * Checks if this packet is owned by a pool.
+	 *
+	 * @return true if this packet belongs to a pool
+	 */
+	public boolean isPooled() {
+		return poolEntry.isPooled();
+	}
+
+	/**
+	 * Checks if a protocol header is present in this packet.
+	 *
+	 * @param id the protocol ID constant
+	 * @return true if the protocol is present
+	 */
+	public boolean isPresent(int id) {
+		return isPresent(id, 0);
+	}
+
+	/**
+	 * Checks if a protocol header is present at the specified depth.
+	 * 
+	 * <p>
+	 * Depth is used for tunneled protocols where multiple instances of the same
+	 * protocol may be present (e.g., outer IP vs inner IP).
+	 * </p>
+	 *
+	 * @param id    the protocol ID constant
+	 * @param depth the occurrence depth (0 = first/outer)
+	 * @return true if the protocol is present at the specified depth
+	 */
+	public boolean isPresent(int id, int depth) {
+		long encoded = packetDescriptor.mapProtocol(id, depth);
+		return encoded >= 0;
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.memory.pool.Persistable#newUnbound()
+	 */
+	@Override
+	public Packet newUnbound() {
+		return new Packet(descriptor().descriptorInfo());
+	}
+
+	/**
+	 * Returns the pool that owns this packet.
+	 * 
+	 * <p>
+	 * The returned pool is always typed as {@code Pool<Packet>} since packets are
+	 * only ever allocated from packet pools.
+	 * </p>
+	 *
+	 * @return the owning pool, or null if not pooled
+	 */
+	@SuppressWarnings("unchecked")
+	public Pool<Packet> pool() {
+		return (Pool<Packet>) poolEntry.owningPool();
+	}
+
+	/**
+	 * Returns the pool entry for pool lifecycle management.
+	 *
+	 * @return the pool entry (never null)
+	 */
+	@Override
+	public PoolEntry poolEntry() {
+		return poolEntry;
+	}
+
+	/**
+	 * Returns this packet to its owning pool.
+	 * 
+	 * <p>
+	 * If this packet was allocated from a pool, it is returned to that pool for
+	 * reuse. The {@code onRecycle()} callback clears packet state and unbinds
+	 * scoped memory while preserving pool structure.
+	 * </p>
+	 * 
+	 * <p>
+	 * If this packet is not pooled, this method does nothing.
+	 * </p>
+	 */
+	@Override
+	public void poolRecycle() {
+		poolEntry.recycle();
+	}
+
+	/**
+	 * Removes a tag from the packet tag chain.
+	 *
+	 * @param tag the tag to remove
+	 * @return true if the tag was found and removed
+	 */
 	public boolean removeTag(PacketTag tag) {
 		if (headTag == tag) {
-			headTag = null;
-
+			headTag = tag.next();
 			return true;
+		}
+
+		PacketTag current = headTag;
+		while (current != null && current.next() != null) {
+			if (current.next() == tag) {
+				current.setNext(tag.next());
+				return true;
+			}
+			current = current.next();
 		}
 
 		return false;
@@ -764,158 +831,69 @@ public final class Packet extends ByteBuf implements HeaderAccessor, Detailable 
 	 * Sets the packet descriptor containing dissection results.
 	 * 
 	 * <p>
-	 * The descriptor is typically produced by a {@code Dissector} after analyzing
-	 * the packet data. Once set, the descriptor enables efficient header access
-	 * through the various {@code getHeader} and {@code hasHeader} methods.
-	 * 
-	 * <h3>Example: Packet Processing Pipeline</h3>
-	 * 
-	 * <pre>{@code
-	 * public class PacketPipeline {
-	 * 	private final Dissector dissector = new CoreDissector();
-	 * 	private final Packet packet = new Packet();
-	 * 
-	 * 	public void processPacket(MemorySegment data, int length) {
-	 * 		// Bind packet to data
-	 * 		packet.bindMemory(data, 0, length);
-	 * 
-	 * 		// Dissect packet
-	 * 		PacketDescriptor descriptor = dissector.dissect(packet);
-	 * 		packet.setPacketDescriptor(descriptor);
-	 * 
-	 * 		// Now headers can be accessed efficiently
-	 * 		if (packet.isPresent(CoreProtocol.TCP)) {
-	 * 			processTcp(packet);
-	 * 		}
-	 * 
-	 * 		// Clean up for reuse
-	 * 		packet.unbindMemory();
-	 * 	}
-	 * }
-	 * }</pre>
-	 * 
-	 * @param descriptor the packet descriptor to set; must not be {@code null}
-	 * @throws NullPointerException if descriptor is {@code null}
-	 * @see #getPacketDescriptor()
-	 * @see PacketDescriptor
+	 * The descriptor is typically produced by a dissector after analyzing the
+	 * packet data.
+	 * </p>
+	 *
+	 * @param descriptor the packet descriptor to set
 	 */
-	public final void setPacketDescriptor(PacketDescriptor descriptor) {
+	public void setDescriptor(PacketDescriptor descriptor) {
+		assert descriptor != null : "Descriptor cannot be null";
 		this.packetDescriptor = descriptor;
 	}
 
 	/**
-	 * Returns a string representation of this packet.
-	 * 
-	 * <p>
-	 * The format of the returned string depends on the configured default
-	 * {@link PacketFormat}. If no formatter is set, the packet descriptor's
-	 * {@code toString()} method is used as a fallback.
-	 * 
-	 * <p>
-	 * Common formatters include:
-	 * <ul>
-	 * <li>{@code PrettyPacketFormat}: Human-readable multi-line format</li>
-	 * <li>{@code CompactPacketFormat}: Single-line summary format</li>
-	 * <li>{@code XmlPacketFormat}: XML representation</li>
-	 * <li>{@code JsonPacketFormat}: JSON representation</li>
-	 * </ul>
-	 * 
-	 * <h3>Example Output (PrettyPacketFormat)</h3>
-	 * 
-	 * <pre>
-	 * Frame #1 (74 bytes on wire, 74 bytes captured)
-	 *   Ethernet II: 00:11:22:33:44:55 -> 66:77:88:99:aa:bb, Type: IPv4 (0x0800)
-	 *   IPv4: 192.168.1.1 -> 10.0.0.1, Protocol: TCP (6), Length: 60
-	 *   TCP: 54321 -> 80 (HTTP), Seq: 1234567, Ack: 7654321, Flags: [PSH, ACK]
-	 * </pre>
-	 * 
-	 * @return a formatted string representation of the packet
-	 * @see PacketFormat#setDefault(PacketFormat)
+	 * Returns the packet capture timestamp.
+	 *
+	 * @return the timestamp value
 	 */
+	public long timestamp() {
+		return packetDescriptor.timestamp();
+	}
+
+	/**
+	 * Returns the packet timestamp with unit information.
+	 *
+	 * @return the timestamp info
+	 */
+	public Timestamp timestampInfo() {
+		return new Timestamp(packetDescriptor.timestamp(), packetDescriptor.timestampUnit());
+	}
+
 	@Override
 	public String toString() {
 		return toDetailString();
 	}
 
-	public String toString2() {
-		PacketFormat format = PacketFormat.getDefault();
-		if (format == null)
-			return packetDescriptor.toString();
-
-		return format.formatPacket(this);
-	}
-
 	/**
-	 * Returns the wire length of the packet in bytes.
+	 * {@inheritDoc}
 	 * 
 	 * <p>
-	 * The wire length represents the original size of the packet as it appeared on
-	 * the network, which may be larger than the capture length if the packet was
-	 * truncated during capture.
-	 * 
-	 * <h3>Usage for Truncation Detection</h3>
-	 * 
-	 * <pre>{@code
-	 * int wireLen = packet.wireLength();
-	 * int capLen = packet.captureLength();
-	 * 
-	 * if (wireLen > capLen) {
-	 * 	// Packet was truncated
-	 * 	int missing = wireLen - capLen;
-	 * 	log.warn("Packet truncated: {} bytes missing", missing);
-	 * 
-	 * 	// May need special handling for incomplete packets
-	 * 	if (packet.isPresent(CoreProtocol.TCP)) {
-	 * 		// TCP payload may be incomplete
-	 * 	}
-	 * }
-	 * }</pre>
-	 * 
-	 * <h3>Statistics and Monitoring</h3>
-	 * 
-	 * <pre>{@code
-	 * // Accumulate traffic statistics
-	 * long totalWireBytes = 0;
-	 * long totalCapturedBytes = 0;
-	 * 
-	 * for (Packet packet : packets) {
-	 * 	totalWireBytes += packet.wireLength();
-	 * 	totalCapturedBytes += packet.captureLength();
-	 * }
-	 * 
-	 * double captureRatio = (double) totalCapturedBytes / totalWireBytes;
-	 * System.out.printf("Capture ratio: %.2f%%%n", captureRatio * 100);
-	 * }</pre>
-	 * 
-	 * @return the original packet size in bytes as seen on the wire
-	 * @see #captureLength()
+	 * <b>Warning:</b> For pooled packets, unbinding destroys the pool's
+	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
+	 * unbinding. Use {@link #poolRecycle()} instead to properly return pooled
+	 * packets.
+	 * </p>
+	 *
+	 * @throws AssertionError if assertions enabled and packet is pooled
 	 */
-	public final int wireLength() {
-		return packetDescriptor.wireLength();
+	@Override
+	public void unbind() {
+		assert !isPooled() : "Unbinding pooled packet destroys pool structure - use recycle() instead";
+		super.unbind();
 	}
 
 	/**
-	 * @see com.slytechs.sdk.common.detail.Detailable#buildDetail(com.slytechs.sdk.common.detail.DetailBuilder)
+	 * Returns the wire length in bytes.
+	 * 
+	 * <p>
+	 * This is the original size of the packet as it appeared on the network, which
+	 * may be larger than {@link #captureLength()} if truncated.
+	 * </p>
+	 *
+	 * @return the original packet size in bytes
 	 */
-	@Override
-	public void buildDetail(DetailBuilder detail) {
-		for (BindingInfo info : packetDescriptor) {
-			Header header = info.newBoundHeader(this);
-
-			if (header == null) {
-				// Unknown protocol - show placeholder
-				detail.header("Unknown Protocol (0x%04X)".formatted(info.id()), "",
-						info.id(), info.offset(), info.length(), _ -> {});
-				continue;
-			}
-
-			if (header instanceof Detailable d) {
-				d.buildDetail(detail); // Just delegate - buildDetail creates its own header
-			} else {
-				// Fallback for non-Detailable headers
-				detail.header(header.name(), "", info.id(), info.offset(), info.length(), _ -> {});
-			}
-		}
+	public int wireLength() {
+		return packetDescriptor.wireLength();
 	}
-
 }

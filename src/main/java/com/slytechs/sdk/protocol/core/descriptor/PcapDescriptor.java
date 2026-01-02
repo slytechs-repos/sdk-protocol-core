@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2025 Sly Technologies Inc.
+ * Copyright 2024 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,163 +17,144 @@
  */
 package com.slytechs.sdk.protocol.core.descriptor;
 
-import static com.slytechs.sdk.common.memory.MemoryStructure.*;
-
-import java.lang.foreign.MemoryLayout;
-import java.nio.ByteOrder;
-
-import com.slytechs.sdk.common.memory.ByteBuf;
+import com.slytechs.sdk.common.memory.BindableView;
 import com.slytechs.sdk.common.time.TimestampUnit;
 import com.slytechs.sdk.protocol.core.Header;
 
-import static java.lang.foreign.MemoryLayout.*;
-import static java.lang.foreign.MemoryLayout.PathElement.*;
-
 /**
- * 
- *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public abstract class PcapDescriptor extends AbstractPacketDescriptor implements PcapHeader {
+public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 
-	public static final MemoryLayout LAYOUT$NATIVE_ABI = unionLayout(
-			structLayout(
-					structLayout(
+	/** The Constant RX_CAPABILITIES. */
+	public static final long RX_CAPABILITIES = 0;
 
-							U32.withName("tv_sec"),
-							paddingLayout(4),
-							U32.withName("tv_usec"),
-							paddingLayout(4)
+	/** The Constant TX_CAPABILITIES. */
+	public static final long TX_CAPABILITIES = 0;
 
-					).withName("timeval"),
+	private L2FrameInfo l2FrameInfo;
 
-					U32.withName("caplen"),
-					U32.withName("wirelen")
-
-			).withName("lp64"),
-
-			structLayout(
-					structLayout(
-
-							U32.withName("tv_sec"),
-							U32.withName("tv_usec")
-
-					).withName("timeval"),
-
-					U32.withName("caplen"),
-					U32.withName("wirelen")
-
-			).withName("llp64"),
-
-			structLayout(
-					structLayout(
-
-							U32_LE.withName("tv_sec"),
-							U32_LE.withName("tv_usec")
-
-					).withName("timeval"),
-
-					U32_LE.withName("caplen"),
-					U32_LE.withName("wirelen")
-
-			).withName("llp64_le"),
-
-			structLayout(
-					structLayout(
-
-							U32_BE.withName("tv_sec"),
-							U32_BE.withName("tv_usec")
-
-					).withName("timeval"),
-
-					U32_BE.withName("caplen"),
-					U32_BE.withName("wirelen")
-
-			).withName("llp64_be")
-
-	).withName("pcap_pkthdr_libpcap");
-
-	public static final MemoryLayout LAYOUT$LP64 = LAYOUT$NATIVE_ABI.select(groupElement("lp64"));
-
-	public static final MemoryLayout LAYOUT$PADDED = LAYOUT$LP64;
-
-	public static final MemoryLayout LAYOUT$LLP64 = LAYOUT$NATIVE_ABI.select(groupElement("llp64"));
-	public static final MemoryLayout LAYOUT$COMPACT = LAYOUT$LLP64;
-
-	public static final MemoryLayout LAYOUT$COMPACT$LE = LAYOUT$NATIVE_ABI.select(groupElement("llp64_le"));
-	public static final MemoryLayout LAYOUT$COMPACT$BE = LAYOUT$NATIVE_ABI.select(groupElement("llp64_be"));
-
-	public static PcapDescriptor of(ByteOrder order) {
-		return of(order, L2FrameType.ETHER, TimestampUnit.PCAP_MICRO);
-	}
-
-	public static PcapDescriptor of(ByteOrder order, int l2Type, TimestampUnit timestampUnit) {
-		return (order == ByteOrder.BIG_ENDIAN)
-				? new PcapDescriptorBe(l2Type, timestampUnit)
-				: new PcapDescriptorLe(l2Type, timestampUnit);
-	}
-
-	protected PcapDescriptor(int l2Type, TimestampUnit timestampUnit) {
-		super(l2Type, timestampUnit);
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rxCapabilitiesBitmask()
+	 */
+	@Override
+	public long rxCapabilitiesBitmask() {
+		return RX_CAPABILITIES;
 	}
 
 	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.Descriptor#descriptorId()
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#txCapabilitiesBitmask()
 	 */
 	@Override
-	public int descriptorId() {
-		return DescriptorType.PCAP;
+	public long txCapabilitiesBitmask() {
+		return TX_CAPABILITIES;
 	}
 
 	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.Descriptor#length()
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rxCapabilities()
 	 */
 	@Override
-	public long length() {
-		return LAYOUT$COMPACT.byteSize();
+	public RxCapabilities rxCapabilities() {
+		return RxCapabilities.INSTANCE;
 	}
 
 	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.RxDescriptor#setTimestamp(long)
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#txCapabilities()
 	 */
 	@Override
-	public void setTimestamp(long timestamp) {
+	public TxCapabilities txCapabilities() {
+		return TxCapabilities.INSTANCE;
+	}
+
+	public PcapDescriptor(DescriptorInfo descriptorInfo, L2FrameInfo l2FrameInfo, TimestampUnit timestampUnit) {
+		super(descriptorInfo, timestampUnit);
+
+		this.l2FrameInfo = l2FrameInfo;
+	}
+
+	public PcapDescriptor(DescriptorInfo descriptorInfo, TimestampUnit timestampUnit) {
+		super(descriptorInfo, timestampUnit);
+	}
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#l2FrameInfo()
+	 */
+	@Override
+	public final L2FrameInfo l2FrameInfo() {
+		return l2FrameInfo;
+	}
+
+	/**
+	 * @return
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#setL2FrameType(L2FrameInfo)
+	 */
+	@Override
+	public PcapDescriptor setL2FrameType(L2FrameInfo l2FrameInfo) {
+		this.l2FrameInfo = l2FrameInfo;
+
+		return this;
+	}
+
+	public abstract int tvUSec();
+
+	public abstract int tvSec();
+
+	public abstract PcapDescriptor setTvSec(int epochSeconds);
+
+	public abstract PcapDescriptor setTvUSec(int useconds);
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#timestamp()
+	 */
+	@Override
+	public final long timestamp() {
+		long timestamp = timestampUnit().ofSecond(tvSec(), tvUSec());
+
+		return timestamp;
+	}
+
+	/**
+	 * @return
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#setTimestamp(long)
+	 */
+	@Override
+	public final PcapDescriptor setTimestamp(long timestamp) {
 		setTimestamp(timestamp, timestampUnit());
+
+		return this;
 	}
 
 	@Override
-	public void setTimestamp(long timestamp, TimestampUnit unit) {
+	public final PcapDescriptor setTimestamp(long timestamp, TimestampUnit unit) {
 		int tv_sec = (int) unit.toEpochSecond(timestamp);
 		int tv_usec = (int) unit.toPcapMicro(timestamp);
 
 		setTvSec(tv_sec);
 		setTvUSec(tv_usec);
+
+		return this;
 	}
 
 	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.Descriptor#type()
-	 */
-	@Override
-	public DescriptorTypeInfo type() {
-		return DescriptorTypeInfo.PCAP;
-	}
-
-	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#bindProtocol(com.slytechs.sdk.common.memory.BindableView,
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#bindHeader(com.slytechs.sdk.common.memory.BindableView,
 	 *      com.slytechs.sdk.protocol.core.Header, int, int)
 	 */
 	@Override
-	public boolean bindProtocol(ByteBuf packet, Header header, int protocolId, int depth) {
-		if (depth == 0) {
-			L2FrameType l2Type = L2FrameTypeInfo.of(l2FrameType());
-			if (l2Type != null && l2Type.protocolId() == protocolId) {
-				long offset = 0;
-				long length = l2Type.baseLength();
+	public final boolean bindHeader(BindableView packet, Header header, int protocolId, int depth) {
+		L2FrameType l2Type = l2FrameInfo();
 
-				return header.bindHeader(packet, protocolId, depth, offset, length);
-			}
+		// Quick path
+		if (depth == 0 && l2Type.protocolId() == protocolId) {
+			long offset = 0;
+			long length = l2Type.minLength();
+
+			return header.bindHeader(packet, protocolId, depth, offset, length);
 		}
-		return false;
+
+		// Slow path or no-op depending on user settings.
+		return AbstractPacketDescriptor.UNSUPPORTED_HEADER_BINDING
+				.bindHeader(packet, header, l2Type.l2FrameId(), protocolId, depth);
 	}
+
 }

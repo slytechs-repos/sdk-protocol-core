@@ -32,7 +32,7 @@ import com.slytechs.sdk.protocol.core.ProtocolId;
  * 
  * <pre>{@code
  * int l2Type = descriptor.l2FrameType();
- * L2FrameTypeInfo info = L2FrameTypeInfo.of(l2Type);
+ * L2FrameInfo info = L2FrameInfo.of(l2Type);
  * 
  * int headerLen = info.baseLength();
  * int protoId = info.protocolId();
@@ -43,7 +43,7 @@ import com.slytechs.sdk.protocol.core.ProtocolId;
  * @see L2FrameType
  * @see ProtocolId
  */
-public enum L2FrameTypeInfo implements L2FrameType {
+public enum L2FrameInfo implements L2FrameType {
 
 	// @formatter:off
 
@@ -214,20 +214,22 @@ public enum L2FrameTypeInfo implements L2FrameType {
 	// Instance Fields
 	// ════════════════════════════════════════════════════════════════════════════
 
-	private final int l2Type;
-	private final int baseLength;
+	private final int l2FrameId;
+	private final int minLength;
+	private final int maxLength;
 	private final int protocolId;
 
 	/**
 	 * Creates a new L2 frame type info entry.
 	 *
-	 * @param l2Type     the L2FrameType constant value
-	 * @param baseLength the base header length in bytes (may be variable)
+	 * @param l2FrameId  the L2FrameType constant value
+	 * @param minLength  the base header length in bytes (may be variable)
 	 * @param protocolId the ProtocolId for the root protocol
 	 */
-	L2FrameTypeInfo(int l2Type, int baseLength, int protocolId) {
-		this.l2Type = l2Type;
-		this.baseLength = baseLength;
+	L2FrameInfo(int l2FrameId, int minLength, int protocolId) {
+		this.l2FrameId = l2FrameId;
+		this.minLength = minLength;
+		this.maxLength = minLength;
 		this.protocolId = protocolId;
 	}
 
@@ -237,8 +239,8 @@ public enum L2FrameTypeInfo implements L2FrameType {
 	 * @return the L2FrameType value
 	 */
 	@Override
-	public int l2FrameType() {
-		return l2Type;
+	public int l2FrameId() {
+		return l2FrameId;
 	}
 
 	/**
@@ -253,8 +255,13 @@ public enum L2FrameTypeInfo implements L2FrameType {
 	 * @return base header length in bytes
 	 */
 	@Override
-	public int baseLength() {
-		return baseLength;
+	public int minLength() {
+		return minLength;
+	}
+
+	@Override
+	public int maxLength() {
+		return maxLength;
 	}
 
 	/**
@@ -281,23 +288,23 @@ public enum L2FrameTypeInfo implements L2FrameType {
 	// ════════════════════════════════════════════════════════════════════════════
 
 	/** Lookup table indexed by L2FrameType constant. */
-	private static final L2FrameTypeInfo[] BY_TYPE = new L2FrameTypeInfo[128];
+	private static final L2FrameInfo[] BY_TYPE = new L2FrameInfo[128];
 
 	static {
-		for (L2FrameTypeInfo info : values()) {
-			if (info.l2Type >= 0 && info.l2Type < BY_TYPE.length) {
-				BY_TYPE[info.l2Type] = info;
+		for (L2FrameInfo info : values()) {
+			if (info.l2FrameId >= 0 && info.l2FrameId < BY_TYPE.length) {
+				BY_TYPE[info.l2FrameId] = info;
 			}
 		}
 	}
 
 	/**
-	 * Returns the L2FrameTypeInfo for the given L2 frame type constant.
+	 * Returns the L2FrameInfo for the given L2 frame type constant.
 	 *
 	 * @param l2Type the L2FrameType constant
 	 * @return the corresponding info, or {@link #UNKNOWN} if not found
 	 */
-	public static L2FrameTypeInfo of(int l2Type) {
+	public static L2FrameInfo of(int l2Type) {
 		if (l2Type >= 0 && l2Type < BY_TYPE.length && BY_TYPE[l2Type] != null) {
 			return BY_TYPE[l2Type];
 		}

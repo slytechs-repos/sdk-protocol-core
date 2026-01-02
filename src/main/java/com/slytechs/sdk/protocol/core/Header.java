@@ -20,7 +20,7 @@ package com.slytechs.sdk.protocol.core;
 import java.lang.foreign.MemoryLayout;
 
 import com.slytechs.sdk.common.memory.BindableView;
-import com.slytechs.sdk.common.memory.ByteBuf;
+import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryStructure;
 import com.slytechs.sdk.common.util.Named;
 import com.slytechs.sdk.protocol.core.pack.ProtocolPackManager;
@@ -30,7 +30,7 @@ import com.slytechs.sdk.protocol.core.pack.ProtocolPackManager;
  * @author Sly Technologies Inc.
  */
 public sealed abstract class Header
-		extends ByteBuf
+		extends BoundView
 		implements MemoryStructure, Named
 		permits FixedHeader, VariableHeader, ExtensibleHeader {
 

@@ -18,39 +18,40 @@
 package com.slytechs.sdk.protocol.core.stack;
 
 /**
- * 
+ * Exception thrown for protocol stack configuration and initialization errors.
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
 public class ProtocolStackException extends RuntimeException {
 
-	public ProtocolStackException() {
-		super();
-		// TODO Auto-generated constructor stub
-	}
+    private static final long serialVersionUID = 1L;
 
-	public ProtocolStackException(String message, Throwable cause, boolean enableSuppression,
-			boolean writableStackTrace) {
-		super(message, cause, enableSuppression, writableStackTrace);
-		// TODO Auto-generated constructor stub
-	}
+    /**
+     * Constructs a new exception with the specified message.
+     *
+     * @param message the detail message
+     */
+    public ProtocolStackException(String message) {
+        super(message);
+    }
 
-	public ProtocolStackException(String message, Throwable cause) {
-		super(message, cause);
-		// TODO Auto-generated constructor stub
-	}
+    /**
+     * Constructs a new exception with the specified message and cause.
+     *
+     * @param message the detail message
+     * @param cause   the cause
+     */
+    public ProtocolStackException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-	public ProtocolStackException(String message) {
-		super(message);
-		// TODO Auto-generated constructor stub
-	}
-
-	public ProtocolStackException(Throwable cause) {
-		super(cause);
-		// TODO Auto-generated constructor stub
-	}
-
-	private static final long serialVersionUID = 2981882521434750864L;
-
+    /**
+     * Constructs a new exception with the specified cause.
+     *
+     * @param cause the cause
+     */
+    public ProtocolStackException(Throwable cause) {
+        super(cause);
+    }
 }

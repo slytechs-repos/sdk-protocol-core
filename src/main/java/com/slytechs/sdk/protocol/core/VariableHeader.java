@@ -20,7 +20,7 @@ package com.slytechs.sdk.protocol.core;
 import java.lang.foreign.MemoryLayout;
 
 import com.slytechs.sdk.common.memory.BindableView;
-import com.slytechs.sdk.common.memory.ByteBuf;
+import com.slytechs.sdk.common.memory.MemoryBuffer;
 
 /**
  * Base class for protocol headers with integrated variable-length options.
@@ -176,7 +176,7 @@ public non-sealed abstract class VariableHeader<T extends HeaderOptions<?>> exte
 	 * @param offset         the offset of this header within the packet
 	 * @param extendedLength the total header length including options
 	 * @return true if binding was successful
-	 * @see Options#prepareForBinding(ByteBuf, long, long, long)
+	 * @see Options#prepareForBinding(MemoryBuffer, long, long, long)
 	 */
 	@Override
 	public final boolean bindHeader(

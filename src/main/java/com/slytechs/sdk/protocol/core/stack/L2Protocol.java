@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2024 Sly Technologies Inc.
+ * Copyright 2025 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,28 +15,18 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core.dissector;
-
-import com.slytechs.sdk.common.memory.ByteBuf;
-import com.slytechs.sdk.protocol.core.descriptor.L2FrameType;
+package com.slytechs.sdk.protocol.core.stack;
 
 /**
+ * Marker interface for Layer 2 (Data Link) protocol configurations.
  * 
+ * <p>
+ * L2 protocols include: Ethernet, VLAN (802.1Q), MPLS, PPP, etc.
+ * </p>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface LazyDissector {
-
-	/**
-	 * Returns a bitmask of supported protocol's (their ordinals). Allows for a
-	 * quick check if the dissector is usable for a particular protocol.
-	 *
-	 * @return the 64-bit bitmask
-	 */
-	long supportedBitmask();
-
-	int dissect(long[] protocolArray, int arrayOffset, ByteBuf packet, L2FrameType l2Type);
-
-	long lookupProtocolId(int protocolId, long[] protocolArray, int arrayLength);
+public interface L2Protocol extends LayerMarker {
+    // Marker interface
 }

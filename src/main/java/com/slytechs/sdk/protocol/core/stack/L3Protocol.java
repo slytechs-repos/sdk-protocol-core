@@ -15,15 +15,18 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core;
+package com.slytechs.sdk.protocol.core.stack;
 
 /**
+ * Marker interface for Layer 3 (Network) protocol configurations.
  * 
+ * <p>
+ * L3 protocols include: IPv4, IPv6, ICMP, ARP, etc.
+ * </p>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface PacketFactory {
-
-	Packet newInstance();
+public interface L3Protocol extends LayerMarker {
+    // Marker interface
 }

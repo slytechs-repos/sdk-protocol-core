@@ -20,7 +20,7 @@ package com.slytechs.sdk.protocol.core.address;
 import java.lang.foreign.MemoryLayout;
 import java.lang.invoke.VarHandle;
 
-import com.slytechs.sdk.common.memory.ByteBuf;
+import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryStructure;
 
 /**
@@ -29,7 +29,7 @@ import com.slytechs.sdk.common.memory.MemoryStructure;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public abstract class AddressMemory extends ByteBuf implements Address, MemoryStructure {
+public abstract class AddressMemory extends BoundView implements Address, MemoryStructure {
 
 	private final MemoryLayout layout;
 

@@ -32,7 +32,6 @@ import com.slytechs.sdk.common.detail.ExpertLevel;
 import com.slytechs.sdk.common.format.StructFormat;
 import com.slytechs.sdk.common.memory.BindableView;
 import com.slytechs.sdk.common.memory.BoundView;
-import com.slytechs.sdk.common.memory.ByteBuf;
 import com.slytechs.sdk.common.memory.MemoryHandle.LongHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
 import com.slytechs.sdk.common.time.TimestampUnit;
@@ -107,7 +106,8 @@ import static java.lang.foreign.MemoryLayout.PathElement.*;
  * @author Sly Technologies Inc.
  */
 public class NetPacketDescriptor
-		implements PacketDescriptor, Detailable, BindableView {
+		extends AbstractPacketDescriptor
+		implements RxCapabilities, TxCapabilities, Detailable, BindableView {
 
 	// ========== Memory Layout (96 bytes) ==========
 
@@ -163,7 +163,7 @@ public class NetPacketDescriptor
 	private static final int L2_FRAME_TYPE_SHIFT = 3;
 	private static final int L2_FRAME_TYPE_MASK = 0x3F; // // 6 bits: 64 types
 	private static final int TIMESTAMP_UNIT_SHIFT = 0;
-	private static final int TIMESTAMP_UNIT_MASK = 0x7; //3 bits: 8 units
+	private static final int TIMESTAMP_UNIT_MASK = 0x7; // 3 bits: 8 units
 
 	// ========== TX_INFO bit layout ==========
 
@@ -220,239 +220,21 @@ public class NetPacketDescriptor
 			"ARP"
 	};
 
-	// ========== Instance fields ==========
-
-	private TimestampUnit timestampUnit = TimestampUnit.EPOCH_MILLI;
+	private static final long TX_CAPABILITIES = TxCapabilities.TX_NONE;
+	private static final long RX_CAPABILITIES = RxCapabilities.RX_NONE;
+	private static final int DESCRIPTOR_ID = DescriptorType.NET;
 	private int extendedIndex = 0;
 	private int encounterOrder = 0;
 
-	// ========== Constructors ==========
+	private final BoundView view = new BoundView();
 
 	public NetPacketDescriptor() {
-		this(L2FrameType.ETHER, TimestampUnit.EPOCH_MILLI);
+		this(TimestampUnit.EPOCH_MILLI);
 	}
 
 	public NetPacketDescriptor(TimestampUnit unit) {
-		this(L2FrameType.ETHER, unit);
+		super(DescriptorInfo.NET, unit);
 	}
-
-	public NetPacketDescriptor(int l2Type, TimestampUnit unit) {
-		this.timestampUnit = unit;
-	}
-
-	// ========== PacketDescriptor - Timestamp ==========
-
-	@Override
-	public long timestamp() {
-		return TIMESTAMP.getLong(view());
-	}
-
-	@Override
-	public void setTimestamp(long timestamp) {
-		TIMESTAMP.setLong(view(), timestamp);
-	}
-
-	@Override
-	public void setTimestamp(long timestamp, TimestampUnit unit) {
-		if (unit != timestampUnit) {
-			timestamp = timestampUnit.convert(timestamp, unit);
-		}
-		setTimestamp(timestamp);
-	}
-
-	@Override
-	public TimestampUnit timestampUnit() {
-		return timestampUnit;
-	}
-
-	@Override
-	public void setTimestampUnit(TimestampUnit unit) {
-		this.timestampUnit = unit;
-		setTimestampUnitEncoded(unit);
-	}
-
-	private void setTimestampUnitEncoded(TimestampUnit unit) {
-		int info = rxInfo() & ~(TIMESTAMP_UNIT_MASK << TIMESTAMP_UNIT_SHIFT);
-		info |= ((unit.ordinal() & TIMESTAMP_UNIT_MASK) << TIMESTAMP_UNIT_SHIFT);
-		setRxInfo(info);
-	}
-
-	// ========== PacketDescriptor - Lengths ==========
-
-	@Override
-	public int captureLength() {
-		return CAPLEN.getShort(view()) & 0xFFFF;
-	}
-
-	@Override
-	public void setCaptureLength(int length) {
-		CAPLEN.setShort(view(), (short) (length & 0xFFFF));
-	}
-
-	@Override
-	public int wireLength() {
-		return WIRELEN.getShort(view()) & 0xFFFF;
-	}
-
-	@Override
-	public void setWireLength(int length) {
-		WIRELEN.setShort(view(), (short) (length & 0xFFFF));
-	}
-
-	// ========== PacketDescriptor - L2 Type ==========
-
-	@Override
-	public int l2FrameType() {
-		return (rxInfo() >> L2_FRAME_TYPE_SHIFT) & L2_FRAME_TYPE_MASK;
-	}
-
-	@Override
-	public void setL2Type(int l2Type) {
-		int info = rxInfo() & ~(L2_FRAME_TYPE_MASK << L2_FRAME_TYPE_SHIFT);
-		info |= ((l2Type & L2_FRAME_TYPE_MASK) << L2_FRAME_TYPE_SHIFT);
-		setRxInfo(info);
-	}
-
-	// ========== PacketDescriptor - Misc ==========
-
-	@Override
-	public ByteOrder order() {
-		return ByteOrder.nativeOrder();
-	}
-
-	@Override
-	public long length() {
-		return LAYOUT.byteSize();
-	}
-
-	@Override
-	public int descriptorId() {
-		return DescriptorType.NET;
-	}
-
-	@Override
-	public DescriptorTypeInfo type() {
-		return DescriptorTypeInfo.NET;
-	}
-
-	// ========== RX Port & Extensions ==========
-
-	public int rxPort() {
-		return (rxInfo() >> RX_PORT_SHIFT) & RX_PORT_MASK;
-	}
-
-	public void setRxPort(int port) {
-		if (port > RX_PORT_MASK) {
-			throw new IllegalArgumentException("RX port must be 0-63, got: " + port);
-		}
-		int info = rxInfo() & ~(RX_PORT_MASK << RX_PORT_SHIFT);
-		info |= ((port & RX_PORT_MASK) << RX_PORT_SHIFT);
-		setRxInfo(info);
-	}
-
-	public boolean hasL2Extensions() {
-		return (rxInfo() & (1 << L2_EXTENSION_BIT)) != 0;
-	}
-
-	public void setL2Extensions(boolean hasExtensions) {
-		int info = rxInfo();
-		if (hasExtensions) {
-			info |= (1 << L2_EXTENSION_BIT);
-		} else {
-			info &= ~(1 << L2_EXTENSION_BIT);
-		}
-		setRxInfo(info);
-	}
-
-	private int rxInfo() {
-		return RX_INFO.getShort(view()) & 0xFFFF;
-	}
-
-	private void setRxInfo(int info) {
-		RX_INFO.setShort(view(), (short) (info & 0xFFFF));
-	}
-
-	// ========== TransmitControl implementation ==========
-
-	@Override
-	public int txPort() {
-		return (txInfo() >> TX_PORT_SHIFT) & TX_PORT_MASK;
-	}
-
-	@Override
-	public NetPacketDescriptor setTxPort(int port) {
-		if (port > TX_PORT_MASK) {
-			throw new IllegalArgumentException("TX port must be 0-255, got: " + port);
-		}
-		int info = txInfo() & ~(TX_PORT_MASK << TX_PORT_SHIFT);
-		info |= ((port & TX_PORT_MASK) << TX_PORT_SHIFT);
-		setTxInfo(info);
-		return this;
-	}
-
-	@Override
-	public boolean isTxEnabled() {
-		return (txInfo() & (1 << TX_ENABLED_BIT)) != 0;
-	}
-
-	@Override
-	public NetPacketDescriptor setTxEnabled(boolean enabled) {
-		setTxBit(TX_ENABLED_BIT, enabled);
-		return this;
-	}
-
-	@Override
-	public boolean isTxImmediate() {
-		return (txInfo() & (1 << TX_IMMEDIATE_BIT)) != 0;
-	}
-
-	@Override
-	public NetPacketDescriptor setTxImmediate(boolean immediate) {
-		setTxBit(TX_IMMEDIATE_BIT, immediate);
-		return this;
-	}
-
-	@Override
-	public boolean isTxCrcRecalc() {
-		return (txInfo() & (1 << TX_CRC_RECALC_BIT)) != 0;
-	}
-
-	@Override
-	public NetPacketDescriptor setTxCrcRecalc(boolean recalc) {
-		setTxBit(TX_CRC_RECALC_BIT, recalc);
-		return this;
-	}
-
-	@Override
-	public boolean isTxTimestampSync() {
-		return (txInfo() & (1 << TX_TIMESTAMP_SYNC_BIT)) != 0;
-	}
-
-	@Override
-	public NetPacketDescriptor setTxTimestampSync(boolean sync) {
-		setTxBit(TX_TIMESTAMP_SYNC_BIT, sync);
-		return this;
-	}
-
-	private int txInfo() {
-		return TX_INFO.getShort(view()) & 0xFFFF;
-	}
-
-	private void setTxInfo(int info) {
-		TX_INFO.setShort(view(), (short) (info & 0xFFFF));
-	}
-
-	private void setTxBit(int bit, boolean value) {
-		int info = txInfo();
-		if (value) {
-			info |= (1 << bit);
-		} else {
-			info &= ~(1 << bit);
-		}
-		setTxInfo(info);
-	}
-
-	// ========== Protocol Table ==========
 
 	public void addProtocol(int protocolId, int offset, int length) {
 		addProtocolInstance(protocolId, offset, length, 0);
@@ -478,85 +260,8 @@ public class NetPacketDescriptor
 		}
 	}
 
-	private long buildProtocolEntry(int protocolId, int offset, int length,
-			int encounterOrder, int instanceNum, boolean isFragment,
-			boolean isTunneled, boolean hasError) {
-
-		long entry = protocolId & PROTOCOL_ID_MASK;
-		entry |= ((long) (offset & HEADER_OFFSET_MASK)) << HEADER_OFFSET_SHIFT;
-		entry |= ((long) (length & HEADER_LENGTH_MASK)) << HEADER_LENGTH_SHIFT;
-		entry |= ((long) (encounterOrder & ENCOUNTER_ORDER_MASK)) << ENCOUNTER_ORDER_SHIFT;
-		entry |= ((long) (instanceNum & INSTANCE_NUM_MASK)) << INSTANCE_NUM_SHIFT;
-		if (isFragment)
-			entry |= IS_FRAGMENT_BIT;
-		if (isTunneled)
-			entry |= IS_TUNNELED_BIT;
-		if (hasError)
-			entry |= HAS_ERRORS_BIT;
-		return entry;
-	}
-
-	private int getInlineSlot(int protocolId) {
-		return switch (protocolId & 0xFFFF) {
-		case ProtocolId.ETHERNET -> INLINE_ETHERNET;
-		case ProtocolId.VLAN -> INLINE_VLAN;
-		case ProtocolId.IPv4 -> INLINE_IPV4;
-		case ProtocolId.IPv6 -> INLINE_IPV6;
-		case ProtocolId.TCP -> INLINE_TCP;
-		case ProtocolId.UDP -> INLINE_UDP;
-		case ProtocolId.ICMP -> INLINE_ICMP;
-		case ProtocolId.ARP -> INLINE_ARP;
-		default -> -1;
-		};
-	}
-
-	private void writeProtocolToExtended(long entry) {
-		MemorySegment extended = getExtendedSegment();
-		extended.set(ValueLayout.JAVA_LONG, extendedIndex * 8, entry);
-		extendedIndex++;
-		EXTENDED_SIZE.setShort(view(), (short) extendedIndex);
-	}
-
 	@Override
-	public long mapProtocol(int protocolId, int depth) {
-		if (depth == 0) {
-			int inlineSlot = getInlineSlot(protocolId);
-			if (inlineSlot >= 0) {
-				long entry = INLINE_TABLE.getLongAtIndex(view(), inlineSlot);
-				if (entry != 0) {
-					int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
-					int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
-					return PacketDescriptor.encodeLengthAndOffset(length, offset);
-				}
-			}
-		}
-		return mapProtocolExtended(protocolId, depth);
-	}
-
-	private long mapProtocolExtended(int protocolId, int depth) {
-		short extSize = EXTENDED_SIZE.getShort(view());
-		if (extSize > 0) {
-			MemorySegment extended = getExtendedSegment();
-			int matchCount = 0;
-
-			for (int i = 0; i < extSize; i++) {
-				long entry = extended.get(ValueLayout.JAVA_LONG, i * 8);
-				if ((entry & PROTOCOL_ID_MASK) == protocolId) {
-					int instance = (int) ((entry >> INSTANCE_NUM_SHIFT) & INSTANCE_NUM_MASK);
-					if (instance == depth || matchCount == depth) {
-						int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
-						int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
-						return PacketDescriptor.encodeLengthAndOffset(length, offset);
-					}
-					matchCount++;
-				}
-			}
-		}
-		return PacketDescriptor.PROTOCOL_NOT_FOUND;
-	}
-
-	@Override
-	public boolean bindProtocol(ByteBuf packet, Header header, int protocolId, int depth) {
+	public boolean bindHeader(BindableView packet, Header header, int protocolId, int depth) {
 		int inlineSlot = getInlineSlot(protocolId);
 
 		if (inlineSlot >= 0 && depth == 0) {
@@ -591,209 +296,13 @@ public class NetPacketDescriptor
 		return false;
 	}
 
-	// ========== Fast presence checks ==========
-
-	public boolean hasEthernet() {
-		return INLINE_TABLE.getLongAtIndex(view(), INLINE_ETHERNET) != 0;
-	}
-
-	public boolean hasVlan() {
-		return INLINE_TABLE.getLongAtIndex(view(), INLINE_VLAN) != 0;
-	}
-
-	public boolean hasIpv4() {
-		return INLINE_TABLE.getLongAtIndex(view(), INLINE_IPV4) != 0;
-	}
-
-	public boolean hasIpv6() {
-		return INLINE_TABLE.getLongAtIndex(view(), INLINE_IPV6) != 0;
-	}
-
-	public boolean hasTcp() {
-		return INLINE_TABLE.getLongAtIndex(view(), INLINE_TCP) != 0;
-	}
-
-	public boolean hasUdp() {
-		return INLINE_TABLE.getLongAtIndex(view(), INLINE_UDP) != 0;
-	}
-
-	public boolean hasIcmp() {
-		return INLINE_TABLE.getLongAtIndex(view(), INLINE_ICMP) != 0;
-	}
-
-	public boolean hasArp() {
-		return INLINE_TABLE.getLongAtIndex(view(), INLINE_ARP) != 0;
-	}
-
-	// ========== Protocol counts ==========
-
-	public int getProtocolCount() {
-		return PROTO_COUNTS.getShort(view()) & PROTOCOL_COUNT_MASK;
-	}
-
-	public int getVlanCount() {
-		return (PROTO_COUNTS.getShort(view()) >> VLAN_COUNT_SHIFT) & VLAN_COUNT_MASK;
-	}
-
-	public int getMplsCount() {
-		return (PROTO_COUNTS.getShort(view()) >> MPLS_COUNT_SHIFT) & MPLS_COUNT_MASK;
-	}
-
-	private void incrementProtocolCount() {
-		int counts = PROTO_COUNTS.getShort(view()) & 0xFFFF;
-		int protoCount = (counts & PROTOCOL_COUNT_MASK) + 1;
-		counts = (counts & ~PROTOCOL_COUNT_MASK) | (protoCount & PROTOCOL_COUNT_MASK);
-		PROTO_COUNTS.setShort(view(), (short) counts);
-	}
-
-	private void incrementVlanCount() {
-		int counts = PROTO_COUNTS.getShort(view()) & 0xFFFF;
-		int vlanCount = ((counts >> VLAN_COUNT_SHIFT) & VLAN_COUNT_MASK) + 1;
-		counts = (counts & ~(VLAN_COUNT_MASK << VLAN_COUNT_SHIFT))
-				| ((vlanCount & VLAN_COUNT_MASK) << VLAN_COUNT_SHIFT);
-		PROTO_COUNTS.setShort(view(), (short) counts);
-	}
-
-	// ========== Bitmap ==========
-
-	public long getProtoBitmap() {
-		return PROTO_BITMAP.getLong(view());
-	}
-
-	private void setProtoBitmap(long bitmap) {
-		PROTO_BITMAP.setLong(view(), bitmap);
-	}
-
-	private void updateBitmap(int protocolId) {
-		int bitPos = getBitmapPosition(protocolId);
-		if (bitPos >= 0) {
-			long bitmap = getProtoBitmap();
-			bitmap |= (1L << bitPos);
-			setProtoBitmap(bitmap);
-		}
-	}
-
-	private int getBitmapPosition(int protocolId) {
-		return switch (protocolId & 0xFFFF) {
-		case ProtocolId.ETHERNET -> 0;
-		case ProtocolId.VLAN -> 1;
-		case ProtocolId.IPv4 -> 2;
-		case ProtocolId.IPv6 -> 3;
-		case ProtocolId.TCP -> 4;
-		case ProtocolId.UDP -> 5;
-		case ProtocolId.ICMP -> 6;
-		case ProtocolId.ARP -> 7;
-		default -> -1;
-		};
-	}
-
-	// ========== Extended table ==========
-
-	private short getExtendedOffset() {
-		return EXTENDED_OFFSET.getShort(view());
-	}
-
-	private short getExtendedSize() {
-		return EXTENDED_SIZE.getShort(view());
-	}
-
-	private MemorySegment getExtendedSegment() {
-		int offset = captureLength() + getExtendedOffset();
-		return view().segment().asSlice(view().start() + offset);
-	}
-
-	// ========== Reset ==========
-
-	public void reset() {
-		extendedIndex = 0;
-		encounterOrder = 0;
-		setProtoBitmap(0);
-		PROTO_COUNTS.setShort(view(), (short) 0);
-		EXTENDED_SIZE.setShort(view(), (short) 0);
-
-		// Clear inline table
-		for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
-			INLINE_TABLE.setLongAtIndex(view(), i, 0L);
-		}
-	}
-
-	// ========== Iterable ==========
-
+	/**
+	 * @see com.slytechs.sdk.common.memory.BindableView#boundView()
+	 */
 	@Override
-	public Iterator<BindingInfo> iterator() {
-		var list = new ArrayList<BindingInfo>();
-
-		for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
-			long entry = INLINE_TABLE.getLongAtIndex(view(), i);
-			if (entry != 0) {
-				int id = (int) (entry & PROTOCOL_ID_MASK);
-				int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
-				int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
-				int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
-				list.add(new BindingInfo(order, id, offset, length));
-			}
-		}
-
-		// Add extended table entries
-		short extSize = getExtendedSize();
-		if (extSize > 0) {
-			MemorySegment extended = getExtendedSegment();
-			for (int i = 0; i < extSize; i++) {
-				long entry = extended.get(ValueLayout.JAVA_LONG, i * 8);
-				int id = (int) (entry & PROTOCOL_ID_MASK);
-				int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
-				int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
-				int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
-				list.add(new BindingInfo(order, id, offset, length));
-			}
-		}
-
-		// Sort by encounter order
-		list.sort((a, b) -> Integer.compare(a.order(), b.order()));
-
-		return list.iterator();
+	public BoundView boundView() {
+		return view;
 	}
-
-	// ========== Formatting ==========
-
-	public StructFormat format(StructFormat p) {
-		p.openln("NetPacketDescriptor").indent();
-
-		p.println("timestamp", timestamp())
-				.println("timestampUnit", timestampUnit())
-				.println("captureLength", captureLength())
-				.println("wireLength", wireLength())
-				.println("rxPort", rxPort())
-				.println("l2FrameType", l2FrameType())
-				.println("l2Extensions", hasL2Extensions())
-				.println("txPort", txPort())
-				.println("txEnabled", isTxEnabled())
-				.println("txImmediate", isTxImmediate());
-
-		p.println("--- Protocol Table ---")
-				.println("protocolCount", getProtocolCount())
-				.println("vlanCount", getVlanCount())
-				.println("mplsCount", getMplsCount())
-				.println("protoBitmap", String.format("0x%016X", getProtoBitmap()));
-
-		p.println("--- Inline Table ---");
-		for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
-			long entry = INLINE_TABLE.getLongAtIndex(view(), i);
-			if (entry != 0) {
-				int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
-				int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
-				int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
-				p.println(String.format("  [%d] %s: offset=%d, length=%d, order=%d",
-						i, INLINE_SLOT_NAMES[i], offset, length, order));
-			}
-		}
-
-		return p.close();
-	}
-
-	// ========== Detail Building ==========
-
-	private static final int DESCRIPTOR_ID = DescriptorType.NET;
 
 	/**
 	 * Builds a detailed tree representation of this descriptor for UI display.
@@ -822,7 +331,7 @@ public class NetPacketDescriptor
 				s.section("RX Info", "rx", rx -> {
 					rx.fieldHex("Raw", rxInfoVal, 4, DetailBuilder.shortAt(0x0A));
 					rx.field("RX Port", rxPort());
-					rx.field("L2 Frame Type", l2FrameType(), L2FrameType.nameOf(l2FrameType()));
+					rx.field("L2 Frame Type", l2FrameInfo().l2FrameId(), l2FrameInfo().toString());
 					rx.field("L2 Extensions", hasL2Extensions());
 					rx.field("Timestamp Unit", timestampUnit().name());
 				});
@@ -835,7 +344,7 @@ public class NetPacketDescriptor
 					tx.field("TX Enabled", isTxEnabled());
 					tx.field("TX Immediate", isTxImmediate());
 					tx.field("TX CRC Recalc", isTxCrcRecalc());
-					tx.field("TX Timestamp Sync", isTxTimestampSync());
+					tx.field("TX Timestamp Sync", isTxSyncTimestamp());
 				});
 			});
 
@@ -903,6 +412,64 @@ public class NetPacketDescriptor
 		});
 	}
 
+	private long buildProtocolEntry(int protocolId, int offset, int length,
+			int encounterOrder, int instanceNum, boolean isFragment,
+			boolean isTunneled, boolean hasError) {
+
+		long entry = protocolId & PROTOCOL_ID_MASK;
+		entry |= ((long) (offset & HEADER_OFFSET_MASK)) << HEADER_OFFSET_SHIFT;
+		entry |= ((long) (length & HEADER_LENGTH_MASK)) << HEADER_LENGTH_SHIFT;
+		entry |= ((long) (encounterOrder & ENCOUNTER_ORDER_MASK)) << ENCOUNTER_ORDER_SHIFT;
+		entry |= ((long) (instanceNum & INSTANCE_NUM_MASK)) << INSTANCE_NUM_SHIFT;
+		if (isFragment)
+			entry |= IS_FRAGMENT_BIT;
+		if (isTunneled)
+			entry |= IS_TUNNELED_BIT;
+		if (hasError)
+			entry |= HAS_ERRORS_BIT;
+		return entry;
+	}
+
+	@Override
+	public int captureLength() {
+		return CAPLEN.getShort(view()) & 0xFFFF;
+	}
+
+	public StructFormat format(StructFormat p) {
+		p.openln("NetPacketDescriptor").indent();
+
+		p.println("timestamp", timestamp())
+				.println("timestampUnit", timestampUnit())
+				.println("captureLength", captureLength())
+				.println("wireLength", wireLength())
+				.println("rxPort", rxPort())
+				.println("l2FrameType", l2FrameInfo())
+				.println("l2Extensions", hasL2Extensions())
+				.println("txPort", txPort())
+				.println("txEnabled", isTxEnabled())
+				.println("txImmediate", isTxImmediate());
+
+		p.println("--- Protocol Table ---")
+				.println("protocolCount", getProtocolCount())
+				.println("vlanCount", getVlanCount())
+				.println("mplsCount", getMplsCount())
+				.println("protoBitmap", String.format("0x%016X", getProtoBitmap()));
+
+		p.println("--- Inline Table ---");
+		for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
+			long entry = INLINE_TABLE.getLongAtIndex(view(), i);
+			if (entry != 0) {
+				int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+				int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+				int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
+				p.println(String.format("  [%d] %s: offset=%d, length=%d, order=%d",
+						i, INLINE_SLOT_NAMES[i], offset, length, order));
+			}
+		}
+
+		return p.close();
+	}
+
 	private String formatBitmapFlags() {
 		long bitmap = getProtoBitmap();
 		if (bitmap == 0)
@@ -928,19 +495,480 @@ public class NetPacketDescriptor
 		return sb.toString().trim();
 	}
 
+	// ========== RX Port & Extensions ==========
+
+	private int getBitmapPosition(int protocolId) {
+		return switch (protocolId & 0xFFFF) {
+		case ProtocolId.ETHERNET -> 0;
+		case ProtocolId.VLAN -> 1;
+		case ProtocolId.IPv4 -> 2;
+		case ProtocolId.IPv6 -> 3;
+		case ProtocolId.TCP -> 4;
+		case ProtocolId.UDP -> 5;
+		case ProtocolId.ICMP -> 6;
+		case ProtocolId.ARP -> 7;
+		default -> -1;
+		};
+	}
+
+	private short getExtendedOffset() {
+		return EXTENDED_OFFSET.getShort(view());
+	}
+
+	private MemorySegment getExtendedSegment() {
+		int offset = captureLength() + getExtendedOffset();
+		return view().segment().asSlice(view().start() + offset);
+	}
+
+	private short getExtendedSize() {
+		return EXTENDED_SIZE.getShort(view());
+	}
+
+	private int getInlineSlot(int protocolId) {
+		return switch (protocolId & 0xFFFF) {
+		case ProtocolId.ETHERNET -> INLINE_ETHERNET;
+		case ProtocolId.VLAN -> INLINE_VLAN;
+		case ProtocolId.IPv4 -> INLINE_IPV4;
+		case ProtocolId.IPv6 -> INLINE_IPV6;
+		case ProtocolId.TCP -> INLINE_TCP;
+		case ProtocolId.UDP -> INLINE_UDP;
+		case ProtocolId.ICMP -> INLINE_ICMP;
+		case ProtocolId.ARP -> INLINE_ARP;
+		default -> -1;
+		};
+	}
+
+	public int getMplsCount() {
+		return (PROTO_COUNTS.getShort(view()) >> MPLS_COUNT_SHIFT) & MPLS_COUNT_MASK;
+	}
+
+	// ========== TransmitControl implementation ==========
+
+	public long getProtoBitmap() {
+		return PROTO_BITMAP.getLong(view());
+	}
+
+	public int getProtocolCount() {
+		return PROTO_COUNTS.getShort(view()) & PROTOCOL_COUNT_MASK;
+	}
+
+	public int getVlanCount() {
+		return (PROTO_COUNTS.getShort(view()) >> VLAN_COUNT_SHIFT) & VLAN_COUNT_MASK;
+	}
+
+	public boolean hasArp() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_ARP) != 0;
+	}
+
+	public boolean hasEthernet() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_ETHERNET) != 0;
+	}
+
+	public boolean hasIcmp() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_ICMP) != 0;
+	}
+
+	public boolean hasIpv4() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_IPV4) != 0;
+	}
+
+	public boolean hasIpv6() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_IPV6) != 0;
+	}
+
+	public boolean hasL2Extensions() {
+		return (rxInfo() & (1 << L2_EXTENSION_BIT)) != 0;
+	}
+
+	public boolean hasTcp() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_TCP) != 0;
+	}
+
+	public boolean hasUdp() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_UDP) != 0;
+	}
+
+	public boolean hasVlan() {
+		return INLINE_TABLE.getLongAtIndex(view(), INLINE_VLAN) != 0;
+	}
+
+	private void incrementProtocolCount() {
+		int counts = PROTO_COUNTS.getShort(view()) & 0xFFFF;
+		int protoCount = (counts & PROTOCOL_COUNT_MASK) + 1;
+		counts = (counts & ~PROTOCOL_COUNT_MASK) | (protoCount & PROTOCOL_COUNT_MASK);
+		PROTO_COUNTS.setShort(view(), (short) counts);
+	}
+
+	// ========== Protocol Table ==========
+
+	private void incrementVlanCount() {
+		int counts = PROTO_COUNTS.getShort(view()) & 0xFFFF;
+		int vlanCount = ((counts >> VLAN_COUNT_SHIFT) & VLAN_COUNT_MASK) + 1;
+		counts = (counts & ~(VLAN_COUNT_MASK << VLAN_COUNT_SHIFT))
+				| ((vlanCount & VLAN_COUNT_MASK) << VLAN_COUNT_SHIFT);
+		PROTO_COUNTS.setShort(view(), (short) counts);
+	}
+
+	public boolean isTxCrcRecalc() {
+		return (txInfo() & (1 << TX_CRC_RECALC_BIT)) != 0;
+	}
+
+	@Override
+	public boolean isTxEnabled() {
+		return (txInfo() & (1 << TX_ENABLED_BIT)) != 0;
+	}
+
+	@Override
+	public boolean isTxImmediate() {
+		return (txInfo() & (1 << TX_IMMEDIATE_BIT)) != 0;
+	}
+
+	@Override
+	public boolean isTxSyncTimestamp() {
+		return (txInfo() & (1 << TX_TIMESTAMP_SYNC_BIT)) != 0;
+	}
+
+	@Override
+	public Iterator<BindingInfo> iterator() {
+		var list = new ArrayList<BindingInfo>();
+
+		for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
+			long entry = INLINE_TABLE.getLongAtIndex(view(), i);
+			if (entry != 0) {
+				int id = (int) (entry & PROTOCOL_ID_MASK);
+				int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+				int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+				int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
+				list.add(new BindingInfo(order, id, offset, length));
+			}
+		}
+
+		// Add extended table entries
+		short extSize = getExtendedSize();
+		if (extSize > 0) {
+			MemorySegment extended = getExtendedSegment();
+			for (int i = 0; i < extSize; i++) {
+				long entry = extended.get(ValueLayout.JAVA_LONG, i * 8);
+				int id = (int) (entry & PROTOCOL_ID_MASK);
+				int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+				int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+				int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
+				list.add(new BindingInfo(order, id, offset, length));
+			}
+		}
+
+		// Sort by encounter order
+		list.sort((a, b) -> Integer.compare(a.order(), b.order()));
+
+		return list.iterator();
+	}
+
+	public int l2FrameId() {
+		return (rxInfo() >> L2_FRAME_TYPE_SHIFT) & L2_FRAME_TYPE_MASK;
+	}
+
+	@Override
+	public long length() {
+		return LAYOUT.byteSize();
+	}
+
+	@Override
+	public long mapProtocol(int protocolId, int depth) {
+		if (depth == 0) {
+			int inlineSlot = getInlineSlot(protocolId);
+			if (inlineSlot >= 0) {
+				long entry = INLINE_TABLE.getLongAtIndex(view(), inlineSlot);
+				if (entry != 0) {
+					int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+					int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+					return PacketDescriptor.encodeLengthAndOffset(length, offset);
+				}
+			}
+		}
+		return mapProtocolExtended(protocolId, depth);
+	}
+
+	private long mapProtocolExtended(int protocolId, int depth) {
+		short extSize = EXTENDED_SIZE.getShort(view());
+		if (extSize > 0) {
+			MemorySegment extended = getExtendedSegment();
+			int matchCount = 0;
+
+			for (int i = 0; i < extSize; i++) {
+				long entry = extended.get(ValueLayout.JAVA_LONG, i * 8);
+				if ((entry & PROTOCOL_ID_MASK) == protocolId) {
+					int instance = (int) ((entry >> INSTANCE_NUM_SHIFT) & INSTANCE_NUM_MASK);
+					if (instance == depth || matchCount == depth) {
+						int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+						int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+						return PacketDescriptor.encodeLengthAndOffset(length, offset);
+					}
+					matchCount++;
+				}
+			}
+		}
+		return PacketDescriptor.PROTOCOL_NOT_FOUND;
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.memory.pool.Persistable#newUnbound()
+	 */
+	@Override
+	public PacketDescriptor newUnbound() {
+		return new NetPacketDescriptor();
+	}
+
+	@Override
+	public ByteOrder order() {
+		return ByteOrder.nativeOrder();
+	}
+
+	public void reset() {
+		extendedIndex = 0;
+		encounterOrder = 0;
+		setProtoBitmap(0);
+		PROTO_COUNTS.setShort(view(), (short) 0);
+		EXTENDED_SIZE.setShort(view(), (short) 0);
+
+		// Clear inline table
+		for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
+			INLINE_TABLE.setLongAtIndex(view(), i, 0L);
+		}
+	}
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rxCapabilities()
+	 */
+	@Override
+	public RxCapabilities rxCapabilities() {
+		return this;
+	}
+
+	// ========== Protocol counts ==========
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rxCapabilitiesBitmask()
+	 */
+	@Override
+	public long rxCapabilitiesBitmask() {
+		return RX_CAPABILITIES;
+	}
+
+	private int rxInfo() {
+		return RX_INFO.getShort(view()) & 0xFFFF;
+	}
+
+	public int rxPort() {
+		return (rxInfo() >> RX_PORT_SHIFT) & RX_PORT_MASK;
+	}
+
+	@Override
+	public NetPacketDescriptor setCaptureLength(int length) {
+		CAPLEN.setShort(view(), (short) (length & 0xFFFF));
+
+		return this;
+	}
+
+	public NetPacketDescriptor setL2Extensions(boolean hasExtensions) {
+		int info = rxInfo();
+		if (hasExtensions) {
+			info |= (1 << L2_EXTENSION_BIT);
+		} else {
+			info &= ~(1 << L2_EXTENSION_BIT);
+		}
+		setRxInfo(info);
+
+		return this;
+	}
+
+	public void setL2FrameId(int l2Type) {
+		int info = rxInfo() & ~(L2_FRAME_TYPE_MASK << L2_FRAME_TYPE_SHIFT);
+		info |= ((l2Type & L2_FRAME_TYPE_MASK) << L2_FRAME_TYPE_SHIFT);
+		setRxInfo(info);
+	}
+
+	/**
+	 * @return
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#setL2FrameType(com.slytechs.sdk.protocol.core.descriptor.L2FrameInfo)
+	 */
+	@Override
+	public NetPacketDescriptor setL2FrameType(L2FrameInfo l2FrameInfo) {
+		setL2FrameId(l2FrameInfo.l2FrameId());
+
+		return this;
+	}
+
+	private void setProtoBitmap(long bitmap) {
+		PROTO_BITMAP.setLong(view(), bitmap);
+	}
+
+	private void setRxInfo(int info) {
+		RX_INFO.setShort(view(), (short) (info & 0xFFFF));
+	}
+
+	@Override
+	public NetPacketDescriptor setRxPort(int port) {
+		if (port > RX_PORT_MASK) {
+			throw new IllegalArgumentException("RX port must be 0-63, got: " + port);
+		}
+		int info = rxInfo() & ~(RX_PORT_MASK << RX_PORT_SHIFT);
+		info |= ((port & RX_PORT_MASK) << RX_PORT_SHIFT);
+		setRxInfo(info);
+
+		return this;
+	}
+
+	@Override
+	public NetPacketDescriptor setTimestamp(long timestamp) {
+		TIMESTAMP.setLong(view(), timestamp);
+
+		return this;
+	}
+
+	@Override
+	public NetPacketDescriptor setTimestamp(long timestamp, TimestampUnit unit) {
+		if (unit != timestampUnit())
+			timestamp = timestampUnit().convert(timestamp, unit);
+
+		setTimestamp(timestamp);
+
+		return this;
+	}
+
+	@Override
+	public NetPacketDescriptor setTimestampUnit(TimestampUnit unit) {
+		super.setTimestampUnit(unit);
+
+		setTimestampUnitEncoded(unit);
+
+		return this;
+	}
+
+	private NetPacketDescriptor setTimestampUnitEncoded(TimestampUnit unit) {
+		int info = rxInfo() & ~(TIMESTAMP_UNIT_MASK << TIMESTAMP_UNIT_SHIFT);
+		info |= ((unit.ordinal() & TIMESTAMP_UNIT_MASK) << TIMESTAMP_UNIT_SHIFT);
+		setRxInfo(info);
+
+		return this;
+	}
+
+	private void setTxBit(int bit, boolean value) {
+		int info = txInfo();
+		if (value) {
+			info |= (1 << bit);
+		} else {
+			info &= ~(1 << bit);
+		}
+		setTxInfo(info);
+	}
+
+	public NetPacketDescriptor setTxCrcRecalc(boolean recalc) {
+		setTxBit(TX_CRC_RECALC_BIT, recalc);
+		return this;
+	}
+
+	@Override
+	public NetPacketDescriptor setTxEnabled(boolean enabled) {
+		setTxBit(TX_ENABLED_BIT, enabled);
+		return this;
+	}
+
+	@Override
+	public NetPacketDescriptor setTxImmediate(boolean immediate) {
+		setTxBit(TX_IMMEDIATE_BIT, immediate);
+		return this;
+	}
+
+	private void setTxInfo(int info) {
+		TX_INFO.setShort(view(), (short) (info & 0xFFFF));
+	}
+
+	@Override
+	public NetPacketDescriptor setTxPort(int port) {
+		if (port > TX_PORT_MASK) {
+			throw new IllegalArgumentException("TX port must be 0-255, got: " + port);
+		}
+		int info = txInfo() & ~(TX_PORT_MASK << TX_PORT_SHIFT);
+		info |= ((port & TX_PORT_MASK) << TX_PORT_SHIFT);
+		setTxInfo(info);
+		return this;
+	}
+
+	@Override
+	public NetPacketDescriptor setTxSyncTimestamp(boolean sync) {
+		setTxBit(TX_TIMESTAMP_SYNC_BIT, sync);
+		return this;
+	}
+
+	@Override
+	public NetPacketDescriptor setWireLength(int length) {
+		WIRELEN.setShort(view(), (short) (length & 0xFFFF));
+
+		return this;
+	}
+
+	@Override
+	public long timestamp() {
+		return TIMESTAMP.getLong(view());
+	}
+
 	@Override
 	public String toString() {
 		return toDetailString();
 	}
 
-	private final BoundView view = new BoundView();
-
 	/**
-	 * @see com.slytechs.sdk.common.memory.BindableView#boundView()
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#txCapabilities()
 	 */
 	@Override
-	public BoundView boundView() {
-		return view;
+	public TxCapabilities txCapabilities() {
+		return this;
+	}
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#txCapabilitiesBitmask()
+	 */
+	@Override
+	public long txCapabilitiesBitmask() {
+		return TX_CAPABILITIES;
+	}
+
+	private int txInfo() {
+		return TX_INFO.getShort(view()) & 0xFFFF;
+	}
+
+	@Override
+	public int txPort() {
+		return (txInfo() >> TX_PORT_SHIFT) & TX_PORT_MASK;
+	}
+
+	private void updateBitmap(int protocolId) {
+		int bitPos = getBitmapPosition(protocolId);
+		if (bitPos >= 0) {
+			long bitmap = getProtoBitmap();
+			bitmap |= (1L << bitPos);
+			setProtoBitmap(bitmap);
+		}
+	}
+
+	@Override
+	public int wireLength() {
+		return WIRELEN.getShort(view()) & 0xFFFF;
+	}
+
+	private void writeProtocolToExtended(long entry) {
+		MemorySegment extended = getExtendedSegment();
+		extended.set(ValueLayout.JAVA_LONG, extendedIndex * 8, entry);
+		extendedIndex++;
+		EXTENDED_SIZE.setShort(view(), (short) extendedIndex);
+	}
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#l2FrameInfo()
+	 */
+	@Override
+	public L2FrameInfo l2FrameInfo() {
+		return L2FrameInfo.of(l2FrameId());
 	}
 
 }

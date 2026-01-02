@@ -1,13 +1,13 @@
 /*
- * Sly Technologies Free License
+ * Apache License, Version 2.0
  * 
- * Copyright 2024 Sly Technologies Inc.
+ * Copyright 2025 Sly Technologies Inc.
  *
- * Licensed under the Sly Technologies Free License (the "License"); you may not
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  * 
- * http://www.slytechs.com/free-license-text
+ *     http://www.apache.org/licenses/LICENSE-2.0
  * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -17,96 +17,186 @@
  */
 package com.slytechs.sdk.protocol.core.stack;
 
-import com.slytechs.sdk.common.memory.MemoryPool;
-import com.slytechs.sdk.common.memory.MemoryRefCounter;
-import com.slytechs.sdk.protocol.core.PacketFactory;
-import com.slytechs.sdk.protocol.core.descriptor.DescriptorType;
-import com.slytechs.sdk.protocol.core.descriptor.DescriptorTypeInfo;
+import com.slytechs.sdk.common.memory.pool.PoolSettings;
+import com.slytechs.sdk.common.spec.Spec;
+import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
 
 /**
- * The Class PacketPolicy.
+ * User configuration for packet handling policy.
+ * 
+ * <p>
+ * PacketPolicy is a Spec that determines how packets are acquired, bound, and
+ * released. It provides fluent configuration for freeListPool settings,
+ * descriptor types, and copy behavior. The configuration is validated and
+ * instantiated through the standard Spec lifecycle.
+ * </p>
+ * 
+ * <h2>Lifecycle</h2>
+ * 
+ * <pre>
+ * PacketPolicy (Spec)           - User configuration, mutable
+ *     → ResolvedPacketPolicy    - Validated, backend-aware, immutable
+ *     → RuntimePacketPolicy     - Instantiated, pools allocated, operational
+ * </pre>
+ * 
+ * <h2>Policy Types</h2>
+ * 
+ * <table>
+ * <tr>
+ * <th>Policy</th>
+ * <th>Data Memory</th>
+ * <th>Descriptor Memory</th>
+ * <th>Use Case</th>
+ * </tr>
+ * <tr>
+ * <td>ZeroCopy</td>
+ * <td>ScopedMemory (bind)</td>
+ * <td>ScopedMemory/FixedMemory</td>
+ * <td>High-speed capture</td>
+ * </tr>
+ * <tr>
+ * <td>MemoryCopy</td>
+ * <td>FixedMemory (copy)</td>
+ * <td>FixedMemory (copy)</td>
+ * <td>Packet persistence</td>
+ * </tr>
+ * <tr>
+ * <td>FactoryCopy</td>
+ * <td>User-provided</td>
+ * <td>User-provided</td>
+ * <td>Custom allocation</td>
+ * </tr>
+ * </table>
+ * 
+ * <h2>Usage Example</h2>
+ * 
+ * <pre>{@code
+ * // Configure zero-copy for high-speed capture
+ * stack.setPacketPolicy(PacketPolicy.zeroCopy()
+ * 		.usePacketPool(new PacketPoolSettings()
+ * 				.capacity(100_000)
+ * 				.packetSize(9000))
+ * 		.descriptorType(DescriptorInfo.NET)
+ * 		.dissectorDepth(4)
+ * 		.copyPolicy(PacketPolicy.memoryCopy()));
+ * 
+ * // Or memory-copy for persistence
+ * stack.setPacketPolicy(PacketPolicy.memoryCopy()
+ * 		.usePacketPool(new PacketPoolSettings()
+ * 				.capacity(10_000)
+ * 				.packetSize(16384)));
+ * }</pre>
+ * 
+ * <h2>Backend Resolution</h2>
+ * 
+ * <p>
+ * Backends (jnetpcap, jnetworks) resolve this configuration via SPI:
+ * </p>
+ * 
+ * <pre>{@code
+ * ResolvedPacketPolicy resolved = PacketPolicyService.resolve(policy, backendContext);
+ * RuntimePacketPolicy runtime = PacketPolicyService.build(resolved, streamContext);
+ * }</pre>
+ *
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ * @see ResolvedPacketPolicy
+ * @see RuntimePacketPolicy
+ * @see Spec
  */
-public final class PacketPolicy {
-
-	/** The memory pool settings. Null means, zero-copy packet policy */
-	private PacketMemoryPoolSettings memoryPoolSettings = null;
+public interface PacketPolicy extends Spec {
 
 	/**
-	 * The factory. Null means, use the best implementation for current packet
-	 * policy depending on the capture backend.
+	 * Configures this policy to use the specified packet freeListPool settings.
+	 *
+	 * @param settings the freeListPool settings
+	 * @return this for chaining
 	 */
-	private PacketFactory factory = null;
-
-		private DescriptorType descriptorType = DescriptorTypeInfo.NET;
+	PacketPolicy usePacketPool(PoolSettings settings);
 
 	/**
-	 * Instantiates a new packet policy.
-	 */
-	public PacketPolicy() {}
-
-	/**
-	 * Copy packets to a memory pool.
+	 * Sets the descriptor type for this policy.
 	 * 
 	 * <p>
-	 * Any received or created packets, are copied to memory allocated from this
-	 * memory pool. Memory pool is pre-allocated and memory is allocated and
-	 * released back to the pool for reuse. Packet's are memory reference counted,
-	 * when ref count reaches zero, the memory is released back to the pool
-	 * automatically.
-	 * </p>
-	 * 
-	 * <p>
-	 * When you need packets to presist more than the the scope of the current
-	 * capture loop, you must select to copy the packet to the pool or copy the
-	 * packet yourself. This is not a zero-copy operation, but a allows packets to
-	 * stay in memory beyond the normal limited capture scope.
+	 * The backend may substitute a different descriptor type during resolution
+	 * based on its capabilities.
 	 * </p>
 	 *
-	 * @param settings the pool settings used to setup the memory pool
-	 * @return this packet policy for method chaining
-	 * @see MemoryRefCounter#refCount()
-	 * @see MemoryPool
+	 * @param type the descriptor type
+	 * @return this for chaining
 	 */
-	public PacketPolicy copyToMemoryPool(PacketMemoryPoolSettings settings) {
-		this.memoryPoolSettings = settings == null
-				? null // Reset to zero-copy policy (default)
-				: settings;
-
-		return this;
-	}
-
-	public DescriptorType getDescriptorType() {
-		return descriptorType;
-	}
+	PacketPolicy descriptorType(DescriptorInfo type);
 
 	/**
+	 * Sets the maximum protocol layer depth for dissection.
+	 *
+	 * @param maxLayer maximum layer (e.g., 4 for L4, 7 for L7)
+	 * @return this for chaining
+	 */
+	PacketPolicy dissectorDepth(int maxLayer);
+
+	/**
+	 * Sets the policy to use when copying packets.
+	 * 
+	 * <p>
+	 * When {@code Packet.copy()} is called, the copy policy determines how the new
+	 * packet is allocated and whether data is copied.
+	 * </p>
+	 *
+	 * @param policy the copy policy
+	 * @return this for chaining
+	 */
+	PacketPolicy copyPolicy(PacketPolicy policy);
+
+	/**
+	 * Returns the configured descriptor type.
+	 *
+	 * @return the descriptor type
+	 */
+	DescriptorInfo descriptorType();
+
+	/**
+	 * Returns whether this is a zero-copy policy.
+	 *
+	 * @return true if zero-copy
+	 */
+	boolean isZeroCopy();
+
+	/**
+	 * Returns whether this policy supports copying.
+	 *
+	 * @return true if copying is supported
+	 */
+	boolean allowsCopying();
+
+	/**
+	 * Returns the configured freeListPool settings.
+	 *
+	 * @return freeListPool settings, or null if not configured
+	 */
+	PoolSettings poolSettings();
+
+	/**
+	 * Returns the configured copy policy.
+	 *
+	 * @return copy policy, or null if not configured
+	 */
+	PacketPolicy copyPolicy();
+
+	/**
+	 * Returns the configured dissector depth.
+	 *
+	 * @return dissector depth
+	 */
+	int dissectorDepth();
+
+	/**
+	 * @param net
+	 * @param i
 	 * @return
 	 */
-	public PacketMemoryPoolSettings getMemoryPoolSettings() {
-		return memoryPoolSettings;
+	static PacketPolicy zeroCopy(DescriptorInfo net, int i) {
+		throw new UnsupportedOperationException("not implemented yet");
 	}
 
-	public PacketFactory getPacketFactory() {
-		return factory;
-	}
-
-	/**
-	 * With packet factory.
-	 *
-	 * @param factory the factory
-	 * @return the packet policy
-	 */
-	public PacketPolicy withPacketFactory(PacketFactory factory) {
-		this.factory = factory == null
-				? null // Reset to use per backend policy (default)
-				: factory;
-
-		return this;
-	}
-
-	public PacketPolicy zeroCopy() {
-		memoryPoolSettings = null;
-
-		return this;
-	}
 }

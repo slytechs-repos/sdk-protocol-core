@@ -28,35 +28,36 @@ package com.slytechs.sdk.protocol.core.descriptor;
  * </p>
  * 
  * <h2>Usage</h2>
+ * 
  * <pre>{@code
  * int l2Type = descriptor.l2FrameType();
  * if (l2Type == L2FrameType.ETHER) {
- *     // Ethernet frame
+ * 	// Ethernet frame
  * }
  * 
  * // Get metadata
- * L2FrameTypeInfo info = L2FrameTypeInfo.of(l2Type);
+ * L2FrameInfo info = L2FrameInfo.of(l2Type);
  * int baseLen = info.baseLength();
  * }</pre>
  * 
  * <h2>Value Ranges</h2>
  * <ul>
- *   <li>0x00-0x0F: Common (Ethernet, PPP, SLL, Loopback)</li>
- *   <li>0x10-0x1F: Wireless (802.11, Radiotap)</li>
- *   <li>0x20-0x2F: Linux-specific (Netlink, CAN, USB)</li>
- *   <li>0x30-0x3F: Legacy (FDDI, ATM, Token Ring)</li>
- *   <li>0x40-0x4F: Specialty (Bluetooth, InfiniBand)</li>
- *   <li>0x50-0x5F: BSD-specific (pflog, pfsync)</li>
- *   <li>0x60-0x6F: IoT/Embedded (ZigBee, DECT)</li>
+ * <li>0x00-0x0F: Common (Ethernet, PPP, SLL, Loopback)</li>
+ * <li>0x10-0x1F: Wireless (802.11, Radiotap)</li>
+ * <li>0x20-0x2F: Linux-specific (Netlink, CAN, USB)</li>
+ * <li>0x30-0x3F: Legacy (FDDI, ATM, Token Ring)</li>
+ * <li>0x40-0x4F: Specialty (Bluetooth, InfiniBand)</li>
+ * <li>0x50-0x5F: BSD-specific (pflog, pfsync)</li>
+ * <li>0x60-0x6F: IoT/Embedded (ZigBee, DECT)</li>
  * </ul>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see L2FrameTypeInfo
+ * @see L2FrameInfo
  */
 public interface L2FrameType {
 
-    // @formatter:off
+	// @formatter:off
 
     // ════════════════════════════════════════════════════════════════════════════
     // Common Frame Types (0x00-0x0F)
@@ -234,97 +235,101 @@ public interface L2FrameType {
 
     // @formatter:on
 
-    // ════════════════════════════════════════════════════════════════════════════
-    // Helper Methods
-    // ════════════════════════════════════════════════════════════════════════════
+	// ════════════════════════════════════════════════════════════════════════════
+	// Helper Methods
+	// ════════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Returns the name for an L2 frame type constant.
-     *
-     * @param type the L2 frame type value
-     * @return human-readable name
-     */
-    static String nameOf(int type) {
-        return switch (type) {
-            case UNKNOWN           -> "UNKNOWN";
-            case ETHER             -> "ETHER";
-            case PPP               -> "PPP";
-            case SLL               -> "SLL";
-            case SLL2              -> "SLL2";
-            case LOOPBACK          -> "LOOPBACK";
-            case RAW_IP4           -> "RAW_IP4";
-            case RAW_IP6           -> "RAW_IP6";
-            case PPP_HDLC          -> "PPP_HDLC";
-            case CHDLC             -> "CHDLC";
-            case PPPOE             -> "PPPOE";
-            case IEEE80211         -> "IEEE80211";
-            case IEEE80211_RADIOTAP -> "IEEE80211_RADIOTAP";
-            case IEEE80211_AVS     -> "IEEE80211_AVS";
-            case IEEE80211_PRISM   -> "IEEE80211_PRISM";
-            case IEEE80211_PPI     -> "IEEE80211_PPI";
-            case NETLINK           -> "NETLINK";
-            case NFLOG             -> "NFLOG";
-            case NFQUEUE           -> "NFQUEUE";
-            case LINUX_CAN         -> "LINUX_CAN";
-            case LINUX_USB         -> "LINUX_USB";
-            case LINUX_USB_MM      -> "LINUX_USB_MM";
-            case VSOCK             -> "VSOCK";
-            case LAPD              -> "LAPD";
-            case FDDI              -> "FDDI";
-            case TOKEN_RING        -> "TOKEN_RING";
-            case ARCNET            -> "ARCNET";
-            case ATM               -> "ATM";
-            case FRELAY            -> "FRELAY";
-            case SLIP              -> "SLIP";
-            case CHAOS             -> "CHAOS";
-            case BLUETOOTH_HCI     -> "BLUETOOTH_HCI";
-            case BLUETOOTH_LE      -> "BLUETOOTH_LE";
-            case BLUETOOTH_MON     -> "BLUETOOTH_MON";
-            case IPOIB             -> "IPOIB";
-            case DOCSIS            -> "DOCSIS";
-            case DPDK              -> "DPDK";
-            case PFLOG             -> "PFLOG";
-            case PFSYNC            -> "PFSYNC";
-            case ENC               -> "ENC";
-            case IEEE802_15_4      -> "IEEE802_15_4";
-            case IEEE802_15_4_TAP  -> "IEEE802_15_4_TAP";
-            case AX25              -> "AX25";
-            case DECT              -> "DECT";
-            default                -> "UNKNOWN(0x" + Integer.toHexString(type) + ")";
-        };
-    }
+	/**
+	 * Checks if the frame type is Ethernet-based.
+	 *
+	 * @param type the L2 frame type value
+	 * @return true if Ethernet II or 802.3
+	 */
+	static boolean isEthernet(int type) {
+		return type == ETHER;
+	}
 
-    /**
-     * Checks if the frame type is Ethernet-based.
-     *
-     * @param type the L2 frame type value
-     * @return true if Ethernet II or 802.3
-     */
-    static boolean isEthernet(int type) {
-        return type == ETHER;
-    }
+	/**
+	 * Checks if the frame type has no L2 header (raw IP).
+	 *
+	 * @param type the L2 frame type value
+	 * @return true if raw IP
+	 */
+	static boolean isRawIp(int type) {
+		return type == RAW_IP4 || type == RAW_IP6;
+	}
 
-    /**
-     * Checks if the frame type is wireless (802.11).
-     *
-     * @param type the L2 frame type value
-     * @return true if any 802.11 variant
-     */
-    static boolean isWireless(int type) {
-        return type >= IEEE80211 && type <= IEEE80211_PPI;
-    }
+	/**
+	 * Checks if the frame type is wireless (802.11).
+	 *
+	 * @param type the L2 frame type value
+	 * @return true if any 802.11 variant
+	 */
+	static boolean isWireless(int type) {
+		return type >= IEEE80211 && type <= IEEE80211_PPI;
+	}
 
-    /**
-     * Checks if the frame type has no L2 header (raw IP).
-     *
-     * @param type the L2 frame type value
-     * @return true if raw IP
-     */
-    static boolean isRawIp(int type) {
-        return type == RAW_IP4 || type == RAW_IP6;
-    }
-    
-    int l2FrameType();
-    int protocolId();
-    int baseLength();
+	/**
+	 * Returns the name for an L2 frame type constant.
+	 *
+	 * @param l2Type the L2 frame type value
+	 * @return human-readable name
+	 */
+	static String nameOf(int l2Type) {
+		return switch (l2Type) {
+		case UNKNOWN -> "UNKNOWN";
+		case ETHER -> "ETHER";
+		case PPP -> "PPP";
+		case SLL -> "SLL";
+		case SLL2 -> "SLL2";
+		case LOOPBACK -> "LOOPBACK";
+		case RAW_IP4 -> "RAW_IP4";
+		case RAW_IP6 -> "RAW_IP6";
+		case PPP_HDLC -> "PPP_HDLC";
+		case CHDLC -> "CHDLC";
+		case PPPOE -> "PPPOE";
+		case IEEE80211 -> "IEEE80211";
+		case IEEE80211_RADIOTAP -> "IEEE80211_RADIOTAP";
+		case IEEE80211_AVS -> "IEEE80211_AVS";
+		case IEEE80211_PRISM -> "IEEE80211_PRISM";
+		case IEEE80211_PPI -> "IEEE80211_PPI";
+		case NETLINK -> "NETLINK";
+		case NFLOG -> "NFLOG";
+		case NFQUEUE -> "NFQUEUE";
+		case LINUX_CAN -> "LINUX_CAN";
+		case LINUX_USB -> "LINUX_USB";
+		case LINUX_USB_MM -> "LINUX_USB_MM";
+		case VSOCK -> "VSOCK";
+		case LAPD -> "LAPD";
+		case FDDI -> "FDDI";
+		case TOKEN_RING -> "TOKEN_RING";
+		case ARCNET -> "ARCNET";
+		case ATM -> "ATM";
+		case FRELAY -> "FRELAY";
+		case SLIP -> "SLIP";
+		case CHAOS -> "CHAOS";
+		case BLUETOOTH_HCI -> "BLUETOOTH_HCI";
+		case BLUETOOTH_LE -> "BLUETOOTH_LE";
+		case BLUETOOTH_MON -> "BLUETOOTH_MON";
+		case IPOIB -> "IPOIB";
+		case DOCSIS -> "DOCSIS";
+		case DPDK -> "DPDK";
+		case PFLOG -> "PFLOG";
+		case PFSYNC -> "PFSYNC";
+		case ENC -> "ENC";
+		case IEEE802_15_4 -> "IEEE802_15_4";
+		case IEEE802_15_4_TAP -> "IEEE802_15_4_TAP";
+		case AX25 -> "AX25";
+		case DECT -> "DECT";
+		default -> "UNKNOWN(0x" + Integer.toHexString(l2Type) + ")";
+		};
+	}
+
+	int minLength();
+
+	int maxLength();
+
+	int l2FrameId();
+
+	int protocolId();
 }

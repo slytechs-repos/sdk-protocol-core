@@ -21,13 +21,13 @@ import java.lang.foreign.MemoryLayout;
 
 import com.slytechs.sdk.common.format.StructFormat;
 import com.slytechs.sdk.common.format.StructFormattable;
-import com.slytechs.sdk.common.memory.ByteBuf;
+import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.common.memory.Memory;
 import com.slytechs.sdk.common.time.TimestampUnit;
 import com.slytechs.sdk.protocol.core.IpProto;
 import com.slytechs.sdk.protocol.core.ProtocolId;
 import com.slytechs.sdk.protocol.core.descriptor.L2FrameType;
-import com.slytechs.sdk.protocol.core.descriptor.L2FrameTypeInfo;
+import com.slytechs.sdk.protocol.core.descriptor.L2FrameInfo;
 import com.slytechs.sdk.protocol.core.descriptor.NetPacketDescriptor;
 
 /**
@@ -96,7 +96,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 	private long protoBitmap = 0;
 
 	// Packet metadata
-	private final ByteBuf internalView = new ByteBuf();
+	private final MemoryBuffer internalView = new MemoryBuffer();
 
 	// Last IP header info (for transport dissection)
 	private int lastIpProtocol = 0;
@@ -151,7 +151,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 	// ═══════════════════════════════════════════════════════════════════════
 
 	@Override
-	public int dissectPacket(ByteBuf buffer, long timestamp, int caplen, int wirelen) {
+	public int dissectPacket(MemoryBuffer buffer, long timestamp, int caplen, int wirelen) {
 		recycle();
 		
 		super.dissectPacket(buffer, timestamp, caplen, wirelen);
@@ -202,7 +202,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 
 		case L2FrameType.PPP, L2FrameType.PPP_HDLC -> {
 			nextProto = dissectPpp(buffer, 0);
-			offset = L2FrameTypeInfo.of(l2FrameType).baseLength();
+			offset = L2FrameInfo.of(l2FrameType).minLength();
 		}
 
 		default -> {
@@ -257,7 +257,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 	// New L2 Dissectors
 	// ═══════════════════════════════════════════════════════════════════════
 
-	private int dissectLinuxSll(ByteBuf buffer, int offset) {
+	private int dissectLinuxSll(MemoryBuffer buffer, int offset) {
 		if (offset + 16 > captureLength)
 			return 0;
 
@@ -268,7 +268,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 		return buffer.getShortBE() & 0xFFFF;
 	}
 
-	private int dissectLinuxSll2(ByteBuf buffer, int offset) {
+	private int dissectLinuxSll2(MemoryBuffer buffer, int offset) {
 		if (offset + 20 > captureLength)
 			return 0;
 
@@ -279,7 +279,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 		return buffer.getShortBE() & 0xFFFF;
 	}
 
-	private int dissectNull(ByteBuf buffer, int offset) {
+	private int dissectNull(MemoryBuffer buffer, int offset) {
 		if (offset + 4 > captureLength)
 			return 0;
 
@@ -296,7 +296,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 		};
 	}
 
-	private int dissectPpp(ByteBuf buffer, int offset) {
+	private int dissectPpp(MemoryBuffer buffer, int offset) {
 		if (offset + 4 > captureLength)
 			return 0;
 
@@ -332,7 +332,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 	}
 
 	@Override
-	public int writeDescriptor(ByteBuf buffer) {
+	public int writeDescriptor(MemoryBuffer buffer) {
 		buffer.position(0);
 		super.writeDescriptor(buffer);
 
@@ -413,7 +413,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 	// Layer 2 Dissection
 	// ═══════════════════════════════════════════════════════════════════════
 
-	private int dissectEthernet(ByteBuf buffer, int offset) {
+	private int dissectEthernet(MemoryBuffer buffer, int offset) {
 		if (offset + 14 > captureLength)
 			return 0;
 
@@ -453,7 +453,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 		return etherType;
 	}
 
-	private int dissectVlan(ByteBuf buffer, int offset, int instance) {
+	private int dissectVlan(MemoryBuffer buffer, int offset, int instance) {
 		if (offset + 4 > captureLength)
 			return offset;
 
@@ -461,7 +461,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 		return offset + 4;
 	}
 
-	private int dissectMpls(ByteBuf buffer, int offset) {
+	private int dissectMpls(MemoryBuffer buffer, int offset) {
 		// Parse MPLS label stack until bottom-of-stack bit
 		while (offset + 4 <= captureLength) {
 			buffer.position(offset);
@@ -487,7 +487,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 	// Layer 3 Dissection
 	// ═══════════════════════════════════════════════════════════════════════
 
-	private int dissectIPv4(ByteBuf buffer, int offset) {
+	private int dissectIPv4(MemoryBuffer buffer, int offset) {
 		if (offset + 20 > captureLength)
 			return offset;
 
@@ -520,7 +520,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 		return offset + headerLen;
 	}
 
-	private int dissectIPv6(ByteBuf buffer, int offset) {
+	private int dissectIPv6(MemoryBuffer buffer, int offset) {
 		if (offset + 40 > captureLength)
 			return offset;
 
@@ -576,7 +576,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 		};
 	}
 
-	private int dissectARP(ByteBuf buffer, int offset) {
+	private int dissectARP(MemoryBuffer buffer, int offset) {
 		if (offset + 28 > captureLength)
 			return offset;
 
@@ -588,7 +588,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 	// Layer 4 / IPsec Dissection
 	// ═══════════════════════════════════════════════════════════════════════
 
-	private void dissectTransportOrIpsec(ByteBuf buffer, int offset) {
+	private void dissectTransportOrIpsec(MemoryBuffer buffer, int offset) {
 		switch (lastIpProtocol) {
 		case IpProto.TCP -> dissectTcp(buffer, offset);
 		case IpProto.UDP -> dissectUdp(buffer, offset);
@@ -599,7 +599,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 		}
 	}
 
-	private void dissectTcp(ByteBuf buffer, int offset) {
+	private void dissectTcp(MemoryBuffer buffer, int offset) {
 		if (offset + 20 > captureLength)
 			return;
 
@@ -615,14 +615,14 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 		addProtocol(ProtocolId.TCP, offset, tcpLen, 0);
 	}
 
-	private void dissectUdp(ByteBuf buffer, int offset) {
+	private void dissectUdp(MemoryBuffer buffer, int offset) {
 		if (offset + 8 > captureLength)
 			return;
 
 		addProtocol(ProtocolId.UDP, offset, 8, 0);
 	}
 
-	private void dissectIcmp(ByteBuf buffer, int offset) {
+	private void dissectIcmp(MemoryBuffer buffer, int offset) {
 		if (offset + 8 > captureLength)
 			return;
 
@@ -631,14 +631,14 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 		addProtocol(ProtocolId.ICMP, offset, 8, 0);
 	}
 
-	private void dissectIcmpv6(ByteBuf buffer, int offset) {
+	private void dissectIcmpv6(MemoryBuffer buffer, int offset) {
 		if (offset + 8 > captureLength)
 			return;
 
 		addProtocol(ProtocolId.ICMPv6, offset, 8, 0);
 	}
 
-	private void dissectIpsecAh(ByteBuf buffer, int offset) {
+	private void dissectIpsecAh(MemoryBuffer buffer, int offset) {
 		if (offset + 12 > captureLength)
 			return;
 
@@ -664,7 +664,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 		}
 	}
 
-	private void dissectIpsecEsp(ByteBuf buffer, int offset) {
+	private void dissectIpsecEsp(MemoryBuffer buffer, int offset) {
 		if (offset + 8 > captureLength)
 			return;
 

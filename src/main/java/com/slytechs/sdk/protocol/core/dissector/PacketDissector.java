@@ -17,7 +17,7 @@
  */
 package com.slytechs.sdk.protocol.core.dissector;
 
-import com.slytechs.sdk.common.memory.ByteBuf;
+import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.common.memory.Memory;
 import com.slytechs.sdk.common.time.TimestampUnit;
 import com.slytechs.sdk.protocol.core.descriptor.DescriptorType;
@@ -71,7 +71,7 @@ public interface PacketDissector {
 	 * @param wirelen   the wirelen
 	 * @return number of bytes processed in the buffer
 	 */
-	int dissectPacket(ByteBuf packet, long timestamp, int caplen, int wirelen);
+	int dissectPacket(MemoryBuffer packet, long timestamp, int caplen, int wirelen);
 
 	/**
 	 * Dissect a packet and store its state.
@@ -84,7 +84,7 @@ public interface PacketDissector {
 	 */
 	int dissectPacket(Memory packet, long timestamp, int caplen, int wirelen);
 
-	default int dissectPacket(ByteBuf packet, PacketDescriptor descriptor) {
+	default int dissectPacket(MemoryBuffer packet, PacketDescriptor descriptor) {
 		long timestamp = descriptor.timestamp(timestampUnit());
 		int caplen = descriptor.captureLength();
 		int wirelen = descriptor.wireLength();
@@ -104,7 +104,7 @@ public interface PacketDissector {
 	 * @param descriptor the descriptor buffer
 	 * @return number of byte written
 	 */
-	int writeDescriptor(ByteBuf descriptor);
+	int writeDescriptor(MemoryBuffer descriptor);
 
 	/**
 	 * Write the state of the dissection into the provided descriptor.

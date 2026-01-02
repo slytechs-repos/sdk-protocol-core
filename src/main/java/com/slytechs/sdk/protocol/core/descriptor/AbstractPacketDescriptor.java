@@ -17,7 +17,10 @@
  */
 package com.slytechs.sdk.protocol.core.descriptor;
 
-import com.slytechs.sdk.common.memory.ByteBuf;
+import java.util.Objects;
+
+import com.slytechs.sdk.common.memory.BoundView;
+import com.slytechs.sdk.common.memory.pool.PoolEntry;
 import com.slytechs.sdk.common.time.TimestampUnit;
 
 /**
@@ -27,37 +30,29 @@ import com.slytechs.sdk.common.time.TimestampUnit;
  * @author Sly Technologies Inc.
  */
 public abstract class AbstractPacketDescriptor
-		extends ByteBuf
+		extends BoundView
 		implements PacketDescriptor {
 
-	protected TimestampUnit timestampUnit;
+	static HeaderBinding UNSUPPORTED_HEADER_BINDING = HeaderBinding.INSTANCE;
+
+	private TimestampUnit timestampUnit;
+	private final DescriptorInfo descriptorInfo;
 	protected long flags = 0;
-	private int l2FrameType;
 
-	protected AbstractPacketDescriptor(TimestampUnit timestampUnit) {
-		this(L2FrameType.ETHER, timestampUnit);
+	private final PoolEntry poolEntry = new PoolEntry();
+
+	protected AbstractPacketDescriptor(DescriptorInfo descriptorInfo) {
+		this(descriptorInfo, TimestampUnit.EPOCH_MILLI);
 	}
 
-	protected AbstractPacketDescriptor(int l2Type, TimestampUnit timestampUnit) {
-		this.l2FrameType = l2Type;
-		this.timestampUnit = timestampUnit;
-	}
-
-	protected AbstractPacketDescriptor() {
-		this(L2FrameType.ETHER, TimestampUnit.EPOCH_MILLI);
+	protected AbstractPacketDescriptor(DescriptorInfo descriptorInfo, TimestampUnit timestampUnit) {
+		this.timestampUnit = Objects.requireNonNull(timestampUnit, "timestampUnit");
+		this.descriptorInfo = Objects.requireNonNull(descriptorInfo, "descriptorInfo");
 	}
 
 	@Override
-	public void setTimestampUnit(TimestampUnit unit) {
-		this.timestampUnit = unit;
-	}
-
-	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#l2FrameType()
-	 */
-	@Override
-	public int l2FrameType() {
-		return l2FrameType;
+	public final DescriptorInfo descriptorInfo() {
+		return descriptorInfo;
 	}
 
 	/**
@@ -66,15 +61,29 @@ public abstract class AbstractPacketDescriptor
 	 */
 	@Override
 	public long mapProtocol(int protocolId, int depth) {
-		return PacketDescriptor.PROTOCOL_NOT_FOUND;
+		return PacketDescriptor.PROTOCOL_NOT_SUPPORTED;
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.memory.pool.Poolable#poolEntry()
+	 */
+	@Override
+	public final PoolEntry poolEntry() {
+		return poolEntry;
+	}
+
+	@Override
+	public PacketDescriptor setTimestampUnit(TimestampUnit unit) {
+		this.timestampUnit = unit;
+
+		return this;
 	}
 
 	/**
 	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#timestampUnit()
 	 */
 	@Override
-	public TimestampUnit timestampUnit() {
+	public final TimestampUnit timestampUnit() {
 		return timestampUnit;
 	}
-
 }
