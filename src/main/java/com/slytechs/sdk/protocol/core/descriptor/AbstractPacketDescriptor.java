@@ -33,13 +33,13 @@ public abstract class AbstractPacketDescriptor
 		extends BoundView
 		implements PacketDescriptor {
 
-	static HeaderBinding UNSUPPORTED_HEADER_BINDING = HeaderBinding.INSTANCE;
-
 	private TimestampUnit timestampUnit;
 	private final DescriptorInfo descriptorInfo;
 	protected long flags = 0;
 
 	private final PoolEntry poolEntry = new PoolEntry();
+
+	protected HeaderBinding onDemandDissector;
 
 	protected AbstractPacketDescriptor(DescriptorInfo descriptorInfo) {
 		this(descriptorInfo, TimestampUnit.EPOCH_MILLI);
@@ -53,6 +53,10 @@ public abstract class AbstractPacketDescriptor
 	@Override
 	public final DescriptorInfo descriptorInfo() {
 		return descriptorInfo;
+	}
+
+	public void setOnDemandDissector(HeaderBinding newDissector) {
+		this.onDemandDissector = newDissector;
 	}
 
 	/**

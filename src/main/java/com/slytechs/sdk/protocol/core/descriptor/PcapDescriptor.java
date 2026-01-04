@@ -33,6 +33,10 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 	/** The Constant TX_CAPABILITIES. */
 	public static final long TX_CAPABILITIES = 0;
 
+	public static boolean isPcapDescriptor(DescriptorInfo target) {
+		return target == DescriptorInfo.PCAP_PACKED || target == DescriptorInfo.PCAP_PADDED;
+	}
+
 	private L2FrameInfo l2FrameInfo;
 
 	/**
@@ -153,7 +157,7 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 		}
 
 		// Slow path or no-op depending on user settings.
-		return AbstractPacketDescriptor.UNSUPPORTED_HEADER_BINDING
+		return onDemandDissector != null && onDemandDissector
 				.bindHeader(packet, header, l2Type.l2FrameId(), protocolId, depth);
 	}
 

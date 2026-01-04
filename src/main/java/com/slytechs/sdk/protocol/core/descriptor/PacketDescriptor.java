@@ -328,16 +328,6 @@ public interface PacketDescriptor
 		}
 	}
 
-	static void setUnsupportedProtocolBinding(HeaderBinding unsupportedBinding) {
-
-		synchronized (PacketDescriptor.class) {
-			if (unsupportedBinding == null)
-				AbstractPacketDescriptor.UNSUPPORTED_HEADER_BINDING = HeaderBinding.INSTANCE;
-			else
-				AbstractPacketDescriptor.UNSUPPORTED_HEADER_BINDING = unsupportedBinding;
-		}
-	}
-
 	/**
 	 * Return code indicating that a protocol was not found in the descriptor.
 	 * 

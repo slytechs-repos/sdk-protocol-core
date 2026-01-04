@@ -281,7 +281,7 @@ public class NetPacketDescriptor
 
 			for (int i = 0; i < extSize; i++) {
 				long entry = extended.get(ValueLayout.JAVA_LONG, i * 8);
-				if ((entry & PROTOCOL_ID_MASK) == protocolId) {
+				if ((entry & PROTOCOL_ID_MASK) == (protocolId & PROTOCOL_ID_MASK)) {
 					int instance = (int) ((entry >> INSTANCE_NUM_SHIFT) & INSTANCE_NUM_MASK);
 					if (instance == depth || matchCount == depth) {
 						int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
@@ -525,7 +525,7 @@ public class NetPacketDescriptor
 	}
 
 	private int getInlineSlot(int protocolId) {
-		return switch (protocolId & 0xFFFF) {
+		return switch (protocolId) {
 		case ProtocolId.ETHERNET -> INLINE_ETHERNET;
 		case ProtocolId.VLAN -> INLINE_VLAN;
 		case ProtocolId.IPv4 -> INLINE_IPV4;

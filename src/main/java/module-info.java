@@ -22,14 +22,11 @@
 module com.slytechs.sdk.protocol.core {
 	exports com.slytechs.sdk.protocol.core;
 	exports com.slytechs.sdk.protocol.core.address;
-	exports com.slytechs.sdk.protocol.core.flag;
 	exports com.slytechs.sdk.protocol.core.checksum;
 	exports com.slytechs.sdk.protocol.core.pack;
 	exports com.slytechs.sdk.protocol.core.builtin;
 	exports com.slytechs.sdk.protocol.core.descriptor;
 	exports com.slytechs.sdk.protocol.core.dissector;
-	exports com.slytechs.sdk.protocol.core.format;
-	exports com.slytechs.sdk.protocol.core.table;
 	exports com.slytechs.sdk.protocol.core.stack;
 	exports com.slytechs.sdk.protocol.core.stack.processor;
 	exports com.slytechs.sdk.protocol.core.spi;
@@ -38,6 +35,5 @@ module com.slytechs.sdk.protocol.core {
 	requires transitive com.slytechs.sdk.common;
 
 	uses com.slytechs.sdk.protocol.core.pack.ProtocolPackPlugin;
-    uses com.slytechs.sdk.protocol.core.table.TableProvider;
     uses com.slytechs.sdk.protocol.core.spi.ProtocolProvider;
 }
