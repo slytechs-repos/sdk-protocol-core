@@ -42,12 +42,26 @@ public abstract class AbstractPacketDescriptor
 	protected HeaderBinding onDemandDissector;
 
 	protected AbstractPacketDescriptor(DescriptorInfo descriptorInfo) {
-		this(descriptorInfo, TimestampUnit.EPOCH_MILLI);
+		this(descriptorInfo, PacketDescriptor.DEFAULT_TIMESTAMP_UNIT);
 	}
 
 	protected AbstractPacketDescriptor(DescriptorInfo descriptorInfo, TimestampUnit timestampUnit) {
 		this.timestampUnit = Objects.requireNonNull(timestampUnit, "timestampUnit");
 		this.descriptorInfo = Objects.requireNonNull(descriptorInfo, "descriptorInfo");
+	}
+
+	@Override
+	public PacketDescriptor copyTo(PacketDescriptor target) {
+
+		target.boundMemory()
+				.segment()
+				.copyFrom(this.boundMemory()
+						.segment());
+
+		if (target instanceof AbstractPacketDescriptor desc)
+			desc.onDemandDissector = this.onDemandDissector;
+
+		return target;
 	}
 
 	@Override

@@ -28,112 +28,120 @@ import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
  * 
  * <p>
  * PacketPool provides static factory methods for creating pools suited to
- * various packet processing requirements. Three pool types are available:
+ * various packet processing requirements. The factory method name explicitly
+ * indicates the pool type and allocation strategy.
  * </p>
  * 
+ * <h2>Pool Types Overview</h2>
  * <table>
  * <caption>Pool Types</caption>
  * <tr>
- * <th>Type</th>
- * <th>Data Memory</th>
- * <th>Descriptor</th>
+ * <th>Factory Method</th>
+ * <th>Pool Type</th>
+ * <th>Memory</th>
  * <th>Use Case</th>
  * </tr>
  * <tr>
- * <td>Fixed</td>
- * <td>FixedMemory (slab)</td>
- * <td>FixedMemory</td>
- * <td>Copied packets, variable sizes</td>
+ * <td>{@link #ofFixedSize}</td>
+ * <td>FreeListPool</td>
+ * <td>Single fixed size</td>
+ * <td>Uniform packet sizes, simple allocation</td>
  * </tr>
  * <tr>
- * <td>Scoped</td>
- * <td>ScopedMemory</td>
- * <td>ScopedMemory</td>
- * <td>Zero-copy native capture</td>
+ * <td>{@link #ofBucketed}</td>
+ * <td>BucketPool</td>
+ * <td>Size-tiered buckets</td>
+ * <td>Variable packet sizes, efficient memory</td>
  * </tr>
  * <tr>
- * <td>Hybrid</td>
- * <td>ScopedMemory</td>
- * <td>FixedMemory</td>
- * <td>Zero-copy with descriptor conversion</td>
+ * <td>{@link #ofDefaultBuckets}</td>
+ * <td>BucketPool</td>
+ * <td>Network-optimized buckets</td>
+ * <td>General network capture</td>
+ * </tr>
+ * <tr>
+ * <td>{@link #ofScoped}</td>
+ * <td>FreeListPool</td>
+ * <td>Zero-copy binding</td>
+ * <td>High-performance native capture</td>
+ * </tr>
+ * <tr>
+ * <td>{@link #ofHybrid}</td>
+ * <td>FreeListPool</td>
+ * <td>Zero-copy + fixed descriptor</td>
+ * <td>Native capture with descriptor conversion</td>
  * </tr>
  * </table>
  * 
- * <h2>Fixed Pools</h2>
+ * <h2>Fixed-Size Pools</h2>
  * <p>
- * Fixed pools use {@link BucketPool} with size-tiered allocation. Packet data
- * is copied into slab-allocated memory that persists across recycle cycles. Use
- * when packets need to outlive native buffers or be queued/stored.
+ * Use {@link #ofFixedSize(long)} when all packets are approximately the same
+ * size. Simpler allocation, no bucket selection overhead.
  * </p>
  * 
  * <pre>{@code
- * // Default bucket sizes: 64, 1518, 9000, 65536
- * Pool<Packet> pool = PacketPool.ofFixed();
+ * // Pool for standard Ethernet frames
+ * Pool<Packet> pool = PacketPool.ofFixedSize(1518);
  * 
- * // Custom sizes
- * Pool<Packet> pool = PacketPool.ofFixed(settings, new long[] {
- * 		128,
- * 		1500,
- * 		9000
- * });
+ * // Pool for jumbo frames with custom capacity
+ * PoolSettings settings = new PoolSettings()
+ * 		.capacity(1000);
+ * Pool<Packet> pool = PacketPool.ofFixedSize(settings, 9000);
  * 
  * // Usage
- * Packet packet = pool.allocate(1500); // Gets 1518-byte bucket
- * packet.memory().segment().copyFrom(nativeData);
+ * Packet packet = pool.allocate();
+ * packet.copyTo(nativePacket);
  * processPacket(packet);
  * packet.recycle();
  * }</pre>
  * 
- * <h2>Scoped Pools</h2>
+ * <h2>Bucketed Pools</h2>
  * <p>
- * Scoped pools use {@link FreeListPool} for zero-copy capture. Packet memory is
- * bound directly to native segments (DPDK mbufs, Napatech buffers, etc.) with
- * no data copying. Maximum performance for inline processing.
+ * Use {@link #ofBucketed(long...)} or {@link #ofDefaultBuckets()} when packet
+ * sizes vary significantly. Memory is allocated efficiently from the smallest
+ * bucket that fits each packet.
+ * </p>
+ * 
+ * <pre>{@code
+ * // Default network-optimized buckets (64, 1518, 9000, 65536)
+ * Pool<Packet> pool = PacketPool.ofDefaultBuckets();
+ * 
+ * // Custom bucket sizes
+ * Pool<Packet> pool = PacketPool.ofBucketed(128, 1500, 9000);
+ * 
+ * // With settings (capacity applies PER BUCKET)
+ * PoolSettings settings = new PoolSettings()
+ * 		.capacity(500); // 500 per bucket = 2000 total for 4 buckets
+ * Pool<Packet> pool = PacketPool.ofDefaultBuckets(settings);
+ * 
+ * // Allocation selects appropriate bucket
+ * Packet small = pool.allocate(64); // From 64-byte bucket
+ * Packet medium = pool.allocate(1000); // From 1518-byte bucket
+ * Packet jumbo = pool.allocate(8000); // From 9000-byte bucket
+ * }</pre>
+ * 
+ * <p>
+ * <b>Important:</b> For bucketed pools, {@link Pool#available()} returns the
+ * total capacity across all buckets. A specific bucket may be exhausted while
+ * others have capacity. Always handle null returns from
+ * {@link Pool#allocate(long)}.
+ * </p>
+ * 
+ * <h2>Zero-Copy Pools</h2>
+ * <p>
+ * Use {@link #ofScoped()} for maximum performance when packet data doesn't need
+ * to persist beyond immediate processing.
  * </p>
  * 
  * <pre>{@code
  * Pool<Packet> pool = PacketPool.ofScoped();
  * 
- * // Capture loop
+ * // Capture loop - no data copying
  * Packet packet = pool.allocate();
  * packet.memory().bind(nativeSegment, offset, length);
  * processPacket(packet);
  * packet.memory().unbind();
  * packet.recycle();
- * }</pre>
- * 
- * <h2>Hybrid Pools</h2>
- * <p>
- * Hybrid pools combine zero-copy data access with fixed descriptor memory. Use
- * when native descriptors need conversion to a different format while packet
- * data can remain zero-copy.
- * </p>
- * 
- * <pre>{@code
- * Pool<Packet> pool = PacketPool.ofHybrid();
- * 
- * // Capture loop
- * Packet packet = pool.allocate();
- * packet.memory().bind(nativeSegment, offset, length); // Zero-copy data
- * convertDescriptor(nativeDesc, packet.descriptor()); // Copy/convert descriptor
- * processPacket(packet);
- * packet.memory().unbind();
- * packet.recycle();
- * }</pre>
- * 
- * <h2>Configuration</h2>
- * <p>
- * All factory methods accept optional {@link PoolSettings} for capacity and
- * contraction configuration:
- * </p>
- * 
- * <pre>{@code
- * PoolSettings settings = new PoolSettings()
- * 		.minCapacity(1000)
- * 		.maxCapacity(10000)
- * 		.contractionEnabled(true);
- * 
- * Pool<Packet> pool = PacketPool.ofFixed(settings);
  * }</pre>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
@@ -147,7 +155,7 @@ import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
 public final class PacketPool {
 
 	/**
-	 * Default bucket sizes for fixed packet pools.
+	 * Default bucket sizes for network packet pools.
 	 * 
 	 * <p>
 	 * Sizes chosen to match common network packet sizes:
@@ -159,114 +167,220 @@ public final class PacketPool {
 	 * <li>65536 - Maximum capture size</li>
 	 * </ul>
 	 */
-	private static final long[] DEFAULT_BUCKET_SIZES = new long[] {
+	public static final long[] DEFAULT_BUCKET_SIZES = {
 			64,
 			1518,
 			9000,
 			65536
 	};
 
-	/** Default pool settings with standard capacity limits. */
-	private static final PoolSettings DEFAULT_POOL_SETTINGS = new PoolSettings();
+	/** Default pool settings. */
+	private static final PoolSettings DEFAULT_SETTINGS = new PoolSettings();
 
 	/**
-	 * Creates a fixed packet pool with default settings and bucket sizes.
+	 * Creates a bucketed packet pool with custom bucket sizes.
 	 * 
 	 * <p>
-	 * Uses default bucket sizes (64, 1518, 9000, 65536) and default pool settings.
+	 * Bucket sizes must be in ascending order. Allocation requests are served by
+	 * the smallest bucket that can accommodate the requested size.
+	 * </p>
+	 *
+	 * @param bucketSizes bucket sizes in ascending order
+	 * @return a new bucketed packet pool
+	 * @throws IllegalArgumentException if sizes is null, empty, or not ascending
+	 */
+	public static Pool<Packet> ofBucketed(long... bucketSizes) {
+		return ofBucketed(DEFAULT_SETTINGS, bucketSizes);
+	}
+
+	/**
+	 * Creates a bucketed packet pool with custom settings and bucket sizes.
+	 * 
+	 * <p>
+	 * Each bucket maintains its own allocation pool. The settings apply per-bucket,
+	 * so total pool capacity is {@code settings.capacity() * bucketSizes.length}.
+	 * </p>
+	 * 
+	 * <p>
+	 * <b>Allocation behavior:</b> When allocating, the pool selects the smallest
+	 * bucket that fits the requested size. If that bucket is exhausted,
+	 * {@link Pool#allocate(long)} returns null even if other buckets have capacity.
+	 * Always check for null returns.
+	 * </p>
+	 *
+	 * @param settings    pool configuration (capacity applies per bucket)
+	 * @param bucketSizes bucket sizes in ascending order
+	 * @return a new bucketed packet pool
+	 * @throws IllegalArgumentException if sizes is null, empty, or not ascending
+	 */
+	public static Pool<Packet> ofBucketed(PoolSettings settings, long... bucketSizes) {
+		validateBucketSizes(bucketSizes);
+		return new BucketPool<>(settings, bucketSizes, (BucketFactory<Packet>) Packet::ofFixed);
+	}
+
+	/**
+	 * Creates a bucketed packet pool with custom descriptor type.
+	 *
+	 * @param settings    pool configuration (capacity applies per bucket)
+	 * @param bucketSizes bucket sizes in ascending order
+	 * @param type        descriptor type for packets
+	 * @return a new bucketed packet pool
+	 * @throws IllegalArgumentException if sizes is null, empty, or not ascending
+	 */
+	public static Pool<Packet> ofBucketed(PoolSettings settings, long[] bucketSizes, DescriptorInfo type) {
+		validateBucketSizes(bucketSizes);
+		return new BucketPool<>(settings, bucketSizes,
+				(allocator, dataSize) -> Packet.ofFixedType(allocator, dataSize, type));
+	}
+
+	/**
+	 * Creates a bucketed packet pool with default network-optimized sizes.
+	 * 
+	 * <p>
+	 * Uses bucket sizes optimized for network traffic: 64, 1518, 9000, 65536 bytes.
 	 * Packets are allocated from the smallest bucket that fits the requested size.
 	 * </p>
+	 * 
+	 * <p>
+	 * <b>Note:</b> Pool capacity settings apply <em>per bucket</em>. With default
+	 * settings and 4 buckets, total capacity is 4x the configured capacity.
+	 * </p>
 	 *
-	 * @return a new bucketed fixed packet pool
-	 * @see #ofFixed(PoolSettings, long[])
+	 * @return a new bucketed packet pool
 	 */
-	public static Pool<Packet> ofFixed() {
-		return ofFixed(DEFAULT_POOL_SETTINGS, DEFAULT_BUCKET_SIZES);
+	public static Pool<Packet> ofDefaultBuckets() {
+		return ofBucketed(DEFAULT_SETTINGS, DEFAULT_BUCKET_SIZES);
 	}
 
 	/**
-	 * Creates a fixed packet pool with custom settings and default bucket sizes.
+	 * Creates a bucketed packet pool with default sizes and custom settings.
+	 * 
+	 * <p>
+	 * <b>Important:</b> The capacity in settings applies <em>per bucket</em>. For
+	 * example, {@code capacity(100)} with 4 default buckets creates a pool with
+	 * total capacity of 400.
+	 * </p>
 	 *
-	 * @param settings pool configuration for capacity and contraction
-	 * @return a new bucketed fixed packet pool
-	 * @see #ofFixed(PoolSettings, long[])
+	 * @param settings pool configuration (capacity applies per bucket)
+	 * @return a new bucketed packet pool
 	 */
-	public static Pool<Packet> ofFixed(PoolSettings settings) {
-		return ofFixed(settings, DEFAULT_BUCKET_SIZES);
+	public static Pool<Packet> ofDefaultBuckets(PoolSettings settings) {
+		return ofBucketed(settings, DEFAULT_BUCKET_SIZES);
 	}
 
 	/**
-	 * Creates a fixed packet pool with custom settings and bucket sizes.
+	 * Creates a fixed-size packet pool with default settings.
 	 * 
 	 * <p>
-	 * Fixed pools allocate packet data from slab memory. Each bucket maintains its
-	 * own slab allocator for efficient bulk allocation. The pool settings apply
-	 * per-bucket (each bucket has minCapacity to maxCapacity range).
-	 * </p>
-	 * 
-	 * <p>
-	 * Bucket sizes must be in ascending order. Allocation requests are served by
-	 * the smallest bucket that can accommodate the requested size.
+	 * All packets in this pool have the same memory size. Use when packet sizes are
+	 * uniform or when simplicity is preferred over memory efficiency.
 	 * </p>
 	 *
-	 * @param settings pool configuration for capacity and contraction
-	 * @param sizes    bucket sizes in ascending order
-	 * @return a new bucketed fixed packet pool
-	 * @throws IllegalArgumentException if sizes is null, empty, or not ascending
+	 * @param segmentSize memory size for each packet in bytes
+	 * @return a new fixed-size packet pool
+	 * @throws IllegalArgumentException if segmentSize is not positive
 	 */
-	public static Pool<Packet> ofFixed(PoolSettings settings, long[] sizes) {
-		return new BucketPool<>(settings, sizes, (BucketFactory<Packet>) Packet::ofFixed);
+	public static Pool<Packet> ofFixedSize(long segmentSize) {
+		return ofFixedSize(DEFAULT_SETTINGS, segmentSize);
 	}
 
 	/**
-	 * Creates a fixed packet pool with custom settings and bucket sizes.
+	 * Creates a fixed-size packet pool with custom settings.
 	 * 
 	 * <p>
-	 * Fixed pools allocate packet data from slab memory. Each bucket maintains its
-	 * own slab allocator for efficient bulk allocation. The pool settings apply
-	 * per-bucket (each bucket has minCapacity to maxCapacity range).
-	 * </p>
-	 * 
-	 * <p>
-	 * Bucket sizes must be in ascending order. Allocation requests are served by
-	 * the smallest bucket that can accommodate the requested size.
+	 * The pool will contain packets all of the same size. Settings control capacity
+	 * and contraction behavior.
 	 * </p>
 	 *
-	 * @param settings pool configuration for capacity and contraction
-	 * @param sizes    bucket sizes in ascending order
-	 * @return a new bucketed fixed packet pool
-	 * @throws IllegalArgumentException if sizes is null, empty, or not ascending
+	 * @param settings    pool configuration
+	 * @param segmentSize memory size for each packet in bytes
+	 * @return a new fixed-size packet pool
+	 * @throws IllegalArgumentException if segmentSize is not positive
 	 */
-	public static Pool<Packet> ofFixed(PoolSettings settings, long[] sizes, DescriptorInfo type) {
-		return new BucketPool<>(settings, sizes, (allocator, dataSize) -> Packet.ofFixedType(allocator, dataSize,
-				type));
+	public static Pool<Packet> ofFixedSize(PoolSettings settings, long segmentSize) {
+		if (segmentSize <= 0)
+			throw new IllegalArgumentException("segmentSize must be positive: " + segmentSize);
+
+		// Use PoolableFactory - allocator comes from FreeListPool's slab
+		return new FreeListPool<>(
+				settings.segmentSize(segmentSize), // Set segment size for slab allocation
+				allocator -> Packet.ofFixed(allocator, segmentSize));
 	}
 
 	/**
-	 * Creates a scoped packet pool with default settings.
+	 * Creates a fixed-size packet pool with custom descriptor type.
+	 *
+	 * @param settings    pool configuration
+	 * @param segmentSize memory size for each packet in bytes
+	 * @param type        descriptor type for packets
+	 * @return a new fixed-size packet pool
+	 * @throws IllegalArgumentException if segmentSize is not positive
+	 */
+	public static Pool<Packet> ofFixedSize(PoolSettings settings, long segmentSize, DescriptorInfo type) {
+		if (segmentSize <= 0)
+			throw new IllegalArgumentException("segmentSize must be positive: " + segmentSize);
+
+		return new FreeListPool<>(
+				settings.segmentSize(segmentSize),
+				allocator -> Packet.ofFixedType(allocator, segmentSize, type));
+	}
+
+	/**
+	 * Creates a hybrid packet pool with default settings.
+	 * 
+	 * <p>
+	 * Hybrid pools combine zero-copy data access with fixed descriptor memory. Use
+	 * when native packet descriptors need conversion while packet data remains
+	 * zero-copy.
+	 * </p>
+	 *
+	 * @return a new hybrid packet pool
+	 */
+	public static Pool<Packet> ofHybrid() {
+		return ofHybrid(DEFAULT_SETTINGS);
+	}
+
+	/**
+	 * Creates a hybrid packet pool with custom settings.
+	 * 
+	 * <p>
+	 * Common use cases:
+	 * </p>
+	 * <ul>
+	 * <li>Converting native descriptor formats to protocol-specific format</li>
+	 * <li>Adding metadata to packets while keeping data zero-copy</li>
+	 * <li>Protocol stacks that enhance descriptors during processing</li>
+	 * </ul>
+	 *
+	 * @param settings pool configuration
+	 * @return a new hybrid packet pool
+	 */
+	public static Pool<Packet> ofHybrid(PoolSettings settings) {
+		return new FreeListPool<>(settings, Packet::ofHybrid);
+	}
+
+	/**
+	 * Creates a scoped (zero-copy) packet pool with default settings.
 	 * 
 	 * <p>
 	 * Scoped pools provide zero-copy packet access. The pool manages reusable
 	 * Packet wrapper objects with ScopedMemory that binds directly to native
-	 * segments.
+	 * segments. No packet data is copied.
+	 * </p>
+	 * 
+	 * <p>
+	 * Use for high-performance capture where packets are processed inline and don't
+	 * need to persist beyond the capture callback.
 	 * </p>
 	 *
 	 * @return a new scoped packet pool
-	 * @see #ofScoped(PoolSettings)
 	 */
 	public static Pool<Packet> ofScoped() {
-		return ofScoped(DEFAULT_POOL_SETTINGS);
+		return ofScoped(DEFAULT_SETTINGS);
 	}
 
 	/**
-	 * Creates a scoped packet pool with custom settings.
-	 * 
-	 * <p>
-	 * Scoped pools are ideal for high-performance capture where packet data doesn't
-	 * need to persist beyond immediate processing. The packet's ScopedMemory binds
-	 * directly to native buffers (DPDK mbufs, Napatech descriptors, etc.) with no
-	 * data copying.
-	 * </p>
+	 * Creates a scoped (zero-copy) packet pool with custom settings.
 	 * 
 	 * <p>
 	 * Typical usage:
@@ -279,7 +393,7 @@ public final class PacketPool {
 	 * <li>Recycle packet to pool</li>
 	 * </ol>
 	 *
-	 * @param settings pool configuration for capacity and contraction
+	 * @param settings pool configuration
 	 * @return a new scoped packet pool
 	 */
 	public static Pool<Packet> ofScoped(PoolSettings settings) {
@@ -287,47 +401,20 @@ public final class PacketPool {
 	}
 
 	/**
-	 * Creates a hybrid packet pool with default settings.
-	 * 
-	 * <p>
-	 * Hybrid pools combine zero-copy data access with fixed descriptor memory.
-	 * </p>
-	 *
-	 * @return a new hybrid packet pool
-	 * @see #ofHybrid(PoolSettings)
+	 * Validates bucket sizes array.
 	 */
-	public static Pool<Packet> ofHybrid() {
-		return ofHybrid(DEFAULT_POOL_SETTINGS);
-	}
+	private static void validateBucketSizes(long[] sizes) {
+		if (sizes == null || sizes.length == 0)
+			throw new IllegalArgumentException("bucketSizes cannot be null or empty");
 
-	/**
-	 * Creates a hybrid packet pool with custom settings.
-	 * 
-	 * <p>
-	 * Hybrid pools are useful when native packet descriptors need to be converted
-	 * or enhanced while packet data can remain zero-copy. The packet's data memory
-	 * is ScopedMemory (binds to native), while the descriptor uses FixedMemory
-	 * (allocated from Arena.ofShared()).
-	 * </p>
-	 * 
-	 * <p>
-	 * Common use cases:
-	 * </p>
-	 * <ul>
-	 * <li>Converting native descriptor formats to protocol-specific format</li>
-	 * <li>Adding metadata to packets while keeping data zero-copy</li>
-	 * <li>Protocol stacks that enhance descriptors during processing</li>
-	 * </ul>
-	 *
-	 * @param settings pool configuration for capacity and contraction
-	 * @return a new hybrid packet pool
-	 */
-	public static Pool<Packet> ofHybrid(PoolSettings settings) {
-		return new FreeListPool<>(settings, Packet::ofHybrid);
+		for (int i = 0; i < sizes.length; i++) {
+			if (sizes[i] <= 0)
+				throw new IllegalArgumentException("bucket size must be positive: " + sizes[i]);
+			if (i > 0 && sizes[i] <= sizes[i - 1])
+				throw new IllegalArgumentException("bucket sizes must be in ascending order");
+		}
 	}
 
 	/** Private constructor - static factory only. */
-	private PacketPool() {
-		// Static factory class
-	}
+	private PacketPool() {}
 }

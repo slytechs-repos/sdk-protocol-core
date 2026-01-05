@@ -229,7 +229,7 @@ public class NetPacketDescriptor
 	private final BoundView view = new BoundView();
 
 	public NetPacketDescriptor() {
-		this(TimestampUnit.EPOCH_MILLI);
+		this(PacketDescriptor.DEFAULT_TIMESTAMP_UNIT);
 	}
 
 	public NetPacketDescriptor(TimestampUnit unit) {

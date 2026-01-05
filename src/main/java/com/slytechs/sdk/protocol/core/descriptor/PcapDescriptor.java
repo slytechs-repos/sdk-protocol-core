@@ -38,39 +38,7 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 	}
 
 	private L2FrameInfo l2FrameInfo;
-
-	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rxCapabilitiesBitmask()
-	 */
-	@Override
-	public long rxCapabilitiesBitmask() {
-		return RX_CAPABILITIES;
-	}
-
-	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#txCapabilitiesBitmask()
-	 */
-	@Override
-	public long txCapabilitiesBitmask() {
-		return TX_CAPABILITIES;
-	}
-
-	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rxCapabilities()
-	 */
-	@Override
-	public RxCapabilities rxCapabilities() {
-		return RxCapabilities.INSTANCE;
-	}
-
-	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#txCapabilities()
-	 */
-	@Override
-	public TxCapabilities txCapabilities() {
-		return TxCapabilities.INSTANCE;
-	}
-
+	
 	public PcapDescriptor(DescriptorInfo descriptorInfo, L2FrameInfo l2FrameInfo, TimestampUnit timestampUnit) {
 		super(descriptorInfo, timestampUnit);
 
@@ -82,11 +50,48 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 	}
 
 	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#bindHeader(com.slytechs.sdk.common.memory.BindableView,
+	 *      com.slytechs.sdk.protocol.core.Header, int, int)
+	 */
+	@Override
+	public final boolean bindHeader(BindableView packet, Header header, int protocolId, int depth) {
+		L2FrameType l2Type = l2FrameInfo();
+
+		// Quick path
+		if (depth == 0 && l2Type.protocolId() == protocolId) {
+			long offset = 0;
+			long length = l2Type.minLength();
+
+			return header.bindHeader(packet, protocolId, depth, offset, length);
+		}
+
+		// Slow path or no-op depending on user settings.
+		return onDemandDissector != null && onDemandDissector
+				.bindHeader(packet, header, l2Type.l2FrameId(), protocolId, depth);
+	}
+
+	/**
 	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#l2FrameInfo()
 	 */
 	@Override
 	public final L2FrameInfo l2FrameInfo() {
 		return l2FrameInfo;
+	}
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rxCapabilities()
+	 */
+	@Override
+	public RxCapabilities rxCapabilities() {
+		return RxCapabilities.INSTANCE;
+	}
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rxCapabilitiesBitmask()
+	 */
+	@Override
+	public long rxCapabilitiesBitmask() {
+		return RX_CAPABILITIES;
 	}
 
 	/**
@@ -98,24 +103,6 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 		this.l2FrameInfo = l2FrameInfo;
 
 		return this;
-	}
-
-	public abstract int tvUSec();
-
-	public abstract int tvSec();
-
-	public abstract PcapDescriptor setTvSec(int epochSeconds);
-
-	public abstract PcapDescriptor setTvUSec(int useconds);
-
-	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#timestamp()
-	 */
-	@Override
-	public final long timestamp() {
-		long timestamp = timestampUnit().ofSecond(tvSec(), tvUSec());
-
-		return timestamp;
 	}
 
 	/**
@@ -140,25 +127,38 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 		return this;
 	}
 
+	public abstract PcapDescriptor setTvSec(int epochSeconds);
+
+	public abstract PcapDescriptor setTvUSec(int useconds);
+
 	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#bindHeader(com.slytechs.sdk.common.memory.BindableView,
-	 *      com.slytechs.sdk.protocol.core.Header, int, int)
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#timestamp()
 	 */
 	@Override
-	public final boolean bindHeader(BindableView packet, Header header, int protocolId, int depth) {
-		L2FrameType l2Type = l2FrameInfo();
+	public final long timestamp() {
+		long timestamp = timestampUnit().ofSecond(tvSec(), tvUSec());
 
-		// Quick path
-		if (depth == 0 && l2Type.protocolId() == protocolId) {
-			long offset = 0;
-			long length = l2Type.minLength();
+		return timestamp;
+	}
 
-			return header.bindHeader(packet, protocolId, depth, offset, length);
-		}
+	public abstract int tvSec();
 
-		// Slow path or no-op depending on user settings.
-		return onDemandDissector != null && onDemandDissector
-				.bindHeader(packet, header, l2Type.l2FrameId(), protocolId, depth);
+	public abstract int tvUSec();
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#txCapabilities()
+	 */
+	@Override
+	public TxCapabilities txCapabilities() {
+		return TxCapabilities.INSTANCE;
+	}
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#txCapabilitiesBitmask()
+	 */
+	@Override
+	public long txCapabilitiesBitmask() {
+		return TX_CAPABILITIES;
 	}
 
 }

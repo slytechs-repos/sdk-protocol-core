@@ -20,8 +20,10 @@ package com.slytechs.sdk.protocol.core;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteOrder;
 
+import com.slytechs.sdk.common.detail.Detail;
 import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
+import com.slytechs.sdk.common.detail.render.TextRenderer;
 import com.slytechs.sdk.common.memory.BindableView;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.FixedMemory;
@@ -895,5 +897,13 @@ public class Packet extends BoundView
 	 */
 	public int wireLength() {
 		return packetDescriptor.wireLength();
+	}
+
+	/**
+	 * @param summary
+	 * @return
+	 */
+	public String toString(Detail detail) {
+		return new TextRenderer(detail).render(getDetail());
 	}
 }
