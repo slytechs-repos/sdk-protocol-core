@@ -69,7 +69,7 @@ import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
  *     long base = packet.start();
  *     long limit = captureLength();
  *     
- *     return OnDemandDissector.mapProtocol(
+ *     return OnDemandPacketDissector.mapProtocol(
  *         l2FrameType(),
  *         protocolId,
  *         depth,
@@ -80,7 +80,7 @@ import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
  * }
  * 
  * // Direct usage with raw segment:
- * long encoded = OnDemandDissector.mapProtocol(
+ * long encoded = OnDemandPacketDissector.mapProtocol(
  *     L2FrameType.ETHER,
  *     ProtocolId.TCP,
  *     0,  // outer occurrence
@@ -102,7 +102,7 @@ import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
  * @see ProtocolId
  * @since 1.0
  */
-public final class OnDemandDissector {
+public final class OnDemandPacketDissector {
 
 	// ════════════════════════════════════════════════════════════════════════════
 	// VarHandle for direct memory access (big-endian for network byte order)
@@ -189,7 +189,7 @@ public final class OnDemandDissector {
 	// Private constructor - utility class
 	// ════════════════════════════════════════════════════════════════════════════
 
-	private OnDemandDissector() {
+	private OnDemandPacketDissector() {
 		// Utility class - no instantiation
 	}
 
@@ -203,7 +203,7 @@ public final class OnDemandDissector {
 		MemorySegment mseg = packet.boundMemory().segment();
 		long start = packet.view().start();
 		long limit = packet.view().length();
-		long encoded = OnDemandDissector.mapProtocol(l2FrameType, protocolId, depth, mseg, start, limit);
+		long encoded = OnDemandPacketDissector.mapProtocol(l2FrameType, protocolId, depth, mseg, start, limit);
 		if (encoded < 0)
 			return false;
 

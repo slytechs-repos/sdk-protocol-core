@@ -304,7 +304,7 @@ public enum L2FrameInfo implements L2FrameType {
 	 * @param l2Type the L2FrameType constant
 	 * @return the corresponding info, or {@link #UNKNOWN} if not found
 	 */
-	public static L2FrameInfo of(int l2Type) {
+	public static L2FrameInfo valueOf(int l2Type) {
 		if (l2Type >= 0 && l2Type < BY_TYPE.length && BY_TYPE[l2Type] != null) {
 			return BY_TYPE[l2Type];
 		}
@@ -319,5 +319,15 @@ public enum L2FrameInfo implements L2FrameType {
 	 */
 	public static boolean isKnown(int l2Type) {
 		return l2Type >= 0 && l2Type < BY_TYPE.length && BY_TYPE[l2Type] != null;
+	}
+
+	/**
+	 * Maps L2FrameType to ProtocolId numerical values.
+	 * 
+	 * @param l2FrameType frame type value to convert to protocol ID
+	 * @return equivalent protocol ID
+	 */
+	public static int mapToProtocolId(int l2FrameType) {
+		return valueOf(l2FrameType).protocolId;
 	}
 }

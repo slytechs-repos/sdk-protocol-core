@@ -25,14 +25,17 @@ package com.slytechs.sdk.protocol.core.descriptor;
  */
 public interface DescriptorType {
 
+	/** SDK packet descriptor - on demand protocol dissection (16 bytes) */
+	int TYPE1 = 1;
+
+	/** SDK packet descriptor - full protocol table (~96 bytes) */
+	int TYPE2 = 2;
+
 	/** Pcap file header - kernel format (24-byte on x64 padded) */
-	int PCAP_PADDED = 0;
+	int PCAP_PADDED = 12;
 
 	/** Pcap packet - file format (16-byte c-struct packed) */
-	int PCAP_PACKED = 1;
-
-	/** SDK packet descriptor - full protocol table (~96 bytes)*/
-	int NET = 2;
+	int PCAP_PACKED = 13;
 
 	/** Napatech native */
 	int NTAPI = 14;
@@ -46,4 +49,6 @@ public interface DescriptorType {
 	 * @return the descriptor type
 	 */
 	int descriptorId();
+
+	PacketDescriptor newPacketDescriptor();
 }

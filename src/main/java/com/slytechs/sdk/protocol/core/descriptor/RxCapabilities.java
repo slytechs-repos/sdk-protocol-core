@@ -1,21 +1,21 @@
 /*
- * Sly Technologies Free License
- * 
- * Copyright 2024 Sly Technologies Inc.
+ * Copyright 2005-2026 Sly Technologies Inc.
  *
- * Licensed under the Sly Technologies Free License (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- * 
- * http://www.slytechs.com/free-license-text
- * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.slytechs.sdk.protocol.core.descriptor;
+
+import com.slytechs.sdk.common.time.TimestampType;
 
 /**
  * Provides RX-specific metadata for received packets.
@@ -67,6 +67,11 @@ public interface RxCapabilities {
 
 	};
 
+	/**
+	 * RX capabilities bitmask as defined by RxCapabilities class.
+	 *
+	 * @return the rx capabilities bitmask
+	 */
 	long rxCapabilitiesBitmask();
 
 	/**
@@ -74,8 +79,27 @@ public interface RxCapabilities {
 	 *
 	 * @return the port number
 	 */
-	default int getRxPort() {
+	default int rxPort() {
 		return 0;
+	}
+
+	/**
+	 * Gets the timestamp type constant stored in the descriptor as defined by
+	 * TimestampType class.
+	 *
+	 * @return the timestamp type as defined by TimestampType constants
+	 */
+	default int timestampType() {
+		return TimestampType.EPOCH_MILLI;
+	}
+
+	/**
+	 * Layer 2 frame type constants defined in L2FrameType class.
+	 *
+	 * @return the L2 frame type constant
+	 */
+	default int l2FrameType() {
+		return L2FrameType.UNKNOWN;
 	}
 
 	/**
