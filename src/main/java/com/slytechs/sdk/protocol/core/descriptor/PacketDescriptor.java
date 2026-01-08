@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2025 Sly Technologies Inc.
+ * Copyright 2005-2026 Sly Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -360,14 +360,14 @@ public interface PacketDescriptor
 	 * The default descriptor size in bytes.
 	 * 
 	 * <p>
-	 * This constant defines the standard size of a {@link NetPacketDescriptor},
+	 * This constant defines the standard size of a {@link Type2PacketDescriptor},
 	 * which is the most commonly used descriptor implementation. The size is
 	 * optimized for cache line alignment and efficient memory access.
 	 * </p>
 	 * 
-	 * @see NetPacketDescriptor#BYTE_SIZE
+	 * @see Type2PacketDescriptor#BYTE_SIZE
 	 */
-	long DEFAULT_DESCRIPTOR_SIZE = NetPacketDescriptor.BYTE_SIZE;
+	long DEFAULT_DESCRIPTOR_SIZE = Type2PacketDescriptor.BYTE_SIZE;
 
 	/**
 	 * Decodes the header length from an encoded offset/length value.
@@ -668,6 +668,20 @@ public interface PacketDescriptor
 	L2FrameInfo l2FrameInfo();
 
 	/**
+	 * Layer 2 frame type as defined by L2FrameType constants.
+	 *
+	 * @return the L2 frame type
+	 */
+	int l2FrameType();
+
+	/**
+	 * Layer 2 protocol ID as defined by ProtocolId constants.
+	 *
+	 * @return the L2 protocol ID
+	 */
+	int l2ProtocolId();
+
+	/**
 	 * Maps a protocol ID to its header offset and length within the packet.
 	 * 
 	 * <p>
@@ -792,12 +806,22 @@ public interface PacketDescriptor
 	 * 		.setCaptureLength(packetLength);
 	 * }</pre>
 	 *
-	 * @param l2FrameInfo the L2 frame information enumeration value
+	 * @param info the L2 frame information enumeration value
 	 * @return this descriptor for method chaining
 	 * @see #l2FrameInfo()
 	 * @see L2FrameInfo
 	 */
-	PacketDescriptor setL2FrameType(L2FrameInfo l2FrameInfo);
+	default PacketDescriptor setL2FrameType(L2FrameInfo info) {
+		return setL2FrameType(info.l2FrameId());
+	}
+
+	/**
+	 * Sets the L 2 frame type.
+	 *
+	 * @param l2FrameType the l 2 frame type
+	 * @return the packet descriptor
+	 */
+	PacketDescriptor setL2FrameType(int l2FrameType);
 
 	/**
 	 * Sets the receive timestamp.
@@ -1087,7 +1111,7 @@ public interface PacketDescriptor
 	 * @return the RX capabilities bitmask
 	 * @see DescriptorCapability
 	 * @see RxCapabilities
-	 * @see #rxCapabilities()
+	 * @see #rx()
 	 * @see #isRxSupported()
 	 */
 	long rxCapabilitiesBitmask();
@@ -1118,7 +1142,7 @@ public interface PacketDescriptor
 	 * @return the TX capabilities bitmask
 	 * @see DescriptorCapability
 	 * @see TxCapabilities
-	 * @see #txCapabilities()
+	 * @see #tx()
 	 * @see #isTxSupported()
 	 */
 	long txCapabilitiesBitmask();
@@ -1147,7 +1171,7 @@ public interface PacketDescriptor
 	 * @return {@code true} if TX extended properties are supported, {@code false}
 	 *         otherwise
 	 * @see #txCapabilitiesBitmask()
-	 * @see #txCapabilities()
+	 * @see #tx()
 	 * @see TxCapabilities#TX_NONE
 	 */
 	default boolean isTxSupported() {
@@ -1178,7 +1202,7 @@ public interface PacketDescriptor
 	 * @return {@code true} if RX extended properties are supported, {@code false}
 	 *         otherwise
 	 * @see #rxCapabilitiesBitmask()
-	 * @see #rxCapabilities()
+	 * @see #rx()
 	 * @see RxCapabilities#RX_NONE
 	 */
 	default boolean isRxSupported() {
@@ -1215,7 +1239,7 @@ public interface PacketDescriptor
 	 * @see #rxCapabilitiesBitmask()
 	 * @see #isRxSupported()
 	 */
-	RxCapabilities rxCapabilities();
+	RxCapabilities rx();
 
 	/**
 	 * Gets the TX capabilities object.
@@ -1247,5 +1271,5 @@ public interface PacketDescriptor
 	 * @see #txCapabilitiesBitmask()
 	 * @see #isTxSupported()
 	 */
-	TxCapabilities txCapabilities();
+	TxCapabilities tx();
 }

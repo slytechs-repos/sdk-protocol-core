@@ -26,7 +26,7 @@ import com.slytechs.sdk.common.memory.MemoryHandle.LongHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
 import com.slytechs.sdk.common.time.TimestampUnit;
 import com.slytechs.sdk.protocol.core.descriptor.L2FrameType;
-import com.slytechs.sdk.protocol.core.descriptor.NetPacketDescriptor;
+import com.slytechs.sdk.protocol.core.descriptor.Type2PacketDescriptor;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
 
 /**
@@ -56,7 +56,7 @@ import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
 public class BasePacketDissector implements PacketDissector {
 
 	// Import layout from NetPacketDescriptorDeprecated
-	private static final MemoryLayout LAYOUT = NetPacketDescriptor.BASE_LAYOUT;
+	private static final MemoryLayout LAYOUT = Type2PacketDescriptor.BASE_LAYOUT;
 
 	// MemoryHandles for direct descriptor writes
 	private static final LongHandle TIMESTAMP = new LongHandle(LAYOUT, "timestamp");

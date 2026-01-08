@@ -79,10 +79,10 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 	}
 
 	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rxCapabilities()
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rx()
 	 */
 	@Override
-	public RxCapabilities rxCapabilities() {
+	public RxCapabilities rx() {
 		return RxCapabilities.INSTANCE;
 	}
 
@@ -146,10 +146,10 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 	public abstract int tvUSec();
 
 	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#txCapabilities()
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#tx()
 	 */
 	@Override
-	public TxCapabilities txCapabilities() {
+	public TxCapabilities tx() {
 		return TxCapabilities.INSTANCE;
 	}
 

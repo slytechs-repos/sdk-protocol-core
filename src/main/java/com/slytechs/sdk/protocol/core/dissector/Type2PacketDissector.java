@@ -28,7 +28,7 @@ import com.slytechs.sdk.protocol.core.IpProto;
 import com.slytechs.sdk.protocol.core.ProtocolId;
 import com.slytechs.sdk.protocol.core.descriptor.L2FrameType;
 import com.slytechs.sdk.protocol.core.descriptor.L2FrameInfo;
-import com.slytechs.sdk.protocol.core.descriptor.NetPacketDescriptor;
+import com.slytechs.sdk.protocol.core.descriptor.Type2PacketDescriptor;
 
 /**
  * Zero-allocation dissector for Net3PacketDescriptor.
@@ -63,9 +63,9 @@ import com.slytechs.sdk.protocol.core.descriptor.NetPacketDescriptor;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public class Net3PacketDissector extends BasePacketDissector implements PacketDissector, StructFormattable {
+public class Type2PacketDissector extends BasePacketDissector implements PacketDissector, StructFormattable {
 
-	public static final MemoryLayout LAYOUT = NetPacketDescriptor.LAYOUT;
+	public static final MemoryLayout LAYOUT = Type2PacketDescriptor.LAYOUT;
 
 	// Maximum protocols to track
 	private static final int MAX_PROTOCOLS = 32;
@@ -202,7 +202,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 
 		case L2FrameType.PPP, L2FrameType.PPP_HDLC -> {
 			nextProto = dissectPpp(buffer, 0);
-			offset = L2FrameInfo.of(l2FrameType).minLength();
+			offset = L2FrameInfo.valueOf(l2FrameType).minLength();
 		}
 
 		default -> {
@@ -754,7 +754,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 	}
 
 	@Override
-	public Net3PacketDissector setTimestampUnit(TimestampUnit timestampUnit) {
+	public Type2PacketDissector setTimestampUnit(TimestampUnit timestampUnit) {
 		this.timestampUnit = timestampUnit;
 		return this;
 	}
@@ -767,7 +767,7 @@ public class Net3PacketDissector extends BasePacketDissector implements PacketDi
 
 	@Override
 	public StructFormat format(StructFormat p) {
-		p.openln("=== Net3PacketDissector State ===");
+		p.openln("=== Type2PacketDissector State ===");
 		p.println("timestamp", timestamp);
 		p.println("captureLength", captureLength);
 		p.println("wireLength", wireLength);

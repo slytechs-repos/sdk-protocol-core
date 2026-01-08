@@ -105,7 +105,7 @@ import static java.lang.foreign.MemoryLayout.PathElement.*;
  * @author Mark Bednarczyk
  * @author Sly Technologies Inc.
  */
-public class NetPacketDescriptor
+public class Type2PacketDescriptor
 		extends AbstractPacketDescriptor
 		implements RxCapabilities, TxCapabilities, Detailable, BindableView {
 
@@ -130,7 +130,7 @@ public class NetPacketDescriptor
 
 			// Inline protocol table (64 bytes)
 			sequenceLayout(8, U64).withName("inline_table") // 0x20: 64 bytes
-	);
+	).withName("type2");
 
 	public static final int BYTE_SIZE = (int) LAYOUT.byteSize(); // 96 bytes
 
@@ -222,18 +222,18 @@ public class NetPacketDescriptor
 
 	private static final long TX_CAPABILITIES = TxCapabilities.TX_NONE;
 	private static final long RX_CAPABILITIES = RxCapabilities.RX_NONE;
-	private static final int DESCRIPTOR_ID = DescriptorType.NET;
+	private static final int DESCRIPTOR_ID = DescriptorType.TYPE2;
 	private int extendedIndex = 0;
 	private int encounterOrder = 0;
 
 	private final BoundView view = new BoundView();
 
-	public NetPacketDescriptor() {
+	public Type2PacketDescriptor() {
 		this(PacketDescriptor.DEFAULT_TIMESTAMP_UNIT);
 	}
 
-	public NetPacketDescriptor(TimestampUnit unit) {
-		super(DescriptorInfo.NET, unit);
+	public Type2PacketDescriptor(TimestampUnit unit) {
+		super(DescriptorInfo.TYPE2, unit);
 	}
 
 	public void addProtocol(int protocolId, int offset, int length) {
@@ -311,7 +311,7 @@ public class NetPacketDescriptor
 	 */
 	@Override
 	public void buildDetail(DetailBuilder b) {
-		b.header("Net Packet Descriptor", "NET", DESCRIPTOR_ID, 0, BYTE_SIZE, h -> {
+		b.header("Net Packet Descriptor", "TYPE2", DESCRIPTOR_ID, 0, BYTE_SIZE, h -> {
 
 			// Summary line
 			h.summaryf("cap=%d wire=%d ts=%d %s",
@@ -436,7 +436,7 @@ public class NetPacketDescriptor
 	}
 
 	public StructFormat format(StructFormat p) {
-		p.openln("NetPacketDescriptor").indent();
+		p.openln("Type2PacketDescriptor").indent();
 
 		p.println("timestamp", timestamp())
 				.println("timestampUnit", timestampUnit())
@@ -715,7 +715,7 @@ public class NetPacketDescriptor
 	 */
 	@Override
 	public PacketDescriptor newUnbound() {
-		return new NetPacketDescriptor();
+		return new Type2PacketDescriptor();
 	}
 
 	@Override
@@ -737,10 +737,10 @@ public class NetPacketDescriptor
 	}
 
 	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rxCapabilities()
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#rx()
 	 */
 	@Override
-	public RxCapabilities rxCapabilities() {
+	public RxCapabilities rx() {
 		return this;
 	}
 
@@ -763,13 +763,13 @@ public class NetPacketDescriptor
 	}
 
 	@Override
-	public NetPacketDescriptor setCaptureLength(int length) {
+	public Type2PacketDescriptor setCaptureLength(int length) {
 		CAPLEN.setShort(view(), (short) (length & 0xFFFF));
 
 		return this;
 	}
 
-	public NetPacketDescriptor setL2Extensions(boolean hasExtensions) {
+	public Type2PacketDescriptor setL2Extensions(boolean hasExtensions) {
 		int info = rxInfo();
 		if (hasExtensions) {
 			info |= (1 << L2_EXTENSION_BIT);
@@ -792,7 +792,7 @@ public class NetPacketDescriptor
 	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#setL2FrameType(com.slytechs.sdk.protocol.core.descriptor.L2FrameInfo)
 	 */
 	@Override
-	public NetPacketDescriptor setL2FrameType(L2FrameInfo l2FrameInfo) {
+	public Type2PacketDescriptor setL2FrameType(L2FrameInfo l2FrameInfo) {
 		setL2FrameId(l2FrameInfo.l2FrameId());
 
 		return this;
@@ -807,7 +807,7 @@ public class NetPacketDescriptor
 	}
 
 	@Override
-	public NetPacketDescriptor setRxPort(int port) {
+	public Type2PacketDescriptor setRxPort(int port) {
 		if (port > RX_PORT_MASK) {
 			throw new IllegalArgumentException("RX port must be 0-63, got: " + port);
 		}
@@ -819,14 +819,14 @@ public class NetPacketDescriptor
 	}
 
 	@Override
-	public NetPacketDescriptor setTimestamp(long timestamp) {
+	public Type2PacketDescriptor setTimestamp(long timestamp) {
 		TIMESTAMP.setLong(view(), timestamp);
 
 		return this;
 	}
 
 	@Override
-	public NetPacketDescriptor setTimestamp(long timestamp, TimestampUnit unit) {
+	public Type2PacketDescriptor setTimestamp(long timestamp, TimestampUnit unit) {
 		if (unit != timestampUnit())
 			timestamp = timestampUnit().convert(timestamp, unit);
 
@@ -836,7 +836,7 @@ public class NetPacketDescriptor
 	}
 
 	@Override
-	public NetPacketDescriptor setTimestampUnit(TimestampUnit unit) {
+	public Type2PacketDescriptor setTimestampUnit(TimestampUnit unit) {
 		super.setTimestampUnit(unit);
 
 		setTimestampUnitEncoded(unit);
@@ -844,7 +844,7 @@ public class NetPacketDescriptor
 		return this;
 	}
 
-	private NetPacketDescriptor setTimestampUnitEncoded(TimestampUnit unit) {
+	private Type2PacketDescriptor setTimestampUnitEncoded(TimestampUnit unit) {
 		int info = rxInfo() & ~(TIMESTAMP_UNIT_MASK << TIMESTAMP_UNIT_SHIFT);
 		info |= ((unit.ordinal() & TIMESTAMP_UNIT_MASK) << TIMESTAMP_UNIT_SHIFT);
 		setRxInfo(info);
@@ -862,19 +862,19 @@ public class NetPacketDescriptor
 		setTxInfo(info);
 	}
 
-	public NetPacketDescriptor setTxCrcRecalc(boolean recalc) {
+	public Type2PacketDescriptor setTxCrcRecalc(boolean recalc) {
 		setTxBit(TX_CRC_RECALC_BIT, recalc);
 		return this;
 	}
 
 	@Override
-	public NetPacketDescriptor setTxEnabled(boolean enabled) {
+	public Type2PacketDescriptor setTxEnabled(boolean enabled) {
 		setTxBit(TX_ENABLED_BIT, enabled);
 		return this;
 	}
 
 	@Override
-	public NetPacketDescriptor setTxImmediate(boolean immediate) {
+	public Type2PacketDescriptor setTxImmediate(boolean immediate) {
 		setTxBit(TX_IMMEDIATE_BIT, immediate);
 		return this;
 	}
@@ -884,7 +884,7 @@ public class NetPacketDescriptor
 	}
 
 	@Override
-	public NetPacketDescriptor setTxPort(int port) {
+	public Type2PacketDescriptor setTxPort(int port) {
 		if (port > TX_PORT_MASK) {
 			throw new IllegalArgumentException("TX port must be 0-255, got: " + port);
 		}
@@ -895,13 +895,13 @@ public class NetPacketDescriptor
 	}
 
 	@Override
-	public NetPacketDescriptor setTxSyncTimestamp(boolean sync) {
+	public Type2PacketDescriptor setTxSyncTimestamp(boolean sync) {
 		setTxBit(TX_TIMESTAMP_SYNC_BIT, sync);
 		return this;
 	}
 
 	@Override
-	public NetPacketDescriptor setWireLength(int length) {
+	public Type2PacketDescriptor setWireLength(int length) {
 		WIRELEN.setShort(view(), (short) (length & 0xFFFF));
 
 		return this;
@@ -918,10 +918,10 @@ public class NetPacketDescriptor
 	}
 
 	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#txCapabilities()
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#tx()
 	 */
 	@Override
-	public TxCapabilities txCapabilities() {
+	public TxCapabilities tx() {
 		return this;
 	}
 
@@ -968,7 +968,7 @@ public class NetPacketDescriptor
 	 */
 	@Override
 	public L2FrameInfo l2FrameInfo() {
-		return L2FrameInfo.of(l2FrameId());
+		return L2FrameInfo.valueOf(l2FrameId());
 	}
 
 }
