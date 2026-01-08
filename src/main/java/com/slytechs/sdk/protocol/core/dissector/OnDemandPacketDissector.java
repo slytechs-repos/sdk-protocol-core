@@ -27,6 +27,7 @@ import com.slytechs.sdk.protocol.core.Header;
 import com.slytechs.sdk.protocol.core.ProtocolId;
 import com.slytechs.sdk.protocol.core.descriptor.L2FrameType;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
+import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor.BindingInfo;
 
 /**
  * High-performance stateless packet dissector for on-demand protocol mapping.
@@ -207,8 +208,8 @@ public final class OnDemandPacketDissector {
 		if (encoded < 0)
 			return false;
 
-		long offset = PacketDescriptor.decodeOffset(encoded);
-		long length = PacketDescriptor.decodeLength(encoded);
+		long offset = BindingInfo.decodeOffset(encoded);
+		long length = BindingInfo.decodeLength(encoded);
 
 		return header.bindHeader(packet, protocolId, depth, offset, length);
 
@@ -253,7 +254,7 @@ public final class OnDemandPacketDissector {
 			MemorySegment seg, long base, long limit) {
 
 		if (seg == null || limit < ETHER_HEADER_LEN) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		// Normalize protocol ID to descriptor format
@@ -279,7 +280,7 @@ public final class OnDemandPacketDissector {
 		case L2FrameType.SLL -> dissectSLL(seg, base, limit, targetId, depth);
 		case L2FrameType.SLL2 -> dissectSLL2(seg, base, limit, targetId, depth);
 		case L2FrameType.LOOPBACK -> dissectLoopback(seg, base, limit, targetId, depth);
-		default -> PacketDescriptor.PROTOCOL_NOT_FOUND;
+		default -> BindingInfo.PROTOCOL_NOT_FOUND;
 		};
 	}
 
@@ -290,12 +291,12 @@ public final class OnDemandPacketDissector {
 			int targetId, int depth) {
 
 		if (limit < ETHER_HEADER_LEN) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		// Check if Ethernet itself is the target
 		if (targetId == DESC_ETHERNET && depth == 0) {
-			return PacketDescriptor.encodeLengthAndOffset(ETHER_HEADER_LEN, 0);
+			return BindingInfo.encodeLengthAndOffset(ETHER_HEADER_LEN, 0);
 		}
 
 		// Read EtherType at offset 12
@@ -310,7 +311,7 @@ public final class OnDemandPacketDissector {
 			// Check if VLAN is the target
 			if ((targetId == DESC_VLAN || targetId == DESC_VLAN_8021Q || targetId == DESC_VLAN_8021AD)
 					&& vlanCount == depth) {
-				return PacketDescriptor.encodeLengthAndOffset(VLAN_TAG_LEN, offset);
+				return BindingInfo.encodeLengthAndOffset(VLAN_TAG_LEN, offset);
 			}
 
 			// Skip VLAN tag and read next EtherType
@@ -331,7 +332,7 @@ public final class OnDemandPacketDissector {
 
 		final int SLL_HEADER_LEN = 16;
 		if (limit < SLL_HEADER_LEN) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		// Protocol type at offset 14
@@ -347,7 +348,7 @@ public final class OnDemandPacketDissector {
 
 		final int SLL2_HEADER_LEN = 20;
 		if (limit < SLL2_HEADER_LEN) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		// Protocol type at offset 0
@@ -363,7 +364,7 @@ public final class OnDemandPacketDissector {
 
 		final int LOOP_HEADER_LEN = 4;
 		if (limit < LOOP_HEADER_LEN) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		// Address family (host byte order, but commonly little-endian)
@@ -372,7 +373,7 @@ public final class OnDemandPacketDissector {
 		return switch (family) {
 		case 2 -> dissectIPv4(seg, base, LOOP_HEADER_LEN, limit, targetId, depth); // AF_INET
 		case 24, 28, 30 -> dissectIPv6(seg, base, LOOP_HEADER_LEN, limit, targetId, depth); // AF_INET6 variants
-		default -> PacketDescriptor.PROTOCOL_NOT_FOUND;
+		default -> BindingInfo.PROTOCOL_NOT_FOUND;
 		};
 	}
 
@@ -387,7 +388,7 @@ public final class OnDemandPacketDissector {
 		case ETHERTYPE_IPV6 -> dissectIPv6(seg, base, offset, limit, targetId, depth);
 		case ETHERTYPE_ARP -> dissectARP(seg, base, offset, limit, targetId, depth);
 		case ETHERTYPE_MPLS, ETHERTYPE_MPLS_MC -> dissectMPLS(seg, base, offset, limit, targetId, depth);
-		default -> PacketDescriptor.PROTOCOL_NOT_FOUND;
+		default -> BindingInfo.PROTOCOL_NOT_FOUND;
 		};
 	}
 
@@ -402,7 +403,7 @@ public final class OnDemandPacketDissector {
 			long limit, int targetId, int depth) {
 
 		if (offset + IPV4_MIN_HEADER_LEN > limit) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		// Read version/IHL byte
@@ -411,12 +412,12 @@ public final class OnDemandPacketDissector {
 		int ihl = (versionIhl & 0x0F) * 4;
 
 		if (version != 4 || ihl < IPV4_MIN_HEADER_LEN || offset + ihl > limit) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		// Check if IPv4 is the target
 		if ((targetId == DESC_IPV4 || targetId == DESC_IP) && depth == 0) {
-			return PacketDescriptor.encodeLengthAndOffset(ihl, offset);
+			return BindingInfo.encodeLengthAndOffset(ihl, offset);
 		}
 
 		// Read protocol and total length
@@ -450,7 +451,7 @@ public final class OnDemandPacketDissector {
 				depth));
 		case IP_PROTO_IPV6 -> dissectIPv6(seg, base, offset, limit, targetId, decrementDepth(targetId, DESC_IPV6,
 				depth));
-		default -> PacketDescriptor.PROTOCOL_NOT_FOUND;
+		default -> BindingInfo.PROTOCOL_NOT_FOUND;
 		};
 	}
 
@@ -461,18 +462,18 @@ public final class OnDemandPacketDissector {
 			long limit, int targetId, int depth) {
 
 		if (offset + IPV6_HEADER_LEN > limit) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		// Verify version
 		int versionTC = getByte(seg, base + offset) & 0xFF;
 		if ((versionTC >>> 4) != 6) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		// Check if IPv6 is the target
 		if ((targetId == DESC_IPV6 || targetId == DESC_IP) && depth == 0) {
-			return PacketDescriptor.encodeLengthAndOffset(IPV6_HEADER_LEN, offset);
+			return BindingInfo.encodeLengthAndOffset(IPV6_HEADER_LEN, offset);
 		}
 
 		// Read next header and payload length
@@ -494,7 +495,7 @@ public final class OnDemandPacketDissector {
 			}
 
 			if (extOffset + extLen > payloadLimit) {
-				return PacketDescriptor.PROTOCOL_NOT_FOUND;
+				return BindingInfo.PROTOCOL_NOT_FOUND;
 			}
 
 			nextHeader = getByte(seg, base + extOffset) & 0xFF;
@@ -532,7 +533,7 @@ public final class OnDemandPacketDissector {
 				depth));
 		case IP_PROTO_IPV6 -> dissectIPv6(seg, base, offset, limit, targetId, decrementDepth(targetId, DESC_IPV6,
 				depth));
-		default -> PacketDescriptor.PROTOCOL_NOT_FOUND;
+		default -> BindingInfo.PROTOCOL_NOT_FOUND;
 		};
 	}
 
@@ -544,10 +545,10 @@ public final class OnDemandPacketDissector {
 
 		if (targetId == DESC_ARP && depth == 0) {
 			if (offset + ARP_HEADER_LEN <= limit) {
-				return PacketDescriptor.encodeLengthAndOffset(ARP_HEADER_LEN, offset);
+				return BindingInfo.encodeLengthAndOffset(ARP_HEADER_LEN, offset);
 			}
 		}
-		return PacketDescriptor.PROTOCOL_NOT_FOUND;
+		return BindingInfo.PROTOCOL_NOT_FOUND;
 	}
 
 	/**
@@ -572,7 +573,7 @@ public final class OnDemandPacketDissector {
 			}
 
 			if (labelCount > 0) {
-				return PacketDescriptor.encodeLengthAndOffset(labelCount * 4, offset);
+				return BindingInfo.encodeLengthAndOffset(labelCount * 4, offset);
 			}
 		}
 
@@ -587,7 +588,7 @@ public final class OnDemandPacketDissector {
 		}
 
 		if (!bottomOfStack || mplsOffset >= limit) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		// Detect encapsulated protocol by version nibble
@@ -595,7 +596,7 @@ public final class OnDemandPacketDissector {
 		return switch (version) {
 		case 4 -> dissectIPv4(seg, base, mplsOffset, limit, targetId, depth);
 		case 6 -> dissectIPv6(seg, base, mplsOffset, limit, targetId, depth);
-		default -> PacketDescriptor.PROTOCOL_NOT_FOUND;
+		default -> BindingInfo.PROTOCOL_NOT_FOUND;
 		};
 	}
 
@@ -610,7 +611,7 @@ public final class OnDemandPacketDissector {
 			int payloadLimit, int targetId, int depth) {
 
 		if (offset + TCP_MIN_HEADER_LEN > payloadLimit) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		if (targetId == DESC_TCP && depth == 0) {
@@ -619,10 +620,10 @@ public final class OnDemandPacketDissector {
 			if (dataOffset < TCP_MIN_HEADER_LEN) {
 				dataOffset = TCP_MIN_HEADER_LEN;
 			}
-			return PacketDescriptor.encodeLengthAndOffset(dataOffset, offset);
+			return BindingInfo.encodeLengthAndOffset(dataOffset, offset);
 		}
 
-		return PacketDescriptor.PROTOCOL_NOT_FOUND;
+		return BindingInfo.PROTOCOL_NOT_FOUND;
 	}
 
 	/**
@@ -632,11 +633,11 @@ public final class OnDemandPacketDissector {
 			int payloadLimit, long limit, int targetId, int depth) {
 
 		if (offset + UDP_HEADER_LEN > payloadLimit) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		if (targetId == DESC_UDP && depth == 0) {
-			return PacketDescriptor.encodeLengthAndOffset(UDP_HEADER_LEN, offset);
+			return BindingInfo.encodeLengthAndOffset(UDP_HEADER_LEN, offset);
 		}
 
 		// Check for tunnel protocols
@@ -646,7 +647,7 @@ public final class OnDemandPacketDissector {
 			return dissectVXLAN(seg, base, offset + UDP_HEADER_LEN, limit, targetId, depth);
 		}
 
-		return PacketDescriptor.PROTOCOL_NOT_FOUND;
+		return BindingInfo.PROTOCOL_NOT_FOUND;
 	}
 
 	/**
@@ -657,10 +658,10 @@ public final class OnDemandPacketDissector {
 
 		if ((targetId == DESC_ICMPV4 || targetId == DESC_ICMP) && depth == 0) {
 			if (offset + ICMP_HEADER_LEN <= payloadLimit) {
-				return PacketDescriptor.encodeLengthAndOffset(ICMP_HEADER_LEN, offset);
+				return BindingInfo.encodeLengthAndOffset(ICMP_HEADER_LEN, offset);
 			}
 		}
-		return PacketDescriptor.PROTOCOL_NOT_FOUND;
+		return BindingInfo.PROTOCOL_NOT_FOUND;
 	}
 
 	/**
@@ -671,10 +672,10 @@ public final class OnDemandPacketDissector {
 
 		if ((targetId == DESC_ICMPV6 || targetId == DESC_ICMP) && depth == 0) {
 			if (offset + ICMP_HEADER_LEN <= payloadLimit) {
-				return PacketDescriptor.encodeLengthAndOffset(ICMP_HEADER_LEN, offset);
+				return BindingInfo.encodeLengthAndOffset(ICMP_HEADER_LEN, offset);
 			}
 		}
-		return PacketDescriptor.PROTOCOL_NOT_FOUND;
+		return BindingInfo.PROTOCOL_NOT_FOUND;
 	}
 
 	/**
@@ -685,10 +686,10 @@ public final class OnDemandPacketDissector {
 
 		if (targetId == DESC_SCTP && depth == 0) {
 			if (offset + SCTP_HEADER_LEN <= payloadLimit) {
-				return PacketDescriptor.encodeLengthAndOffset(SCTP_HEADER_LEN, offset);
+				return BindingInfo.encodeLengthAndOffset(SCTP_HEADER_LEN, offset);
 			}
 		}
-		return PacketDescriptor.PROTOCOL_NOT_FOUND;
+		return BindingInfo.PROTOCOL_NOT_FOUND;
 	}
 
 	// ════════════════════════════════════════════════════════════════════════════
@@ -702,7 +703,7 @@ public final class OnDemandPacketDissector {
 			int payloadLimit, long limit, int targetId, int depth) {
 
 		if (offset + GRE_MIN_HEADER_LEN > payloadLimit) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		int flags = getShortBE(seg, base + offset) & 0xFFFF;
@@ -718,12 +719,12 @@ public final class OnDemandPacketDissector {
 			greLen += 4; // Sequence present
 
 		if (targetId == DESC_GRE && depth == 0) {
-			return PacketDescriptor.encodeLengthAndOffset(greLen, offset);
+			return BindingInfo.encodeLengthAndOffset(greLen, offset);
 		}
 
 		int innerOffset = offset + greLen;
 		if (innerOffset >= limit) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		// Dissect encapsulated protocol
@@ -738,11 +739,11 @@ public final class OnDemandPacketDissector {
 			long limit, int targetId, int depth) {
 
 		if (offset + VXLAN_HEADER_LEN > limit) {
-			return PacketDescriptor.PROTOCOL_NOT_FOUND;
+			return BindingInfo.PROTOCOL_NOT_FOUND;
 		}
 
 		if (targetId == DESC_VXLAN && depth == 0) {
-			return PacketDescriptor.encodeLengthAndOffset(VXLAN_HEADER_LEN, offset);
+			return BindingInfo.encodeLengthAndOffset(VXLAN_HEADER_LEN, offset);
 		}
 
 		// VXLAN encapsulates an inner Ethernet frame

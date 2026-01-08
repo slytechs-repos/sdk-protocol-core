@@ -681,7 +681,7 @@ public class Type2PacketDescriptor
 				if (entry != 0) {
 					int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
 					int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
-					return PacketDescriptor.encodeLengthAndOffset(length, offset);
+					return BindingInfo.encodeLengthAndOffset(length, offset);
 				}
 			}
 		}
@@ -701,13 +701,13 @@ public class Type2PacketDescriptor
 					if (instance == depth || matchCount == depth) {
 						int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
 						int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
-						return PacketDescriptor.encodeLengthAndOffset(length, offset);
+						return BindingInfo.encodeLengthAndOffset(length, offset);
 					}
 					matchCount++;
 				}
 			}
 		}
-		return PacketDescriptor.PROTOCOL_NOT_FOUND;
+		return BindingInfo.PROTOCOL_NOT_FOUND;
 	}
 
 	/**
@@ -758,6 +758,7 @@ public class Type2PacketDescriptor
 		return RX_INFO.getShort(view()) & 0xFFFF;
 	}
 
+	@Override
 	public int rxPort() {
 		return (rxInfo() >> RX_PORT_SHIFT) & RX_PORT_MASK;
 	}

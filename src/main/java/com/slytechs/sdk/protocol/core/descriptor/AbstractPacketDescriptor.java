@@ -113,7 +113,7 @@ public abstract class AbstractPacketDescriptor
 	 */
 	@Override
 	public long mapProtocol(int protocolId, int depth) {
-		return PacketDescriptor.PROTOCOL_NOT_SUPPORTED;
+		return BindingInfo.PROTOCOL_NOT_SUPPORTED;
 	}
 
 	/**

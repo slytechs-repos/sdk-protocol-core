@@ -246,6 +246,144 @@ public interface PacketDescriptor
 	public record BindingInfo(int order, int id, long offset, long length) {
 
 		/**
+		 * Return code indicating that a protocol was not found in the descriptor.
+		 * 
+		 * <p>
+		 * This constant is returned by {@link #mapProtocol(int, int)} when the
+		 * requested protocol is not present in the packet or is not supported by this
+		 * descriptor type.
+		 * </p>
+		 * 
+		 * @see #mapProtocol(int, int)
+		 */
+		public static final long PROTOCOL_NOT_FOUND = -1L;
+
+		/** The protocol not supported. */
+		public static final long PROTOCOL_NOT_SUPPORTED = -2L;
+
+		/**
+		 * Decodes the header length from an encoded offset/length value.
+		 * 
+		 * <p>
+		 * Extracts the length component from a 64-bit encoded value where the length is
+		 * stored in the upper 32 bits and the offset in the lower 32 bits. This
+		 * encoding scheme allows efficient storage and retrieval of header location
+		 * information.
+		 * </p>
+		 * 
+		 * <h3>Encoding Format</h3>
+		 * 
+		 * <pre>
+		 * 64-bit encoded value:
+		 * +----------------+----------------+
+		 * | Length (32-bit)| Offset (32-bit)|
+		 * +----------------+----------------+
+		 * Bits: 63      32  31            0
+		 * </pre>
+		 * 
+		 * <h3>Example</h3>
+		 * 
+		 * <pre>{@code
+		 * long encoded = descriptor.mapProtocol(ProtocolId.TCP, 0);
+		 * if (encoded != PROTOCOL_NOT_FOUND) {
+		 * 	int length = PacketDescriptor.decodeLength(encoded);
+		 * 	int offset = PacketDescriptor.decodeOffset(encoded);
+		 * 	System.out.printf("TCP header at offset %d, length %d%n", offset, length);
+		 * }
+		 * }</pre>
+		 *
+		 * @param encoded the 64-bit encoded value containing length and offset
+		 * @return the decoded length (upper 32 bits of the encoded value)
+		 * @see #decodeOffset(long)
+		 * @see #encodeLengthAndOffset(int, int)
+		 * @see #mapProtocol(int, int)
+		 */
+		public static int decodeLength(long encoded) {
+			return (int) (encoded >>> 32);
+		}
+
+		/**
+		 * Decodes the header offset from an encoded offset/length value.
+		 * 
+		 * <p>
+		 * Extracts the offset component from a 64-bit encoded value where the length is
+		 * stored in the upper 32 bits and the offset in the lower 32 bits. The offset
+		 * represents the byte position of the header from the start of the packet.
+		 * </p>
+		 * 
+		 * <h3>Encoding Format</h3>
+		 * 
+		 * <pre>
+		 * 64-bit encoded value:
+		 * +----------------+----------------+
+		 * | Length (32-bit)| Offset (32-bit)|
+		 * +----------------+----------------+
+		 * Bits: 63      32  31            0
+		 * </pre>
+		 * 
+		 * <h3>Example</h3>
+		 * 
+		 * <pre>{@code
+		 * long encoded = descriptor.mapProtocol(ProtocolId.UDP, 0);
+		 * if (encoded != PROTOCOL_NOT_FOUND) {
+		 * 	int offset = PacketDescriptor.decodeOffset(encoded);
+		 * 	// Read UDP header starting at offset
+		 * 	buffer.position(offset);
+		 * }
+		 * }</pre>
+		 *
+		 * @param encoded the 64-bit encoded value containing length and offset
+		 * @return the decoded offset (lower 32 bits of the encoded value)
+		 * @see #decodeLength(long)
+		 * @see #encodeLengthAndOffset(int, int)
+		 * @see #mapProtocol(int, int)
+		 */
+		public static int decodeOffset(long encoded) {
+			return (int) (encoded & 0xFFFF_FFFFL);
+		}
+
+		/**
+		 * Encodes a header length and offset into a single 64-bit value.
+		 * 
+		 * <p>
+		 * Combines the length and offset into a compact representation where the length
+		 * occupies the upper 32 bits and the offset occupies the lower 32 bits. This
+		 * encoding is used internally by the descriptor to efficiently store protocol
+		 * header location information.
+		 * </p>
+		 * 
+		 * <h3>Encoding Format</h3>
+		 * 
+		 * <pre>
+		 * 64-bit encoded value:
+		 * +----------------+----------------+
+		 * | Length (32-bit)| Offset (32-bit)|
+		 * +----------------+----------------+
+		 * Bits: 63      32  31            0
+		 * </pre>
+		 * 
+		 * <h3>Example</h3>
+		 * 
+		 * <pre>{@code
+		 * // Encode TCP header location: offset=34, length=20
+		 * long encoded = PacketDescriptor.encodeLengthAndOffset(20, 34);
+		 * 
+		 * // Later decode the values
+		 * int length = PacketDescriptor.decodeLength(encoded); // 20
+		 * int offset = PacketDescriptor.decodeOffset(encoded); // 34
+		 * }</pre>
+		 *
+		 * @param length the header length in bytes
+		 * @param offset the header offset from packet start in bytes
+		 * @return the encoded 64-bit value containing both length and offset
+		 * @see #decodeLength(long)
+		 * @see #decodeOffset(long)
+		 */
+		public static long encodeLengthAndOffset(int length, int offset) {
+			return ((long) length << 32) | (offset & 0xFFFF_FFFFL);
+		}
+
+		/**
 		 * Creates a new unbound header instance for this protocol.
 		 * 
 		 * <p>
@@ -330,22 +468,6 @@ public interface PacketDescriptor
 	TimestampUnit DEFAULT_TIMESTAMP_UNIT = TimestampUnit.EPOCH_MICRO;
 
 	/**
-	 * Return code indicating that a protocol was not found in the descriptor.
-	 * 
-	 * <p>
-	 * This constant is returned by {@link #mapProtocol(int, int)} when the
-	 * requested protocol is not present in the packet or is not supported by this
-	 * descriptor type.
-	 * </p>
-	 * 
-	 * @see #mapProtocol(int, int)
-	 */
-	long PROTOCOL_NOT_FOUND = -1L;
-
-	/** The protocol not supported. */
-	long PROTOCOL_NOT_SUPPORTED = -2L;
-
-	/**
 	 * The default hash bit length used for RSS (Receive Side Scaling) hashing.
 	 * 
 	 * <p>
@@ -357,7 +479,7 @@ public interface PacketDescriptor
 	int DEFAULT_HASH_BIT_LENGTH = 64;
 
 	/**
-	 * The default descriptor size in bytes.
+	 * The largest descriptor size in bytes used for defaults.
 	 * 
 	 * <p>
 	 * This constant defines the standard size of a {@link Type2PacketDescriptor},
@@ -367,129 +489,18 @@ public interface PacketDescriptor
 	 * 
 	 * @see Type2PacketDescriptor#BYTE_SIZE
 	 */
-	long DEFAULT_DESCRIPTOR_SIZE = Type2PacketDescriptor.BYTE_SIZE;
+	long LARGEST_DESCRIPTOR_SIZE = Type2PacketDescriptor.BYTE_SIZE;
 
 	/**
-	 * Decodes the header length from an encoded offset/length value.
+	 * The default descriptor type defined for all defaults (TYPE1).
 	 * 
 	 * <p>
-	 * Extracts the length component from a 64-bit encoded value where the length is
-	 * stored in the upper 32 bits and the offset in the lower 32 bits. This
-	 * encoding scheme allows efficient storage and retrieval of header location
-	 * information.
+	 * Current default is TYPE1 16-byte descriptor capable of storing RX and TX
+	 * information. On RX stores RX ingres port, timestamp type, layer 2 frame type.
+	 * For TX it stores, TX egres port, tx-immediate flag, tx-enable flag.
 	 * </p>
-	 * 
-	 * <h3>Encoding Format</h3>
-	 * 
-	 * <pre>
-	 * 64-bit encoded value:
-	 * +----------------+----------------+
-	 * | Length (32-bit)| Offset (32-bit)|
-	 * +----------------+----------------+
-	 * Bits: 63      32  31            0
-	 * </pre>
-	 * 
-	 * <h3>Example</h3>
-	 * 
-	 * <pre>{@code
-	 * long encoded = descriptor.mapProtocol(ProtocolId.TCP, 0);
-	 * if (encoded != PROTOCOL_NOT_FOUND) {
-	 * 	int length = PacketDescriptor.decodeLength(encoded);
-	 * 	int offset = PacketDescriptor.decodeOffset(encoded);
-	 * 	System.out.printf("TCP header at offset %d, length %d%n", offset, length);
-	 * }
-	 * }</pre>
-	 *
-	 * @param encoded the 64-bit encoded value containing length and offset
-	 * @return the decoded length (upper 32 bits of the encoded value)
-	 * @see #decodeOffset(long)
-	 * @see #encodeLengthAndOffset(int, int)
-	 * @see #mapProtocol(int, int)
 	 */
-	static int decodeLength(long encoded) {
-		return (int) (encoded >>> 32);
-	}
-
-	/**
-	 * Decodes the header offset from an encoded offset/length value.
-	 * 
-	 * <p>
-	 * Extracts the offset component from a 64-bit encoded value where the length is
-	 * stored in the upper 32 bits and the offset in the lower 32 bits. The offset
-	 * represents the byte position of the header from the start of the packet.
-	 * </p>
-	 * 
-	 * <h3>Encoding Format</h3>
-	 * 
-	 * <pre>
-	 * 64-bit encoded value:
-	 * +----------------+----------------+
-	 * | Length (32-bit)| Offset (32-bit)|
-	 * +----------------+----------------+
-	 * Bits: 63      32  31            0
-	 * </pre>
-	 * 
-	 * <h3>Example</h3>
-	 * 
-	 * <pre>{@code
-	 * long encoded = descriptor.mapProtocol(ProtocolId.UDP, 0);
-	 * if (encoded != PROTOCOL_NOT_FOUND) {
-	 * 	int offset = PacketDescriptor.decodeOffset(encoded);
-	 * 	// Read UDP header starting at offset
-	 * 	buffer.position(offset);
-	 * }
-	 * }</pre>
-	 *
-	 * @param encoded the 64-bit encoded value containing length and offset
-	 * @return the decoded offset (lower 32 bits of the encoded value)
-	 * @see #decodeLength(long)
-	 * @see #encodeLengthAndOffset(int, int)
-	 * @see #mapProtocol(int, int)
-	 */
-	static int decodeOffset(long encoded) {
-		return (int) (encoded & 0xFFFF_FFFFL);
-	}
-
-	/**
-	 * Encodes a header length and offset into a single 64-bit value.
-	 * 
-	 * <p>
-	 * Combines the length and offset into a compact representation where the length
-	 * occupies the upper 32 bits and the offset occupies the lower 32 bits. This
-	 * encoding is used internally by the descriptor to efficiently store protocol
-	 * header location information.
-	 * </p>
-	 * 
-	 * <h3>Encoding Format</h3>
-	 * 
-	 * <pre>
-	 * 64-bit encoded value:
-	 * +----------------+----------------+
-	 * | Length (32-bit)| Offset (32-bit)|
-	 * +----------------+----------------+
-	 * Bits: 63      32  31            0
-	 * </pre>
-	 * 
-	 * <h3>Example</h3>
-	 * 
-	 * <pre>{@code
-	 * // Encode TCP header location: offset=34, length=20
-	 * long encoded = PacketDescriptor.encodeLengthAndOffset(20, 34);
-	 * 
-	 * // Later decode the values
-	 * int length = PacketDescriptor.decodeLength(encoded); // 20
-	 * int offset = PacketDescriptor.decodeOffset(encoded); // 34
-	 * }</pre>
-	 *
-	 * @param length the header length in bytes
-	 * @param offset the header offset from packet start in bytes
-	 * @return the encoded 64-bit value containing both length and offset
-	 * @see #decodeLength(long)
-	 * @see #decodeOffset(long)
-	 */
-	static long encodeLengthAndOffset(int length, int offset) {
-		return ((long) length << 32) | (offset & 0xFFFF_FFFFL);
-	}
+	DescriptorInfo DEFAULT_DESCRIPTOR_TYPE = DescriptorInfo.TYPE1;
 
 	/**
 	 * Binds a protocol header to its location within the packet.
