@@ -59,7 +59,9 @@ public sealed abstract class Header
 			long offset,
 			long extendedLength) {
 
-		assert this.protocolId == protocolId;
+		assert ProtocolId.descriptorId(this.protocolId) == ProtocolId.descriptorId(protocolId)
+				: "Header protocolId 0x" + Integer.toHexString(protocolId)
+						+ "does not match this header's id 0x" + Integer.toHexString(this.protocolId);
 
 		this.packet = (Packet) packet;
 		this.depth = innerDepth;
