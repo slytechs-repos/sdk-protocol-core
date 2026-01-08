@@ -32,9 +32,12 @@ import static java.lang.foreign.MemoryLayout.*;
 public class Ip6AddressMemory extends IpAddressMemory implements Ip6Address {
 
 	public static final MemoryLayout LAYOUT = unionLayout(
+
 			sequenceLayout(LENGTH / U8_BE.byteSize(), U8_BE).withName("byte_array"),
-			sequenceLayout(LENGTH / U32_BE.byteSize(), U32_BE).withName("int_array"),
-			sequenceLayout(LENGTH / U64_BE.byteSize(), U64_BE).withName("long_array"));
+			sequenceLayout(LENGTH / U32_BE.byteSize(), U32_BE_A1).withName("int_array"),
+			sequenceLayout(LENGTH / U64_BE.byteSize(), U64_BE_A1).withName("long_array")
+
+	);
 
 	// Use MemoryHandle instead of VarHandle
 	private static final ByteHandle BYTE_ARRAY = new ByteHandle(LAYOUT, "byte_array[]");
