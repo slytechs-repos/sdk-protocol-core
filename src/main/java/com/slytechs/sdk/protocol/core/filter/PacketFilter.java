@@ -115,7 +115,7 @@ public interface PacketFilter {
 	 * @see #all()
 	 * @see #isCatchAll()
 	 */
-	PacketDsl ALL = _ -> new CatchAllBuilder();
+	PacketDsl ALL = _ -> new CatchAllEmitter();
 
 	/**
 	 * Starts a filter chain that matches packets containing an AH (Authentication
