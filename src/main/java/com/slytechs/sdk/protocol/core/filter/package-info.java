@@ -28,17 +28,17 @@
  * <p>
  * The API follows a two-phase design:
  * <ol>
- * <li><b>Define</b> — Build a {@link ProtocolFilter} chain using static
+ * <li><b>Define</b> — Build a {@link PacketDsl} chain using static
  * factories on {@link PacketFilter}. Validation occurs immediately; invalid
  * values throw {@link FilterException}.</li>
  * <li><b>Compile</b> — Pass the chain to a backend-specific
- * {@link FilterBuilder} to produce a compiled {@link PacketFilter} with a
+ * {@link Emitter} to produce a compiled {@link PacketFilter} with a
  * backend-native representation.</li>
  * </ol>
  *
  * {@snippet :
  * // Define (backend-agnostic)
- * ProtocolFilter dsl = PacketFilter
+ * PacketDsl dsl = PacketFilter
  *     .vlan(v -> v.vid(100))
  *     .ip4()
  *     .tcp(tcp -> tcp.port(443));
@@ -60,20 +60,20 @@
  *   PacketFilter          Static factories (entry point) + compiled filter (exit point)
  *       |
  *       v
- *   ProtocolFilter        Fluent DSL chain — protocol, field, and primitive composition
+ *   PacketDsl        Fluent DSL chain — protocol, field, and primitive composition
  *       |
- *       |--- HeaderFilter          Base interface for protocol-specific field builders
- *       |      |--- EthernetFilter.EthernetBuilder
- *       |      |--- VlanFilter.VlanBuilder
- *       |      |--- Ip4Filter.Ip4Builder
- *       |      |--- Ip6Filter.Ip6Builder
- *       |      |--- TcpFilter.TcpBuilder
- *       |      |--- UdpFilter.UdpBuilder
- *       |      |--- IpSecFilter.IpSecBuilder
- *       |      |--- MplsFilter.MplsBuilder
+ *       |--- HeaderDsl          Base interface for protocol-specific field builders
+ *       |      |--- EthernetFilter.EthernetDsl
+ *       |      |--- VlanFilter.VlanDsl
+ *       |      |--- Ip4Filter.Ip4Dsl
+ *       |      |--- Ip6Filter.Ip6Dsl
+ *       |      |--- TcpFilter.TcpDsl
+ *       |      |--- UdpFilter.UdpDsl
+ *       |      |--- IpSecFilter.IpSecDsl
+ *       |      |--- MplsFilter.MplsDsl
  *       |
  *       v
- *   FilterBuilder         Backend IR — primitives that each compiler implements
+ *   Emitter         Backend IR — primitives that each compiler implements
  *       |
  *       |--- BpfFilterBuilder      → PcapPacketFilter   (libpcap BPF)
  *       |--- RteFlowBuilder        → DpdkPacketFilter   (DPDK rte_flow / eBPF)
@@ -83,8 +83,8 @@
  * <h2>Filter Composition</h2>
  * <p>
  * Method chaining implies logical AND. Use
- * {@link ProtocolFilter#anyOf(HeaderFilter...)} or
- * {@link ProtocolFilter#anyOf(ProtocolFilter...)} for logical OR groups:
+ * {@link PacketDsl#anyOf(HeaderDsl...)} or
+ * {@link PacketDsl#anyOf(PacketDsl...)} for logical OR groups:
  * </p>
  *
  * {@snippet :
@@ -126,7 +126,7 @@
  * <h2>Network Primitives</h2>
  * <p>
  * Higher-level primitives are available directly on {@link PacketFilter} and
- * {@link ProtocolFilter} without requiring a specific protocol scope:
+ * {@link PacketDsl} without requiring a specific protocol scope:
  * </p>
  * <ul>
  * <li>{@code host()} / {@code srcHost()} / {@code dstHost()} — IP address
@@ -193,7 +193,7 @@
  *
  * {@snippet :
  * // Required for NTPL, safe for all backends
- * ProtocolFilter dsl = PacketFilter.all();
+ * PacketDsl dsl = PacketFilter.all();
  * PacketFilter filter = builder.build(dsl);
  *
  * if (!filter.isCatchAll()) {
@@ -202,15 +202,15 @@
  * }
  * <p>
  * The catch-all filter must not be combined with other filters or used inside
- * {@link ProtocolFilter#anyOf(ProtocolFilter...)}. Attempting to do so throws
+ * {@link PacketDsl#anyOf(PacketDsl...)}. Attempting to do so throws
  * {@link FilterException} at construction time.
  * </p>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @see PacketFilter
- * @see ProtocolFilter
- * @see FilterBuilder
+ * @see PacketDsl
+ * @see Emitter
  * @see FilterException
  */
 package com.slytechs.sdk.protocol.core.filter;

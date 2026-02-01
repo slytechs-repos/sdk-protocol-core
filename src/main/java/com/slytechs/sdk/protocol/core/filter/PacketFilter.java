@@ -15,28 +15,28 @@
  */
 package com.slytechs.sdk.protocol.core.filter;
 
-import com.slytechs.sdk.protocol.core.filter.EthernetFilter.EthernetBuilder;
-import com.slytechs.sdk.protocol.core.filter.Ip4Filter.Ip4Builder;
-import com.slytechs.sdk.protocol.core.filter.Ip6Filter.Ip6Builder;
-import com.slytechs.sdk.protocol.core.filter.IpSecFilter.IpSecBuilder;
-import com.slytechs.sdk.protocol.core.filter.MplsFilter.MplsBuilder;
-import com.slytechs.sdk.protocol.core.filter.TcpFilter.TcpBuilder;
-import com.slytechs.sdk.protocol.core.filter.UdpFilter.UdpBuilder;
-import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
+import com.slytechs.sdk.protocol.core.filter.EthernetFilter.EthernetDsl;
+import com.slytechs.sdk.protocol.core.filter.Ip4Filter.Ip4Dsl;
+import com.slytechs.sdk.protocol.core.filter.Ip6Filter.Ip6Dsl;
+import com.slytechs.sdk.protocol.core.filter.IpSecFilter.IpSecDsl;
+import com.slytechs.sdk.protocol.core.filter.MplsFilter.MplsDsl;
+import com.slytechs.sdk.protocol.core.filter.TcpFilter.TcpDsl;
+import com.slytechs.sdk.protocol.core.filter.UdpFilter.UdpDsl;
+import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanDsl;
 
 /**
  * Entry-point static factory for creating type-safe, backend-agnostic packet
  * filter expressions.
  * <p>
  * {@code PacketFilter} provides convenience static methods that start a new
- * filter chain by returning an empty or pre-scoped {@link ProtocolFilter}. All
- * subsequent method calls on the returned {@code ProtocolFilter} are combined
+ * filter chain by returning an empty or pre-scoped {@link PacketDsl}. All
+ * subsequent method calls on the returned {@code PacketDsl} are combined
  * with logical AND.
  * </p>
  * <p>
- * The resulting {@code ProtocolFilter} is completely independent of any
+ * The resulting {@code PacketDsl} is completely independent of any
  * capture/forwarding backend and can be compiled to multiple targets (BPF,
- * rte_flow, NTPL, eBPF, etc.) using the appropriate {@link FilterBuilder}
+ * rte_flow, NTPL, eBPF, etc.) using the appropriate {@link Emitter}
  * implementation.
  * </p>
  * <p>
@@ -49,19 +49,19 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
  *
  * {@snippet lang = java :
  * // Start with IPv4 + TCP port 443 (HTTPS)
- * ProtocolFilter https = PacketFilter
+ * PacketDsl https = PacketFilter
  * 		.ip4()
  * 		.tcp(t -> t.dstPort(443));
  *
  * // VLAN 100 + source subnet + UDP port range
- * ProtocolFilter internalMonitoring = PacketFilter
+ * PacketDsl internalMonitoring = PacketFilter
  * 		.vlan(v -> v.vid(100))
  * 		.srcNet("192.168.100.0/24")
  * 		.udp()
  * 		.portRange(40000, 50000);
  *
  * // Logical OR across protocols
- * ProtocolFilter dnsTraffic = PacketFilter
+ * PacketDsl dnsTraffic = PacketFilter
  * 		.anyOf(
  * 				PacketFilter.udp().port(53),
  * 				PacketFilter.tcp().port(53));
@@ -70,7 +70,7 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
  * // String bpf = new BpfFilterBuilder().build(dnsTraffic).toExpression();
  * 
  * * // Capture all packets (required for NTPL backends)
- * ProtocolFilter captureAll = PacketFilter.all();
+ * PacketDsl captureAll = PacketFilter.all();
  *
  * // Check if compiled filter is catch-all
  * PacketFilter filter = new BpfFilterBuilder().build(captureAll);
@@ -78,8 +78,8 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
  * }
  * 
  *
- * @see ProtocolFilter the chainable filter interface
- * @see FilterBuilder common contract for backend-specific compilation
+ * @see PacketDsl the chainable filter interface
+ * @see Emitter common contract for backend-specific compilation
  * @see FilterException thrown on invalid filter parameters
  */
 public interface PacketFilter {
@@ -108,23 +108,23 @@ public interface PacketFilter {
 	 * </p>
 	 * <p>
 	 * <b>Important:</b> {@code ALL} must not be combined with other filters.
-	 * Passing it inside {@link ProtocolFilter#anyOf(ProtocolFilter...)} or chaining
+	 * Passing it inside {@link PacketDsl#anyOf(PacketDsl...)} or chaining
 	 * additional conditions after it will throw {@link FilterException}.
 	 * </p>
 	 *
 	 * @see #all()
 	 * @see #isCatchAll()
 	 */
-	ProtocolFilter ALL = _ -> new CatchAllBuilder();
+	PacketDsl ALL = _ -> new CatchAllBuilder();
 
 	/**
 	 * Starts a filter chain that matches packets containing an AH (Authentication
 	 * Header) header.
 	 *
-	 * @return a {@link ProtocolFilter} scoped to AH presence
+	 * @return a {@link PacketDsl} scoped to AH presence
 	 * @see #ah(HeaderOperator)
 	 */
-	static ProtocolFilter ah() {
+	static PacketDsl ah() {
 		return of().ah();
 	}
 
@@ -134,9 +134,9 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures AH fields (SPI, sequence
 	 *               number)
-	 * @return a {@link ProtocolFilter} combining AH scope with the given conditions
+	 * @return a {@link PacketDsl} combining AH scope with the given conditions
 	 */
-	static ProtocolFilter ah(HeaderOperator<IpSecBuilder> header) {
+	static PacketDsl ah(HeaderOperator<IpSecDsl> header) {
 		return of().ah(header);
 	}
 
@@ -158,7 +158,7 @@ public interface PacketFilter {
 	 * @see #ALL
 	 * @see #isCatchAll()
 	 */
-	static ProtocolFilter all() {
+	static PacketDsl all() {
 		return ALL;
 	}
 
@@ -171,10 +171,10 @@ public interface PacketFilter {
 	 * filters match.
 	 *
 	 * @param alternatives one or more header-specific filters (logical OR)
-	 * @return a new {@link ProtocolFilter} representing the OR group
+	 * @return a new {@link PacketDsl} representing the OR group
 	 * @throws FilterException thrown if PacketFilter.ALL is used inside
 	 */
-	static ProtocolFilter anyOf(HeaderFilter... alternatives) {
+	static PacketDsl anyOf(HeaderDsl... alternatives) {
 		return of().anyOf(alternatives);
 	}
 
@@ -183,11 +183,11 @@ public interface PacketFilter {
 	 * protocol filters match.
 	 *
 	 * @param alternatives one or more protocol-level filters (logical OR)
-	 * @return a new {@link ProtocolFilter} representing the OR group
+	 * @return a new {@link PacketDsl} representing the OR group
 	 * @throws FilterException if any alternative is {@link PacketFilter#ALL}, which
 	 *                         cannot be combined with other filters
 	 */
-	static ProtocolFilter anyOf(ProtocolFilter... alternatives) throws FilterException {
+	static PacketDsl anyOf(PacketDsl... alternatives) throws FilterException {
 		for (var alt : alternatives)
 			if (alt == PacketFilter.ALL)
 				throw new FilterException("PacketFilter.ALL cannot be used inside anyOf()");
@@ -202,9 +202,9 @@ public interface PacketFilter {
 	/**
 	 * Starts a filter that matches broadcast packets.
 	 *
-	 * @return a {@link ProtocolFilter} with broadcast match
+	 * @return a {@link PacketDsl} with broadcast match
 	 */
-	static ProtocolFilter broadcast() {
+	static PacketDsl broadcast() {
 		return of().broadcast();
 	}
 
@@ -213,10 +213,10 @@ public interface PacketFilter {
 	 * given address.
 	 *
 	 * @param ip IPv4 or IPv6 address string
-	 * @return a {@link ProtocolFilter} with destination host match
+	 * @return a {@link PacketDsl} with destination host match
 	 * @throws FilterException if the IP string is malformed
 	 */
-	static ProtocolFilter dstHost(String ip) {
+	static PacketDsl dstHost(String ip) {
 		return of().dstHost(ip);
 	}
 
@@ -225,10 +225,10 @@ public interface PacketFilter {
 	 * given subnet.
 	 *
 	 * @param cidr CIDR notation
-	 * @return a {@link ProtocolFilter} with destination network match
+	 * @return a {@link PacketDsl} with destination network match
 	 * @throws FilterException if cidr is malformed or invalid
 	 */
-	static ProtocolFilter dstNet(String cidr) {
+	static PacketDsl dstNet(String cidr) {
 		return of().dstNet(cidr);
 	}
 
@@ -236,10 +236,10 @@ public interface PacketFilter {
 	 * Starts a filter chain that matches packets containing an ESP (Encapsulating
 	 * Security Payload) header.
 	 *
-	 * @return a {@link ProtocolFilter} scoped to ESP presence
+	 * @return a {@link PacketDsl} scoped to ESP presence
 	 * @see #esp(HeaderOperator)
 	 */
-	static ProtocolFilter esp() {
+	static PacketDsl esp() {
 		return of().esp();
 	}
 
@@ -249,20 +249,20 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures ESP fields (SPI, sequence
 	 *               number)
-	 * @return a {@link ProtocolFilter} combining ESP scope with the given
+	 * @return a {@link PacketDsl} combining ESP scope with the given
 	 *         conditions
 	 */
-	static ProtocolFilter esp(HeaderOperator<IpSecBuilder> header) {
+	static PacketDsl esp(HeaderOperator<IpSecDsl> header) {
 		return of().esp(header);
 	}
 
 	/**
 	 * Starts a filter chain scoped to the Ethernet header (base layer).
 	 *
-	 * @return a {@link ProtocolFilter} ready for Ethernet-specific conditions
+	 * @return a {@link PacketDsl} ready for Ethernet-specific conditions
 	 * @see #ethernet(HeaderOperator)
 	 */
-	static ProtocolFilter ethernet() {
+	static PacketDsl ethernet() {
 		return of().ethernet();
 	}
 
@@ -272,10 +272,10 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures Ethernet fields (MAC addresses,
 	 *               EtherType)
-	 * @return a {@link ProtocolFilter} combining Ethernet scope with the given
+	 * @return a {@link PacketDsl} combining Ethernet scope with the given
 	 *         conditions
 	 */
-	static ProtocolFilter ethernet(HeaderOperator<EthernetBuilder> header) {
+	static PacketDsl ethernet(HeaderOperator<EthernetDsl> header) {
 		return of().ethernet(header);
 	}
 
@@ -284,20 +284,20 @@ public interface PacketFilter {
 	 * the given address.
 	 *
 	 * @param ip IPv4 or IPv6 address string (e.g. "192.168.1.1", "2001:db8::1")
-	 * @return a {@link ProtocolFilter} with host match
+	 * @return a {@link PacketDsl} with host match
 	 * @throws FilterException if the IP string is malformed
 	 */
-	static ProtocolFilter host(String ip) {
+	static PacketDsl host(String ip) {
 		return of().host(ip);
 	}
 
 	/**
 	 * Starts a filter chain that matches IPv4 packets.
 	 *
-	 * @return a {@link ProtocolFilter} scoped to IPv4
+	 * @return a {@link PacketDsl} scoped to IPv4
 	 * @see #ip4(HeaderOperator)
 	 */
-	static ProtocolFilter ip4() {
+	static PacketDsl ip4() {
 		return of().ip4();
 	}
 
@@ -307,20 +307,20 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures IPv4 fields (addresses,
 	 *               protocol, TTL, etc.)
-	 * @return a {@link ProtocolFilter} combining IPv4 scope with the given
+	 * @return a {@link PacketDsl} combining IPv4 scope with the given
 	 *         conditions
 	 */
-	static ProtocolFilter ip4(HeaderOperator<Ip4Builder> header) {
+	static PacketDsl ip4(HeaderOperator<Ip4Dsl> header) {
 		return of().ip4(header);
 	}
 
 	/**
 	 * Starts a filter chain that matches IPv6 packets.
 	 *
-	 * @return a {@link ProtocolFilter} scoped to IPv6
+	 * @return a {@link PacketDsl} scoped to IPv6
 	 * @see #ip6(HeaderOperator)
 	 */
-	static ProtocolFilter ip6() {
+	static PacketDsl ip6() {
 		return of().ip6();
 	}
 
@@ -330,10 +330,10 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures IPv6 fields (addresses, Next
 	 *               Header, Hop Limit, etc.)
-	 * @return a {@link ProtocolFilter} combining IPv6 scope with the given
+	 * @return a {@link PacketDsl} combining IPv6 scope with the given
 	 *         conditions
 	 */
-	static ProtocolFilter ip6(HeaderOperator<Ip6Builder> header) {
+	static PacketDsl ip6(HeaderOperator<Ip6Dsl> header) {
 		return of().ip6(header);
 	}
 
@@ -342,9 +342,9 @@ public interface PacketFilter {
 	 * value.
 	 *
 	 * @param len minimum length (exclusive)
-	 * @return a {@link ProtocolFilter} with length > condition
+	 * @return a {@link PacketDsl} with length > condition
 	 */
-	static ProtocolFilter lengthGreater(int len) {
+	static PacketDsl lengthGreater(int len) {
 		return of().lengthGreater(len);
 	}
 
@@ -353,19 +353,19 @@ public interface PacketFilter {
 	 * value.
 	 *
 	 * @param len maximum length (exclusive)
-	 * @return a {@link ProtocolFilter} with length < condition
+	 * @return a {@link PacketDsl} with length < condition
 	 */
-	static ProtocolFilter lengthLess(int len) {
+	static PacketDsl lengthLess(int len) {
 		return of().lengthLess(len);
 	}
 
 	/**
 	 * Starts a filter chain that matches packets with an MPLS label stack.
 	 *
-	 * @return a {@link ProtocolFilter} scoped to MPLS
+	 * @return a {@link PacketDsl} scoped to MPLS
 	 * @see #mpls(HeaderOperator)
 	 */
-	static ProtocolFilter mpls() {
+	static PacketDsl mpls() {
 		return of().mpls();
 	}
 
@@ -375,19 +375,19 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures MPLS fields (label, TC, BOS,
 	 *               TTL)
-	 * @return a {@link ProtocolFilter} combining MPLS scope with the given
+	 * @return a {@link PacketDsl} combining MPLS scope with the given
 	 *         conditions
 	 */
-	static ProtocolFilter mpls(HeaderOperator<MplsBuilder> header) {
+	static PacketDsl mpls(HeaderOperator<MplsDsl> header) {
 		return of().mpls(header);
 	}
 
 	/**
 	 * Starts a filter that matches multicast packets.
 	 *
-	 * @return a {@link ProtocolFilter} with multicast match
+	 * @return a {@link PacketDsl} with multicast match
 	 */
-	static ProtocolFilter multicast() {
+	static PacketDsl multicast() {
 		return of().multicast();
 	}
 
@@ -396,10 +396,10 @@ public interface PacketFilter {
 	 * the given subnet.
 	 *
 	 * @param cidr CIDR notation (e.g. "192.168.1.0/24", "2001:db8::/64")
-	 * @return a {@link ProtocolFilter} with network match
+	 * @return a {@link PacketDsl} with network match
 	 * @throws FilterException if cidr is malformed or invalid
 	 */
-	static ProtocolFilter net(String cidr) {
+	static PacketDsl net(String cidr) {
 		return of().net(cidr);
 	}
 
@@ -413,9 +413,9 @@ public interface PacketFilter {
 	 * This is the starting point for building complex filters via chaining.
 	 * </p>
 	 *
-	 * @return an empty {@link ProtocolFilter} ready for chaining
+	 * @return an empty {@link PacketDsl} ready for chaining
 	 */
-	static ProtocolFilter of() {
+	static PacketDsl of() {
 		return b -> b;
 	}
 
@@ -424,10 +424,10 @@ public interface PacketFilter {
 	 * port equals the given value.
 	 *
 	 * @param port port number (must be 0–65535)
-	 * @return a {@link ProtocolFilter} with port match (src OR dst)
+	 * @return a {@link PacketDsl} with port match (src OR dst)
 	 * @throws FilterException if port is not in the range 0–65535
 	 */
-	static ProtocolFilter port(int port) throws FilterException {
+	static PacketDsl port(int port) throws FilterException {
 		if (port < 0 || port > 65535) {
 			throw new FilterException("Port must be 0-65535, got: " + port);
 		}
@@ -440,10 +440,10 @@ public interface PacketFilter {
 	 *
 	 * @param start inclusive lower bound (0–65535)
 	 * @param end   inclusive upper bound (0–65535)
-	 * @return a {@link ProtocolFilter} with port range match (src OR dst)
+	 * @return a {@link PacketDsl} with port range match (src OR dst)
 	 * @throws FilterException if start or end is out of range or start > end
 	 */
-	static ProtocolFilter portRange(int start, int end) throws FilterException {
+	static PacketDsl portRange(int start, int end) throws FilterException {
 		if (start < 0 || start > 65535) {
 			throw new FilterException("Port range start must be 0-65535, got: " + start);
 		}
@@ -461,10 +461,10 @@ public interface PacketFilter {
 	 * address.
 	 *
 	 * @param ip IPv4 or IPv6 address string
-	 * @return a {@link ProtocolFilter} with source host match
+	 * @return a {@link PacketDsl} with source host match
 	 * @throws FilterException if the IP string is malformed
 	 */
-	static ProtocolFilter srcHost(String ip) {
+	static PacketDsl srcHost(String ip) {
 		return of().srcHost(ip);
 	}
 
@@ -473,20 +473,20 @@ public interface PacketFilter {
 	 * subnet.
 	 *
 	 * @param cidr CIDR notation
-	 * @return a {@link ProtocolFilter} with source network match
+	 * @return a {@link PacketDsl} with source network match
 	 * @throws FilterException if cidr is malformed or invalid
 	 */
-	static ProtocolFilter srcNet(String cidr) {
+	static PacketDsl srcNet(String cidr) {
 		return of().srcNet(cidr);
 	}
 
 	/**
 	 * Starts a filter chain that matches TCP packets.
 	 *
-	 * @return a {@link ProtocolFilter} scoped to TCP
+	 * @return a {@link PacketDsl} scoped to TCP
 	 * @see #tcp(HeaderOperator)
 	 */
-	static ProtocolFilter tcp() {
+	static PacketDsl tcp() {
 		return of().tcp();
 	}
 
@@ -495,20 +495,20 @@ public interface PacketFilter {
 	 * header conditions.
 	 *
 	 * @param header lambda/operator that configures TCP fields (ports, flags, etc.)
-	 * @return a {@link ProtocolFilter} combining TCP scope with the given
+	 * @return a {@link PacketDsl} combining TCP scope with the given
 	 *         conditions
 	 */
-	static ProtocolFilter tcp(HeaderOperator<TcpBuilder> header) {
+	static PacketDsl tcp(HeaderOperator<TcpDsl> header) {
 		return of().tcp(header);
 	}
 
 	/**
 	 * Starts a filter chain that matches UDP packets.
 	 *
-	 * @return a {@link ProtocolFilter} scoped to UDP
+	 * @return a {@link PacketDsl} scoped to UDP
 	 * @see #udp(HeaderOperator)
 	 */
-	static ProtocolFilter udp() {
+	static PacketDsl udp() {
 		return of().udp();
 	}
 
@@ -521,20 +521,20 @@ public interface PacketFilter {
 	 * header conditions.
 	 *
 	 * @param header lambda/operator that configures UDP fields (ports)
-	 * @return a {@link ProtocolFilter} combining UDP scope with the given
+	 * @return a {@link PacketDsl} combining UDP scope with the given
 	 *         conditions
 	 */
-	static ProtocolFilter udp(HeaderOperator<UdpBuilder> header) {
+	static PacketDsl udp(HeaderOperator<UdpDsl> header) {
 		return of().udp(header);
 	}
 
 	/**
 	 * Starts a filter chain that matches packets with a VLAN tag (802.1Q).
 	 *
-	 * @return a {@link ProtocolFilter} scoped to VLAN
+	 * @return a {@link PacketDsl} scoped to VLAN
 	 * @see #vlan(HeaderOperator)
 	 */
-	static ProtocolFilter vlan() {
+	static PacketDsl vlan() {
 		return of().vlan();
 	}
 
@@ -544,10 +544,10 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures VLAN fields (VID, PCP, DEI,
 	 *               TPID)
-	 * @return a {@link ProtocolFilter} combining VLAN scope with the given
+	 * @return a {@link PacketDsl} combining VLAN scope with the given
 	 *         conditions
 	 */
-	static ProtocolFilter vlan(HeaderOperator<VlanBuilder> header) {
+	static PacketDsl vlan(HeaderOperator<VlanDsl> header) {
 		return of().vlan(header);
 	}
 

@@ -15,7 +15,7 @@
  */
 package com.slytechs.sdk.protocol.core.filter;
 
-import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
+import com.slytechs.sdk.protocol.core.filter.FilterDsl.Emitter.Op;
 
 /**
  * Factory and builder interface for constructing Ethernet (IEEE 802.3 / Ethernet II) filter expressions.
@@ -52,15 +52,15 @@ import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
  * <h2>Usage Examples</h2>
  * <pre>{@code
  * // Single condition (convenience)
- * EthernetBuilder filter1 = EthernetFilter.dst(new byte[] {(byte) 0x00, (byte) 0x11, (byte) 0x22, (byte) 0x33, (byte) 0x44, (byte) 0x55});
+ * EthernetDsl filter1 = EthernetFilter.dst(new byte[] {(byte) 0x00, (byte) 0x11, (byte) 0x22, (byte) 0x33, (byte) 0x44, (byte) 0x55});
  *
  * // Combined conditions (fluent builder)
- * EthernetBuilder filter2 = EthernetFilter.of()
+ * EthernetDsl filter2 = EthernetFilter.of()
  *     .src(new byte[] {(byte) 0xAA, (byte) 0xBB, (byte) 0xCC, (byte) 0xDD, (byte) 0xEE, (byte) 0xFF})
  *     .type(0x0800);  // IPv4
  *
  * // Chained with validation
- * EthernetBuilder filter3 = EthernetFilter.src(new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF})  // Broadcast
+ * EthernetDsl filter3 = EthernetFilter.src(new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF})  // Broadcast
  *     .type(0x0806);  // ARP
  * }</pre>
  */
@@ -69,9 +69,9 @@ public interface EthernetFilter {
     /**
      * Creates an empty Ethernet builder (no conditions).
      *
-     * @return a new {@link EthernetBuilder} instance with no filters applied
+     * @return a new {@link EthernetDsl} instance with no filters applied
      */
-    static EthernetBuilder of() {
+    static EthernetDsl of() {
         return b -> b;
     }
 
@@ -79,10 +79,10 @@ public interface EthernetFilter {
      * Creates an Ethernet filter that matches a specific destination MAC address.
      *
      * @param mac the 6-byte destination MAC address
-     * @return a {@link EthernetBuilder} configured with the destination MAC condition
+     * @return a {@link EthernetDsl} configured with the destination MAC condition
      * @throws FilterException if mac is null or not exactly 6 bytes long
      */
-    static EthernetBuilder dst(byte[] mac) throws FilterException {
+    static EthernetDsl dst(byte[] mac) throws FilterException {
         if (mac == null || mac.length != 6) {
             throw new FilterException("MAC address must be 6 bytes, got: " + mac.length);
         }
@@ -93,10 +93,10 @@ public interface EthernetFilter {
      * Creates an Ethernet filter that matches a specific source MAC address.
      *
      * @param mac the 6-byte source MAC address
-     * @return a {@link EthernetBuilder} configured with the source MAC condition
+     * @return a {@link EthernetDsl} configured with the source MAC condition
      * @throws FilterException if mac is null or not exactly 6 bytes long
      */
-    static EthernetBuilder src(byte[] mac) throws FilterException {
+    static EthernetDsl src(byte[] mac) throws FilterException {
         if (mac == null || mac.length != 6) {
             throw new FilterException("MAC address must be 6 bytes, got: " + mac.length);
         }
@@ -110,10 +110,10 @@ public interface EthernetFilter {
      * </p>
      *
      * @param etherType the 16-bit EtherType/length value (must be 0–65535)
-     * @return a {@link EthernetBuilder} configured with the type condition
+     * @return a {@link EthernetDsl} configured with the type condition
      * @throws FilterException if etherType is not in the range 0–65535
      */
-    static EthernetBuilder type(int etherType) throws FilterException {
+    static EthernetDsl type(int etherType) throws FilterException {
         if (etherType < 0 || etherType > 65535) {
             throw new FilterException("EtherType/length must be 0-65535, got: " + etherType);
         }
@@ -130,7 +130,7 @@ public interface EthernetFilter {
      * All methods perform the same validation as their static counterparts.
      * </p>
      */
-    interface EthernetBuilder extends HeaderFilter {
+    interface EthernetDsl extends HeaderDsl {
 
         /**
          * Adds a condition that the destination MAC address field must equal the given value.
@@ -139,7 +139,7 @@ public interface EthernetFilter {
          * @return this builder for chaining
          * @throws FilterException if mac is null or not exactly 6 bytes long
          */
-        default EthernetBuilder dst(byte[] mac) throws FilterException {
+        default EthernetDsl dst(byte[] mac) throws FilterException {
             if (mac == null || mac.length != 6) {
                 throw new FilterException("MAC address must be 6 bytes, got: " + mac.length);
             }
@@ -153,7 +153,7 @@ public interface EthernetFilter {
          * @return this builder for chaining
          * @throws FilterException if mac is null or not exactly 6 bytes long
          */
-        default EthernetBuilder src(byte[] mac) throws FilterException {
+        default EthernetDsl src(byte[] mac) throws FilterException {
             if (mac == null || mac.length != 6) {
                 throw new FilterException("MAC address must be 6 bytes, got: " + mac.length);
             }
@@ -167,7 +167,7 @@ public interface EthernetFilter {
          * @return this builder for chaining
          * @throws FilterException if etherType is not in the range 0–65535
          */
-        default EthernetBuilder type(int etherType) throws FilterException {
+        default EthernetDsl type(int etherType) throws FilterException {
             if (etherType < 0 || etherType > 65535) {
                 throw new FilterException("EtherType/length must be 0-65535, got: " + etherType);
             }

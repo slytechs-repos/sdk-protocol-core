@@ -15,7 +15,7 @@
  */
 package com.slytechs.sdk.protocol.core.filter;
 
-import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
+import com.slytechs.sdk.protocol.core.filter.FilterDsl.Emitter.Op;
 
 /**
  * Factory and builder interface for constructing MPLS (Multi-Protocol Label Switching) filter expressions.
@@ -49,20 +49,20 @@ import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
  * <h2>Usage Examples</h2>
  * <pre>{@code
  * // Single condition (convenience)
- * MplsBuilder filter1 = MplsFilter.label(100);  // Matches label 100
+ * MplsDsl filter1 = MplsFilter.label(100);  // Matches label 100
  *
  * // Combined conditions (fluent builder)
- * MplsBuilder filter2 = MplsFilter.of()
+ * MplsDsl filter2 = MplsFilter.of()
  *     .label(50000)
  *     .trafficClass(5)      // High priority QoS
  *     .bottomOfStack()
  *     .ttl(64);
  *
  * // Bottom-of-stack only
- * MplsBuilder filter3 = MplsFilter.bottomOfStack();
+ * MplsDsl filter3 = MplsFilter.bottomOfStack();
  *
  * // Chained with validation
- * MplsBuilder filter4 = MplsFilter.label(16)   // First non-reserved label
+ * MplsDsl filter4 = MplsFilter.label(16)   // First non-reserved label
  *     .trafficClass(0)
  *     .ttl(255);
  * }</pre>
@@ -72,9 +72,9 @@ public interface MplsFilter {
     /**
      * Creates an empty MPLS builder (no conditions).
      *
-     * @return a new {@link MplsBuilder} instance with no filters applied
+     * @return a new {@link MplsDsl} instance with no filters applied
      */
-    static MplsBuilder of() {
+    static MplsDsl of() {
         return b -> b;
     }
 
@@ -85,10 +85,10 @@ public interface MplsFilter {
      * </p>
      *
      * @param label MPLS label value (must be 0–1048575)
-     * @return a {@link MplsBuilder} configured with the label condition
+     * @return a {@link MplsDsl} configured with the label condition
      * @throws FilterException if label is not in the range 0–1048575
      */
-    static MplsBuilder label(int label) throws FilterException {
+    static MplsDsl label(int label) throws FilterException {
         if (label < 0 || label > 0xFFFFF) {
             throw new FilterException("MPLS label must be 0-1048575 (0xFFFFF), got: " + label);
         }
@@ -99,10 +99,10 @@ public interface MplsFilter {
      * Creates an MPLS filter that matches a specific Traffic Class (TC, formerly EXP) value.
      *
      * @param tc Traffic Class value (must be 0–7)
-     * @return a {@link MplsBuilder} configured with the TC condition
+     * @return a {@link MplsDsl} configured with the TC condition
      * @throws FilterException if tc is not in the range 0–7
      */
-    static MplsBuilder trafficClass(int tc) throws FilterException {
+    static MplsDsl trafficClass(int tc) throws FilterException {
         if (tc < 0 || tc > 7) {
             throw new FilterException("MPLS Traffic Class (TC) must be 0-7, got: " + tc);
         }
@@ -112,9 +112,9 @@ public interface MplsFilter {
     /**
      * Creates an MPLS filter that matches when the Bottom of Stack (BOS/S bit) is set (1).
      *
-     * @return a {@link MplsBuilder} configured with BOS=1 condition
+     * @return a {@link MplsDsl} configured with BOS=1 condition
      */
-    static MplsBuilder bottomOfStack() {
+    static MplsDsl bottomOfStack() {
         return of().bottomOfStack();
     }
 
@@ -128,7 +128,7 @@ public interface MplsFilter {
      * All methods perform the same range validation as their static counterparts.
      * </p>
      */
-    interface MplsBuilder extends HeaderFilter {
+    interface MplsDsl extends HeaderDsl {
 
         /**
          * Adds a condition that the MPLS label field must equal the given value.
@@ -137,7 +137,7 @@ public interface MplsFilter {
          * @return this builder for chaining
          * @throws FilterException if label is not in the range 0–1048575
          */
-        default MplsBuilder label(int label) throws FilterException {
+        default MplsDsl label(int label) throws FilterException {
             if (label < 0 || label > 0xFFFFF) {
                 throw new FilterException("MPLS label must be 0-1048575 (0xFFFFF), got: " + label);
             }
@@ -151,7 +151,7 @@ public interface MplsFilter {
          * @return this builder for chaining
          * @throws FilterException if tc is not in the range 0–7
          */
-        default MplsBuilder trafficClass(int tc) throws FilterException {
+        default MplsDsl trafficClass(int tc) throws FilterException {
             if (tc < 0 || tc > 7) {
                 throw new FilterException("MPLS Traffic Class (TC) must be 0-7, got: " + tc);
             }
@@ -163,7 +163,7 @@ public interface MplsFilter {
          *
          * @return this builder for chaining
          */
-        default MplsBuilder bottomOfStack() {
+        default MplsDsl bottomOfStack() {
             return b -> this.emit(b).and().field("mpls.bos", 2, 1, Op.EQ, 1);
         }
 
@@ -174,7 +174,7 @@ public interface MplsFilter {
          * @return this builder for chaining
          * @throws FilterException if ttl is not in the range 0–255
          */
-        default MplsBuilder ttl(int ttl) throws FilterException {
+        default MplsDsl ttl(int ttl) throws FilterException {
             if (ttl < 0 || ttl > 255) {
                 throw new FilterException("MPLS TTL must be 0-255, got: " + ttl);
             }

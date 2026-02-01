@@ -15,7 +15,7 @@
  */
 package com.slytechs.sdk.protocol.core.filter;
 
-import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
+import com.slytechs.sdk.protocol.core.filter.FilterDsl.Emitter.Op;
 
 /**
  * Factory and builder interface for constructing IPv4 (Internet Protocol version 4) filter expressions.
@@ -46,19 +46,19 @@ import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
  * <h2>Usage Examples</h2>
  * <pre>{@code
  * // Single condition (convenience)
- * Ip4Builder filter1 = Ip4Filter.src(0xC0A80101);  // 192.168.1.1
+ * Ip4Dsl filter1 = Ip4Filter.src(0xC0A80101);  // 192.168.1.1
  *
  * // Using byte array
- * Ip4Builder filter2 = Ip4Filter.dst(new byte[] {(byte)192, (byte)168, 1, 254});
+ * Ip4Dsl filter2 = Ip4Filter.dst(new byte[] {(byte)192, (byte)168, 1, 254});
  *
  * // Combined conditions (fluent builder)
- * Ip4Builder filter3 = Ip4Filter.of()
+ * Ip4Dsl filter3 = Ip4Filter.of()
  *     .src(new byte[] {(byte)10, 0, 0, 1})
  *     .protocol(6)   // TCP
  *     .ttl(64);
  *
  * // Chained with validation
- * Ip4Builder filter4 = Ip4Filter.protocol(17)   // UDP
+ * Ip4Dsl filter4 = Ip4Filter.protocol(17)   // UDP
  *     .dst(0x08080808)  // 8.8.8.8
  *     .ttl(128);
  * }</pre>
@@ -68,9 +68,9 @@ public interface Ip4Filter {
     /**
      * Creates an empty IPv4 builder (no conditions).
      *
-     * @return a new {@link Ip4Builder} instance with no filters applied
+     * @return a new {@link Ip4Dsl} instance with no filters applied
      */
-    static Ip4Builder of() {
+    static Ip4Dsl of() {
         return b -> b;
     }
 
@@ -78,9 +78,9 @@ public interface Ip4Filter {
      * Creates an IPv4 filter that matches a specific source IP address (integer form).
      *
      * @param addr 32-bit source IPv4 address in network byte order (e.g., 0xC0A80101 for 192.168.1.1)
-     * @return a {@link Ip4Builder} configured with the source address condition
+     * @return a {@link Ip4Dsl} configured with the source address condition
      */
-    static Ip4Builder src(int addr) {
+    static Ip4Dsl src(int addr) {
         return of().src(addr);
     }
 
@@ -88,10 +88,10 @@ public interface Ip4Filter {
      * Creates an IPv4 filter that matches a specific source IP address (byte array form).
      *
      * @param addr 4-byte source IPv4 address
-     * @return a {@link Ip4Builder} configured with the source address condition
+     * @return a {@link Ip4Dsl} configured with the source address condition
      * @throws FilterException if addr is null or not exactly 4 bytes long
      */
-    static Ip4Builder src(byte[] addr) throws FilterException {
+    static Ip4Dsl src(byte[] addr) throws FilterException {
         if (addr == null || addr.length != 4) {
             throw new FilterException("IPv4 address must be a 4-byte array");
         }
@@ -102,9 +102,9 @@ public interface Ip4Filter {
      * Creates an IPv4 filter that matches a specific destination IP address (integer form).
      *
      * @param addr 32-bit destination IPv4 address in network byte order
-     * @return a {@link Ip4Builder} configured with the destination address condition
+     * @return a {@link Ip4Dsl} configured with the destination address condition
      */
-    static Ip4Builder dst(int addr) {
+    static Ip4Dsl dst(int addr) {
         return of().dst(addr);
     }
 
@@ -112,10 +112,10 @@ public interface Ip4Filter {
      * Creates an IPv4 filter that matches a specific destination IP address (byte array form).
      *
      * @param addr 4-byte destination IPv4 address
-     * @return a {@link Ip4Builder} configured with the destination address condition
+     * @return a {@link Ip4Dsl} configured with the destination address condition
      * @throws FilterException if addr is null or not exactly 4 bytes long
      */
-    static Ip4Builder dst(byte[] addr) throws FilterException {
+    static Ip4Dsl dst(byte[] addr) throws FilterException {
         if (addr == null || addr.length != 4) {
             throw new FilterException("IPv4 address must be a 4-byte array");
         }
@@ -129,10 +129,10 @@ public interface Ip4Filter {
      * </p>
      *
      * @param proto protocol number (must be 0–255)
-     * @return a {@link Ip4Builder} configured with the protocol condition
+     * @return a {@link Ip4Dsl} configured with the protocol condition
      * @throws FilterException if proto is not in the range 0–255
      */
-    static Ip4Builder protocol(int proto) throws FilterException {
+    static Ip4Dsl protocol(int proto) throws FilterException {
         if (proto < 0 || proto > 255) {
             throw new FilterException("IP protocol number must be 0-255, got: " + proto);
         }
@@ -143,10 +143,10 @@ public interface Ip4Filter {
      * Creates an IPv4 filter that matches a specific Time to Live (TTL) value.
      *
      * @param ttl TTL value (must be 0–255)
-     * @return a {@link Ip4Builder} configured with the TTL condition
+     * @return a {@link Ip4Dsl} configured with the TTL condition
      * @throws FilterException if ttl is not in the range 0–255
      */
-    static Ip4Builder ttl(int ttl) throws FilterException {
+    static Ip4Dsl ttl(int ttl) throws FilterException {
         if (ttl < 0 || ttl > 255) {
             throw new FilterException("TTL must be 0-255, got: " + ttl);
         }
@@ -163,7 +163,7 @@ public interface Ip4Filter {
      * All methods perform the same validation as their static counterparts.
      * </p>
      */
-    interface Ip4Builder extends HeaderFilter {
+    interface Ip4Dsl extends HeaderDsl {
 
         /**
          * Adds a condition that the source IP address field must equal the given value (integer form).
@@ -171,7 +171,7 @@ public interface Ip4Filter {
          * @param addr 32-bit source IPv4 address in network byte order
          * @return this builder for chaining
          */
-        default Ip4Builder src(int addr) {
+        default Ip4Dsl src(int addr) {
             return b -> this.emit(b).and().field("ip4.src", 12, 32, Op.EQ, addr);
         }
 
@@ -182,7 +182,7 @@ public interface Ip4Filter {
          * @return this builder for chaining
          * @throws FilterException if addr is null or not exactly 4 bytes long
          */
-        default Ip4Builder src(byte[] addr) throws FilterException {
+        default Ip4Dsl src(byte[] addr) throws FilterException {
             if (addr == null || addr.length != 4) {
                 throw new FilterException("IPv4 address must be a 4-byte array");
             }
@@ -195,7 +195,7 @@ public interface Ip4Filter {
          * @param addr 32-bit destination IPv4 address in network byte order
          * @return this builder for chaining
          */
-        default Ip4Builder dst(int addr) {
+        default Ip4Dsl dst(int addr) {
             return b -> this.emit(b).and().field("ip4.dst", 16, 32, Op.EQ, addr);
         }
 
@@ -206,7 +206,7 @@ public interface Ip4Filter {
          * @return this builder for chaining
          * @throws FilterException if addr is null or not exactly 4 bytes long
          */
-        default Ip4Builder dst(byte[] addr) throws FilterException {
+        default Ip4Dsl dst(byte[] addr) throws FilterException {
             if (addr == null || addr.length != 4) {
                 throw new FilterException("IPv4 address must be a 4-byte array");
             }
@@ -220,7 +220,7 @@ public interface Ip4Filter {
          * @return this builder for chaining
          * @throws FilterException if proto is not in the range 0–255
          */
-        default Ip4Builder protocol(int proto) throws FilterException {
+        default Ip4Dsl protocol(int proto) throws FilterException {
             if (proto < 0 || proto > 255) {
                 throw new FilterException("IP protocol number must be 0-255, got: " + proto);
             }
@@ -234,7 +234,7 @@ public interface Ip4Filter {
          * @return this builder for chaining
          * @throws FilterException if ttl is not in the range 0–255
          */
-        default Ip4Builder ttl(int ttl) throws FilterException {
+        default Ip4Dsl ttl(int ttl) throws FilterException {
             if (ttl < 0 || ttl > 255) {
                 throw new FilterException("TTL must be 0-255, got: " + ttl);
             }

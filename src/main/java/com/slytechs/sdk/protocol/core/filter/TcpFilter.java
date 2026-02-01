@@ -15,7 +15,7 @@
  */
 package com.slytechs.sdk.protocol.core.filter;
 
-import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
+import com.slytechs.sdk.protocol.core.filter.FilterDsl.Emitter.Op;
 
 /**
  * Factory and builder interface for constructing TCP (Transmission Control Protocol) filter expressions.
@@ -48,21 +48,21 @@ import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
  * <h2>Usage Examples</h2>
  * <pre>{@code
  * // Single condition (convenience)
- * TcpBuilder filter1 = TcpFilter.dstPort(443);  // HTTPS
+ * TcpDsl filter1 = TcpFilter.dstPort(443);  // HTTPS
  *
  * // SYN-ACK packet
- * TcpBuilder filter2 = TcpFilter.of()
+ * TcpDsl filter2 = TcpFilter.of()
  *     .flagSyn()
  *     .flagAck();
  *
  * // Match either port (e.g. any side of SSH connection)
- * TcpBuilder filter3 = TcpFilter.port(22);
+ * TcpDsl filter3 = TcpFilter.port(22);
  *
  * // Exact flags match (e.g. only RST set)
- * TcpBuilder filter4 = TcpFilter.flags(0x04);
+ * TcpDsl filter4 = TcpFilter.flags(0x04);
  *
  * // Chained with validation
- * TcpBuilder filter5 = TcpFilter.srcPort(1024)
+ * TcpDsl filter5 = TcpFilter.srcPort(1024)
  *     .dstPort(80)
  *     .flagFin();
  * }</pre>
@@ -72,9 +72,9 @@ public interface TcpFilter {
     /**
      * Creates an empty TCP builder (no conditions).
      *
-     * @return a new {@link TcpBuilder} instance with no filters applied
+     * @return a new {@link TcpDsl} instance with no filters applied
      */
-    static TcpBuilder of() {
+    static TcpDsl of() {
         return b -> b;
     }
 
@@ -82,10 +82,10 @@ public interface TcpFilter {
      * Creates a TCP filter that matches a specific source port.
      *
      * @param port source port number (must be 0–65535)
-     * @return a {@link TcpBuilder} configured with the source port condition
+     * @return a {@link TcpDsl} configured with the source port condition
      * @throws FilterException if port is not in the range 0–65535
      */
-    static TcpBuilder srcPort(int port) throws FilterException {
+    static TcpDsl srcPort(int port) throws FilterException {
         if (port < 0 || port > 65535) {
             throw new FilterException("TCP port must be 0-65535, got: " + port);
         }
@@ -96,10 +96,10 @@ public interface TcpFilter {
      * Creates a TCP filter that matches a specific destination port.
      *
      * @param port destination port number (must be 0–65535)
-     * @return a {@link TcpBuilder} configured with the destination port condition
+     * @return a {@link TcpDsl} configured with the destination port condition
      * @throws FilterException if port is not in the range 0–65535
      */
-    static TcpBuilder dstPort(int port) throws FilterException {
+    static TcpDsl dstPort(int port) throws FilterException {
         if (port < 0 || port > 65535) {
             throw new FilterException("TCP port must be 0-65535, got: " + port);
         }
@@ -110,10 +110,10 @@ public interface TcpFilter {
      * Creates a TCP filter that matches packets where either the source or destination port equals the given value.
      *
      * @param port port number to match on source or destination (must be 0–65535)
-     * @return a {@link TcpBuilder} configured with the OR condition on ports
+     * @return a {@link TcpDsl} configured with the OR condition on ports
      * @throws FilterException if port is not in the range 0–65535
      */
-    static TcpBuilder port(int port) throws FilterException {
+    static TcpDsl port(int port) throws FilterException {
         if (port < 0 || port > 65535) {
             throw new FilterException("TCP port must be 0-65535, got: " + port);
         }
@@ -128,10 +128,10 @@ public interface TcpFilter {
      * </p>
      *
      * @param flags exact 8-bit flags value (0–255)
-     * @return a {@link TcpBuilder} configured with the exact flags condition
+     * @return a {@link TcpDsl} configured with the exact flags condition
      * @throws FilterException if flags is not in the range 0–255
      */
-    static TcpBuilder flags(int flags) throws FilterException {
+    static TcpDsl flags(int flags) throws FilterException {
         if (flags < 0 || flags > 255) {
             throw new FilterException("TCP flags must be 0-255, got: " + flags);
         }
@@ -141,36 +141,36 @@ public interface TcpFilter {
     /**
      * Creates a TCP filter that matches packets with the SYN flag set.
      *
-     * @return a {@link TcpBuilder} configured with SYN=1 condition
+     * @return a {@link TcpDsl} configured with SYN=1 condition
      */
-    static TcpBuilder flagSyn() {
+    static TcpDsl flagSyn() {
         return of().flagSyn();
     }
 
     /**
      * Creates a TCP filter that matches packets with the ACK flag set.
      *
-     * @return a {@link TcpBuilder} configured with ACK=1 condition
+     * @return a {@link TcpDsl} configured with ACK=1 condition
      */
-    static TcpBuilder flagAck() {
+    static TcpDsl flagAck() {
         return of().flagAck();
     }
 
     /**
      * Creates a TCP filter that matches packets with the FIN flag set.
      *
-     * @return a {@link TcpBuilder} configured with FIN=1 condition
+     * @return a {@link TcpDsl} configured with FIN=1 condition
      */
-    static TcpBuilder flagFin() {
+    static TcpDsl flagFin() {
         return of().flagFin();
     }
 
     /**
      * Creates a TCP filter that matches packets with the RST flag set.
      *
-     * @return a {@link TcpBuilder} configured with RST=1 condition
+     * @return a {@link TcpDsl} configured with RST=1 condition
      */
-    static TcpBuilder flagRst() {
+    static TcpDsl flagRst() {
         return of().flagRst();
     }
 
@@ -183,7 +183,7 @@ public interface TcpFilter {
      * All methods perform the same validation as their static counterparts.
      * </p>
      */
-    interface TcpBuilder extends HeaderFilter {
+    interface TcpDsl extends HeaderDsl {
 
         /**
          * Adds a condition that the source port field must equal the given value.
@@ -192,7 +192,7 @@ public interface TcpFilter {
          * @return this builder for chaining
          * @throws FilterException if port is not in the range 0–65535
          */
-        default TcpBuilder srcPort(int port) throws FilterException {
+        default TcpDsl srcPort(int port) throws FilterException {
             if (port < 0 || port > 65535) {
                 throw new FilterException("TCP port must be 0-65535, got: " + port);
             }
@@ -206,7 +206,7 @@ public interface TcpFilter {
          * @return this builder for chaining
          * @throws FilterException if port is not in the range 0–65535
          */
-        default TcpBuilder dstPort(int port) throws FilterException {
+        default TcpDsl dstPort(int port) throws FilterException {
             if (port < 0 || port > 65535) {
                 throw new FilterException("TCP port must be 0-65535, got: " + port);
             }
@@ -220,7 +220,7 @@ public interface TcpFilter {
          * @return this builder for chaining
          * @throws FilterException if port is not in the range 0–65535
          */
-        default TcpBuilder port(int port) throws FilterException {
+        default TcpDsl port(int port) throws FilterException {
             if (port < 0 || port > 65535) {
                 throw new FilterException("TCP port must be 0-65535, got: " + port);
             }
@@ -240,7 +240,7 @@ public interface TcpFilter {
          * @return this builder for chaining
          * @throws FilterException if flags is not in the range 0–255
          */
-        default TcpBuilder flags(int flags) throws FilterException {
+        default TcpDsl flags(int flags) throws FilterException {
             if (flags < 0 || flags > 255) {
                 throw new FilterException("TCP flags must be 0-255, got: " + flags);
             }
@@ -252,7 +252,7 @@ public interface TcpFilter {
          *
          * @return this builder for chaining
          */
-        default TcpBuilder flagSyn() {
+        default TcpDsl flagSyn() {
             return b -> this.emit(b).and().field("tcp.flags.syn", 13, 8, Op.MASK, 0x02);
         }
 
@@ -261,7 +261,7 @@ public interface TcpFilter {
          *
          * @return this builder for chaining
          */
-        default TcpBuilder flagAck() {
+        default TcpDsl flagAck() {
             return b -> this.emit(b).and().field("tcp.flags.ack", 13, 8, Op.MASK, 0x10);
         }
 
@@ -270,7 +270,7 @@ public interface TcpFilter {
          *
          * @return this builder for chaining
          */
-        default TcpBuilder flagFin() {
+        default TcpDsl flagFin() {
             return b -> this.emit(b).and().field("tcp.flags.fin", 13, 8, Op.MASK, 0x01);
         }
 
@@ -279,7 +279,7 @@ public interface TcpFilter {
          *
          * @return this builder for chaining
          */
-        default TcpBuilder flagRst() {
+        default TcpDsl flagRst() {
             return b -> this.emit(b).and().field("tcp.flags.rst", 13, 8, Op.MASK, 0x04);
         }
     }

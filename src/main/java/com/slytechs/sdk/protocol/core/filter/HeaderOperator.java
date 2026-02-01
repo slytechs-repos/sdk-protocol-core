@@ -26,20 +26,20 @@ package com.slytechs.sdk.protocol.core.filter;
  * </p>
  * <p>
  * Typically used as a lambda parameter in protocol methods on
- * {@link PacketFilter} and {@link ProtocolFilter}:
+ * {@link PacketFilter} and {@link PacketDsl}:
  *
  * {@snippet :
- * // The lambda v -> v.vid(100) is a HeaderOperator<VlanBuilder>
- * ProtocolFilter dsl = PacketFilter.vlan(v -> v.vid(100));
+ * // The lambda v -> v.vid(100) is a HeaderOperator<VlanDsl>
+ * PacketDsl dsl = PacketFilter.vlan(v -> v.vid(100));
  *
  * // Validation errors propagate as checked FilterException
- * ProtocolFilter dsl = PacketFilter.vlan(v -> v.vid(5000)); // throws FilterException
+ * PacketDsl dsl = PacketFilter.vlan(v -> v.vid(5000)); // throws FilterException
  * }
  *
  * @param <T> the type of header filter builder (e.g.
- *            {@link TcpFilter.TcpBuilder}, {@link VlanFilter.VlanBuilder})
+ *            {@link TcpFilter.TcpDsl}, {@link VlanFilter.VlanDsl})
  * @see PacketFilter
- * @see ProtocolFilter
+ * @see PacketDsl
  * @see FilterException
  */
 @FunctionalInterface

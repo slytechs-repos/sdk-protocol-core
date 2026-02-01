@@ -15,7 +15,7 @@
  */
 package com.slytechs.sdk.protocol.core.filter;
 
-import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
+import com.slytechs.sdk.protocol.core.filter.FilterDsl.Emitter.Op;
 
 /**
  * Factory and builder interface for constructing IPv6 (Internet Protocol version 6) filter expressions.
@@ -48,19 +48,19 @@ import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
  * <h2>Usage Examples</h2>
  * <pre>{@code
  * // Single condition (convenience)
- * Ip6Builder filter1 = Ip6Filter.src(new byte[] {
+ * Ip6Dsl filter1 = Ip6Filter.src(new byte[] {
  *     0x20, 0x01, 0x0d, (byte)0xb8, 0, 0, 0, 0, 0, 0, (byte)0xff, 0, 0, 0, 0, 0x01  // 2001:db8::ff00:0:1
  * });
  *
  * // Combined conditions (fluent builder)
- * Ip6Builder filter2 = Ip6Filter.of()
+ * Ip6Dsl filter2 = Ip6Filter.of()
  *     .dst(new byte[] { 0x20, 0x01, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x68 })  // example IPv6
  *     .nextHeader(17)  // UDP
  *     .hopLimit(64)
  *     .flowLabel(123456);
  *
  * // Chained with validation
- * Ip6Builder filter3 = Ip6Filter.nextHeader(58)   // ICMPv6
+ * Ip6Dsl filter3 = Ip6Filter.nextHeader(58)   // ICMPv6
  *     .hopLimit(128)
  *     .src(new byte[16]);  // all-zeroes address
  * }</pre>
@@ -70,9 +70,9 @@ public interface Ip6Filter {
     /**
      * Creates an empty IPv6 builder (no conditions).
      *
-     * @return a new {@link Ip6Builder} instance with no filters applied
+     * @return a new {@link Ip6Dsl} instance with no filters applied
      */
-    static Ip6Builder of() {
+    static Ip6Dsl of() {
         return b -> b;
     }
 
@@ -80,10 +80,10 @@ public interface Ip6Filter {
      * Creates an IPv6 filter that matches a specific source IPv6 address.
      *
      * @param addr 16-byte source IPv6 address (network byte order)
-     * @return a {@link Ip6Builder} configured with the source address condition
+     * @return a {@link Ip6Dsl} configured with the source address condition
      * @throws FilterException if addr is null or not exactly 16 bytes long
      */
-    static Ip6Builder src(byte[] addr) throws FilterException {
+    static Ip6Dsl src(byte[] addr) throws FilterException {
         if (addr == null || addr.length != 16) {
             throw new FilterException("IPv6 address must be a 16-byte array");
         }
@@ -94,10 +94,10 @@ public interface Ip6Filter {
      * Creates an IPv6 filter that matches a specific destination IPv6 address.
      *
      * @param addr 16-byte destination IPv6 address (network byte order)
-     * @return a {@link Ip6Builder} configured with the destination address condition
+     * @return a {@link Ip6Dsl} configured with the destination address condition
      * @throws FilterException if addr is null or not exactly 16 bytes long
      */
-    static Ip6Builder dst(byte[] addr) throws FilterException {
+    static Ip6Dsl dst(byte[] addr) throws FilterException {
         if (addr == null || addr.length != 16) {
             throw new FilterException("IPv6 address must be a 16-byte array");
         }
@@ -111,10 +111,10 @@ public interface Ip6Filter {
      * </p>
      *
      * @param protocol Next Header value (must be 0–255)
-     * @return a {@link Ip6Builder} configured with the Next Header condition
+     * @return a {@link Ip6Dsl} configured with the Next Header condition
      * @throws FilterException if protocol is not in the range 0–255
      */
-    static Ip6Builder nextHeader(int protocol) throws FilterException {
+    static Ip6Dsl nextHeader(int protocol) throws FilterException {
         if (protocol < 0 || protocol > 255) {
             throw new FilterException("Next Header value must be 0-255, got: " + protocol);
         }
@@ -125,10 +125,10 @@ public interface Ip6Filter {
      * Creates an IPv6 filter that matches a specific Hop Limit value.
      *
      * @param limit Hop Limit value (must be 0–255)
-     * @return a {@link Ip6Builder} configured with the Hop Limit condition
+     * @return a {@link Ip6Dsl} configured with the Hop Limit condition
      * @throws FilterException if limit is not in the range 0–255
      */
-    static Ip6Builder hopLimit(int limit) throws FilterException {
+    static Ip6Dsl hopLimit(int limit) throws FilterException {
         if (limit < 0 || limit > 255) {
             throw new FilterException("Hop Limit must be 0-255, got: " + limit);
         }
@@ -142,10 +142,10 @@ public interface Ip6Filter {
      * </p>
      *
      * @param label Flow Label value (must be 0–1048575)
-     * @return a {@link Ip6Builder} configured with the Flow Label condition
+     * @return a {@link Ip6Dsl} configured with the Flow Label condition
      * @throws FilterException if label is not in the range 0–1048575
      */
-    static Ip6Builder flowLabel(int label) throws FilterException {
+    static Ip6Dsl flowLabel(int label) throws FilterException {
         if (label < 0 || label > 0xFFFFF) {
             throw new FilterException("Flow Label must be 0-1048575 (0xFFFFF), got: " + label);
         }
@@ -162,7 +162,7 @@ public interface Ip6Filter {
      * All methods perform the same validation as their static counterparts.
      * </p>
      */
-    interface Ip6Builder extends HeaderFilter {
+    interface Ip6Dsl extends HeaderDsl {
 
         /**
          * Adds a condition that the source IPv6 address field must equal the given value.
@@ -171,7 +171,7 @@ public interface Ip6Filter {
          * @return this builder for chaining
          * @throws FilterException if addr is null or not exactly 16 bytes long
          */
-        default Ip6Builder src(byte[] addr) throws FilterException {
+        default Ip6Dsl src(byte[] addr) throws FilterException {
             if (addr == null || addr.length != 16) {
                 throw new FilterException("IPv6 address must be a 16-byte array");
             }
@@ -185,7 +185,7 @@ public interface Ip6Filter {
          * @return this builder for chaining
          * @throws FilterException if addr is null or not exactly 16 bytes long
          */
-        default Ip6Builder dst(byte[] addr) throws FilterException {
+        default Ip6Dsl dst(byte[] addr) throws FilterException {
             if (addr == null || addr.length != 16) {
                 throw new FilterException("IPv6 address must be a 16-byte array");
             }
@@ -199,7 +199,7 @@ public interface Ip6Filter {
          * @return this builder for chaining
          * @throws FilterException if protocol is not in the range 0–255
          */
-        default Ip6Builder nextHeader(int protocol) throws FilterException {
+        default Ip6Dsl nextHeader(int protocol) throws FilterException {
             if (protocol < 0 || protocol > 255) {
                 throw new FilterException("Next Header value must be 0-255, got: " + protocol);
             }
@@ -213,7 +213,7 @@ public interface Ip6Filter {
          * @return this builder for chaining
          * @throws FilterException if limit is not in the range 0–255
          */
-        default Ip6Builder hopLimit(int limit) throws FilterException {
+        default Ip6Dsl hopLimit(int limit) throws FilterException {
             if (limit < 0 || limit > 255) {
                 throw new FilterException("Hop Limit must be 0-255, got: " + limit);
             }
@@ -227,7 +227,7 @@ public interface Ip6Filter {
          * @return this builder for chaining
          * @throws FilterException if label is not in the range 0–1048575
          */
-        default Ip6Builder flowLabel(int label) throws FilterException {
+        default Ip6Dsl flowLabel(int label) throws FilterException {
             if (label < 0 || label > 0xFFFFF) {
                 throw new FilterException("Flow Label must be 0-1048575 (0xFFFFF), got: " + label);
             }

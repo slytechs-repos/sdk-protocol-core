@@ -19,13 +19,13 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import com.slytechs.sdk.common.util.Registration;
-import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
+import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanDsl;
 
 /**
  * Fluent, type-safe DSL for composing backend-agnostic packet filter
  * expressions.
  * <p>
- * {@code ProtocolFilter} is the primary chainable interface returned by static
+ * {@code PacketDsl} is the primary chainable interface returned by static
  * factory methods on {@link PacketFilter}. It allows declarative construction
  * of filters that span multiple protocol layers (Ethernet, VLAN, IPv4/IPv6,
  * TCP, UDP, MPLS, IPsec/AH/ESP) as well as common network matching primitives
@@ -34,7 +34,7 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
  * </p>
  * <p>
  * The DSL is deliberately independent of any specific capture or forwarding
- * engine. The same {@code ProtocolFilter} expression can be compiled to
+ * engine. The same {@code PacketDsl} expression can be compiled to
  * different target formats by using the appropriate backend-specific builder:
  * <ul>
  * <li>libpcap / WinPcap / Npcap BPF syntax ({@code BpfFilterBuilder})</li>
@@ -47,7 +47,7 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
  * <p>
  * Successive method calls on the chain are combined with logical
  * <strong>AND</strong>. Logical <strong>OR</strong> is explicitly constructed
- * using {@link #anyOf(HeaderFilter...)} or {@link #anyOf(ProtocolFilter...)}.
+ * using {@link #anyOf(HeaderDsl...)} or {@link #anyOf(PacketDsl...)}.
  * </p>
  * <p>
  * Input validation is performed eagerly during construction:
@@ -66,7 +66,7 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
  * <p>
  * Use {@link PacketFilter#all()} to create a filter that matches all packets
  * unconditionally. The catch-all filter must not be combined with other filters
- * or used inside {@link #anyOf(ProtocolFilter...)}; doing so throws
+ * or used inside {@link #anyOf(PacketDsl...)}; doing so throws
  * {@link FilterException}.
  * </p>
  * 
@@ -74,25 +74,25 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
  *
  * {@snippet lang = java :
  * // Basic protocol + port filter
- * ProtocolFilter https = PacketFilter
+ * PacketDsl https = PacketFilter
  * 		.ip4()
  * 		.tcp(t -> t.dstPort(443));
  *
  * // VLAN + IP subnet + TCP flags
- * ProtocolFilter internalWeb = PacketFilter
+ * PacketDsl internalWeb = PacketFilter
  * 		.vlan(v -> v.vid(100).pcp(5))
  * 		.ip4(ip -> ip.srcNet("10.10.0.0/16"))
  * 		.tcp(t -> t.dstPort(443).flagSyn());
  *
  * // Logical OR across VLAN IDs
- * ProtocolFilter financeVlans = PacketFilter
+ * PacketDsl financeVlans = PacketFilter
  * 		.anyOf(
  * 				VlanFilter.vid(200),
  * 				VlanFilter.vid(300))
  * 		.ip4();
  *
  * // Protocol family agnostic + port range
- * ProtocolFilter monitoring = PacketFilter
+ * PacketDsl monitoring = PacketFilter
  * 		.anyOf(PacketFilter.ip4(), PacketFilter.ip6())
  * 		.udp()
  * 		.portRange(30000, 31000);
@@ -104,7 +104,7 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
  * }
  *
  * @see PacketFilter static factory entry point
- * @see FilterBuilder common builder contract used by backends
+ * @see Emitter common builder contract used by backends
  * @see FilterException thrown on invalid filter construction
  * @see HeaderOperator functional interface for header-specific lambdas
  * @see VlanFilter
@@ -116,10 +116,10 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
  * @see MplsFilter
  * @see IpSecFilter
  */
-public interface ProtocolFilter {
+public interface PacketDsl extends FilterDsl {
 
 	/**
-	 * Emits the current filter expression into the provided {@link FilterBuilder}.
+	 * Emits the current filter expression into the provided {@link Emitter}.
 	 * <p>
 	 * This is the terminal method called internally to build the final filter
 	 * string or structure. Implementations append their conditions and return the
@@ -130,7 +130,7 @@ public interface ProtocolFilter {
 	 * @return the modified builder (for chaining)
 	 * @throws FilterException if the emitted expression is invalid
 	 */
-	FilterBuilder emit(FilterBuilder b) throws FilterException;
+	Emitter emit(Emitter b) throws FilterException;
 
 	// -------------------------------------------------------------------------
 	// Protocol selectors (simple presence)
@@ -142,7 +142,7 @@ public interface ProtocolFilter {
 	 *
 	 * @return a new filter that adds an AH protocol condition
 	 */
-	default ProtocolFilter ah() {
+	default PacketDsl ah() {
 		return b -> this.emit(b).and().protocol("ah");
 	}
 
@@ -154,7 +154,7 @@ public interface ProtocolFilter {
 	 * @return a new filter combining AH presence with the specified header
 	 *         conditions
 	 */
-	default ProtocolFilter ah(HeaderOperator<IpSecFilter.IpSecBuilder> header) {
+	default PacketDsl ah(HeaderOperator<IpSecFilter.IpSecDsl> header) {
 		return b -> header.apply(IpSecFilter.of()).emit(this.emit(b).and().protocol("ah"));
 	}
 
@@ -164,7 +164,7 @@ public interface ProtocolFilter {
 	 *
 	 * @return a new filter that adds an ESP protocol condition
 	 */
-	default ProtocolFilter esp() {
+	default PacketDsl esp() {
 		return b -> this.emit(b).and().protocol("esp");
 	}
 
@@ -176,7 +176,7 @@ public interface ProtocolFilter {
 	 * @return a new filter combining ESP presence with the specified header
 	 *         conditions
 	 */
-	default ProtocolFilter esp(HeaderOperator<IpSecFilter.IpSecBuilder> header) {
+	default PacketDsl esp(HeaderOperator<IpSecFilter.IpSecDsl> header) {
 		return b -> header.apply(IpSecFilter.of()).emit(this.emit(b).and().protocol("esp"));
 	}
 
@@ -185,7 +185,7 @@ public interface ProtocolFilter {
 	 *
 	 * @return a new filter that scopes to Ethernet header conditions
 	 */
-	default ProtocolFilter ethernet() {
+	default PacketDsl ethernet() {
 		return b -> this.emit(b).and().protocol("eth");
 	}
 
@@ -196,7 +196,7 @@ public interface ProtocolFilter {
 	 * @param header operator that configures Ethernet fields
 	 * @return a new filter combining Ethernet scope with the specified conditions
 	 */
-	default ProtocolFilter ethernet(HeaderOperator<EthernetFilter.EthernetBuilder> header) {
+	default PacketDsl ethernet(HeaderOperator<EthernetFilter.EthernetDsl> header) {
 		return b -> header.apply(EthernetFilter.of()).emit(this.emit(b).and().protocol("eth"));
 	}
 
@@ -205,7 +205,7 @@ public interface ProtocolFilter {
 	 *
 	 * @return a new filter that adds an IPv4 protocol condition
 	 */
-	default ProtocolFilter ip4() {
+	default PacketDsl ip4() {
 		return b -> this.emit(b).and().protocol("ip4");
 	}
 
@@ -216,7 +216,7 @@ public interface ProtocolFilter {
 	 * @param header operator that configures IPv4 fields
 	 * @return a new filter combining IPv4 scope with the specified conditions
 	 */
-	default ProtocolFilter ip4(HeaderOperator<Ip4Filter.Ip4Builder> header) {
+	default PacketDsl ip4(HeaderOperator<Ip4Filter.Ip4Dsl> header) {
 		return b -> header.apply(Ip4Filter.of()).emit(this.emit(b).and().protocol("ip4"));
 	}
 
@@ -225,7 +225,7 @@ public interface ProtocolFilter {
 	 *
 	 * @return a new filter that adds an IPv6 protocol condition
 	 */
-	default ProtocolFilter ip6() {
+	default PacketDsl ip6() {
 		return b -> this.emit(b).and().protocol("ip6");
 	}
 
@@ -236,7 +236,7 @@ public interface ProtocolFilter {
 	 * @param header operator that configures IPv6 fields
 	 * @return a new filter combining IPv6 scope with the specified conditions
 	 */
-	default ProtocolFilter ip6(HeaderOperator<Ip6Filter.Ip6Builder> header) {
+	default PacketDsl ip6(HeaderOperator<Ip6Filter.Ip6Dsl> header) {
 		return b -> header.apply(Ip6Filter.of()).emit(this.emit(b).and().protocol("ip6"));
 	}
 
@@ -245,7 +245,7 @@ public interface ProtocolFilter {
 	 *
 	 * @return a new filter that adds a TCP protocol condition
 	 */
-	default ProtocolFilter tcp() {
+	default PacketDsl tcp() {
 		return b -> this.emit(b).and().protocol("tcp");
 	}
 
@@ -256,7 +256,7 @@ public interface ProtocolFilter {
 	 * @param header operator that configures TCP fields
 	 * @return a new filter combining TCP scope with the specified conditions
 	 */
-	default ProtocolFilter tcp(HeaderOperator<TcpFilter.TcpBuilder> header) {
+	default PacketDsl tcp(HeaderOperator<TcpFilter.TcpDsl> header) {
 		return b -> header.apply(TcpFilter.of()).emit(this.emit(b).and().protocol("tcp"));
 	}
 
@@ -265,7 +265,7 @@ public interface ProtocolFilter {
 	 *
 	 * @return a new filter that adds a UDP protocol condition
 	 */
-	default ProtocolFilter udp() {
+	default PacketDsl udp() {
 		return b -> this.emit(b).and().protocol("udp");
 	}
 
@@ -275,7 +275,7 @@ public interface ProtocolFilter {
 	 * @param header operator that configures UDP fields
 	 * @return a new filter combining UDP scope with the specified conditions
 	 */
-	default ProtocolFilter udp(HeaderOperator<UdpFilter.UdpBuilder> header) {
+	default PacketDsl udp(HeaderOperator<UdpFilter.UdpDsl> header) {
 		return b -> header.apply(UdpFilter.of()).emit(this.emit(b).and().protocol("udp"));
 	}
 
@@ -284,7 +284,7 @@ public interface ProtocolFilter {
 	 *
 	 * @return a new filter that adds a VLAN protocol condition
 	 */
-	default ProtocolFilter vlan() {
+	default PacketDsl vlan() {
 		return b -> this.emit(b).and().protocol("vlan");
 	}
 
@@ -295,17 +295,17 @@ public interface ProtocolFilter {
 	 * @param header operator that configures VLAN fields
 	 * @return a new filter combining VLAN scope with the specified conditions
 	 */
-	default ProtocolFilter vlan(HeaderOperator<VlanBuilder> header) {
+	default PacketDsl vlan(HeaderOperator<VlanDsl> header) {
 		return b -> header.apply(VlanFilter.of()).emit(this.emit(b).and().protocol("vlan"));
 	}
 
 	/**
-	 * Directly embeds a pre-configured {@link VlanBuilder} into the filter.
+	 * Directly embeds a pre-configured {@link VlanDsl} into the filter.
 	 *
 	 * @param header a configured VLAN builder
 	 * @return a new filter that includes the VLAN conditions
 	 */
-	default ProtocolFilter vlanFilter(VlanBuilder header) {
+	default PacketDsl vlanFilter(VlanDsl header) {
 		return b -> header.emit(this.emit(b));
 	}
 
@@ -314,7 +314,7 @@ public interface ProtocolFilter {
 	 *
 	 * @return a new filter that adds an MPLS protocol condition
 	 */
-	default ProtocolFilter mpls() {
+	default PacketDsl mpls() {
 		return b -> this.emit(b).and().protocol("mpls");
 	}
 
@@ -325,7 +325,7 @@ public interface ProtocolFilter {
 	 * @param header operator that configures MPLS fields
 	 * @return a new filter combining MPLS scope with the specified conditions
 	 */
-	default ProtocolFilter mpls(HeaderOperator<MplsFilter.MplsBuilder> header) {
+	default PacketDsl mpls(HeaderOperator<MplsFilter.MplsDsl> header) {
 		return b -> header.apply(MplsFilter.of()).emit(this.emit(b).and().protocol("mpls"));
 	}
 
@@ -340,7 +340,7 @@ public interface ProtocolFilter {
 	 * @param alternatives one or more header-specific filters
 	 * @return a new filter that groups the alternatives with OR
 	 */
-	default ProtocolFilter anyOf(HeaderFilter... alternatives) {
+	default PacketDsl anyOf(HeaderDsl... alternatives) {
 		return b -> {
 			this.emit(b).and().group();
 			for (int i = 0; i < alternatives.length; i++) {
@@ -359,7 +359,7 @@ public interface ProtocolFilter {
 	 * @param alternatives one or more protocol-level filters
 	 * @return a new filter that groups the alternatives with OR
 	 */
-	default ProtocolFilter anyOf(ProtocolFilter... alternatives) {
+	default PacketDsl anyOf(PacketDsl... alternatives) {
 		return b -> {
 			this.emit(b).and().group();
 			for (int i = 0; i < alternatives.length; i++) {
@@ -383,7 +383,7 @@ public interface ProtocolFilter {
 	 * @return a new filter adding host match condition
 	 * @throws FilterException if the IP string is malformed
 	 */
-	default ProtocolFilter host(String ip) {
+	default PacketDsl host(String ip) {
 		return b -> this.emit(b).and().host(ip);
 	}
 
@@ -395,7 +395,7 @@ public interface ProtocolFilter {
 	 * @return a new filter adding binary host match condition
 	 * @throws FilterException if ip is null or wrong length
 	 */
-	default ProtocolFilter host(byte[] ip) {
+	default PacketDsl host(byte[] ip) {
 		return b -> this.emit(b).and().host(ip);
 	}
 
@@ -406,7 +406,7 @@ public interface ProtocolFilter {
 	 * @return a new filter adding destination host match
 	 * @throws FilterException if the IP string is malformed
 	 */
-	default ProtocolFilter dstHost(String ip) {
+	default PacketDsl dstHost(String ip) {
 		return b -> this.emit(b).and().dstHost(ip);
 	}
 
@@ -417,7 +417,7 @@ public interface ProtocolFilter {
 	 * @return a new filter adding source host match
 	 * @throws FilterException if the IP string is malformed
 	 */
-	default ProtocolFilter srcHost(String ip) {
+	default PacketDsl srcHost(String ip) {
 		return b -> this.emit(b).and().srcHost(ip);
 	}
 
@@ -429,7 +429,7 @@ public interface ProtocolFilter {
 	 * @return a new filter adding network match
 	 * @throws FilterException if cidr is malformed or invalid
 	 */
-	default ProtocolFilter net(String cidr) {
+	default PacketDsl net(String cidr) {
 		return b -> this.emit(b).and().net(cidr);
 	}
 
@@ -440,7 +440,7 @@ public interface ProtocolFilter {
 	 * @return a new filter adding destination network match
 	 * @throws FilterException if cidr is malformed or invalid
 	 */
-	default ProtocolFilter dstNet(String cidr) {
+	default PacketDsl dstNet(String cidr) {
 		return b -> this.emit(b).and().dstNet(cidr);
 	}
 
@@ -451,7 +451,7 @@ public interface ProtocolFilter {
 	 * @return a new filter adding source network match
 	 * @throws FilterException if cidr is malformed or invalid
 	 */
-	default ProtocolFilter srcNet(String cidr) {
+	default PacketDsl srcNet(String cidr) {
 		return b -> this.emit(b).and().srcNet(cidr);
 	}
 
@@ -467,7 +467,7 @@ public interface ProtocolFilter {
 	 * @return a new filter adding port match (src OR dst)
 	 * @throws FilterException if port is not in 0–65535
 	 */
-	default ProtocolFilter port(int port) throws FilterException {
+	default PacketDsl port(int port) throws FilterException {
 		if (port < 0 || port > 65535) {
 			throw new FilterException("Port must be 0-65535, got: " + port);
 		}
@@ -481,7 +481,7 @@ public interface ProtocolFilter {
 	 * @return a new filter adding source port match
 	 * @throws FilterException if port is not in 0–65535
 	 */
-	default ProtocolFilter srcPort(int port) throws FilterException {
+	default PacketDsl srcPort(int port) throws FilterException {
 		if (port < 0 || port > 65535) {
 			throw new FilterException("Source port must be 0-65535, got: " + port);
 		}
@@ -495,7 +495,7 @@ public interface ProtocolFilter {
 	 * @return a new filter adding destination port match
 	 * @throws FilterException if port is not in 0–65535
 	 */
-	default ProtocolFilter dstPort(int port) throws FilterException {
+	default PacketDsl dstPort(int port) throws FilterException {
 		if (port < 0 || port > 65535) {
 			throw new FilterException("Destination port must be 0-65535, got: " + port);
 		}
@@ -511,7 +511,7 @@ public interface ProtocolFilter {
 	 * @return a new filter adding port range match (src OR dst)
 	 * @throws FilterException if start or end is out of range or start > end
 	 */
-	default ProtocolFilter portRange(int start, int end) throws FilterException {
+	default PacketDsl portRange(int start, int end) throws FilterException {
 		if (start < 0 || start > 65535) {
 			throw new FilterException("Port range start must be 0-65535, got: " + start);
 		}
@@ -534,7 +534,7 @@ public interface ProtocolFilter {
 	 *
 	 * @return a new filter adding broadcast match
 	 */
-	default ProtocolFilter broadcast() {
+	default PacketDsl broadcast() {
 		return b -> this.emit(b).and().broadcast();
 	}
 
@@ -544,7 +544,7 @@ public interface ProtocolFilter {
 	 *
 	 * @return a new filter adding multicast match
 	 */
-	default ProtocolFilter multicast() {
+	default PacketDsl multicast() {
 		return b -> this.emit(b).and().multicast();
 	}
 
@@ -554,8 +554,8 @@ public interface ProtocolFilter {
 	 * @param len exact packet length in bytes
 	 * @return a new filter adding exact length match
 	 */
-	default ProtocolFilter length(int len) {
-		return b -> this.emit(b).and().length(FilterBuilder.Op.EQ, len);
+	default PacketDsl length(int len) {
+		return b -> this.emit(b).and().length(Emitter.Op.EQ, len);
 	}
 
 	/**
@@ -564,8 +564,8 @@ public interface ProtocolFilter {
 	 * @param len minimum packet length (exclusive)
 	 * @return a new filter adding length > condition
 	 */
-	default ProtocolFilter lengthGreater(int len) {
-		return b -> this.emit(b).and().length(FilterBuilder.Op.GT, len);
+	default PacketDsl lengthGreater(int len) {
+		return b -> this.emit(b).and().length(Emitter.Op.GT, len);
 	}
 
 	/**
@@ -574,8 +574,8 @@ public interface ProtocolFilter {
 	 * @param len maximum packet length (exclusive)
 	 * @return a new filter adding length < condition
 	 */
-	default ProtocolFilter lengthLess(int len) {
-		return b -> this.emit(b).and().length(FilterBuilder.Op.LT, len);
+	default PacketDsl lengthLess(int len) {
+		return b -> this.emit(b).and().length(Emitter.Op.LT, len);
 	}
 
 	// -------------------------------------------------------------------------
@@ -590,7 +590,7 @@ public interface ProtocolFilter {
 	 *                    invalid
 	 * @return a new filter with the debug hook attached
 	 */
-	default ProtocolFilter onExpressionAssert(Function<String, Boolean> debugAction) {
+	default PacketDsl onExpressionAssert(Function<String, Boolean> debugAction) {
 		return onExpression(value -> {
 			if (!debugAction.apply(value))
 				throw new IllegalStateException("expression output error :" + value);
@@ -604,7 +604,7 @@ public interface ProtocolFilter {
 	 * @param debugAction consumer that receives the expression string
 	 * @return a new filter with the debug hook attached
 	 */
-	default ProtocolFilter onExpression(Consumer<String> debugAction) {
+	default PacketDsl onExpression(Consumer<String> debugAction) {
 		return b -> this.emit(b).onExpressionAction(debugAction, _ -> {});
 	}
 
@@ -617,7 +617,7 @@ public interface ProtocolFilter {
 	 *                     needed)
 	 * @return a new filter with the advanced debug hook attached
 	 */
-	default ProtocolFilter onExpression(Consumer<String> debugAction, Consumer<Registration> registration) {
+	default PacketDsl onExpression(Consumer<String> debugAction, Consumer<Registration> registration) {
 		return b -> this.emit(b).onExpressionAction(debugAction, registration);
 	}
 
@@ -631,7 +631,7 @@ public interface ProtocolFilter {
 	 * @param other another protocol filter to OR with
 	 * @return a new filter combining this and other with OR
 	 */
-	default ProtocolFilter orFilter(ProtocolFilter other) {
+	default PacketDsl orFilter(PacketDsl other) {
 		return b -> other.emit(this.emit(b).or());
 	}
 
@@ -641,7 +641,7 @@ public interface ProtocolFilter {
 	 * @param other operator that configures another filter
 	 * @return a new filter combining this with the other condition via OR
 	 */
-	default ProtocolFilter or(HeaderOperator<ProtocolFilter> other) {
+	default PacketDsl or(HeaderOperator<PacketDsl> other) {
 		return b -> other.apply(PacketFilter.of()).emit(this.emit(b).or());
 	}
 }

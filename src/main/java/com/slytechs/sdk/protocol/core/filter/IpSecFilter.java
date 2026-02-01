@@ -15,7 +15,7 @@
  */
 package com.slytechs.sdk.protocol.core.filter;
 
-import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
+import com.slytechs.sdk.protocol.core.filter.FilterDsl.Emitter.Op;
 
 /**
  * Factory and builder interface for constructing IPsec (AH and ESP) filter expressions.
@@ -49,19 +49,19 @@ import com.slytechs.sdk.protocol.core.filter.FilterBuilder.Op;
  * <h2>Usage Examples</h2>
  * <pre>{@code
  * // Single condition (convenience)
- * IpSecBuilder filter1 = IpSecFilter.espSpi(0x12345678L);
+ * IpSecDsl filter1 = IpSecFilter.espSpi(0x12345678L);
  *
  * // Combined ESP conditions
- * IpSecBuilder filter2 = IpSecFilter.of()
+ * IpSecDsl filter2 = IpSecFilter.of()
  *     .espSpi(0xABCDEF01L)
  *     .espSeq(1000L);
  *
  * // AH example
- * IpSecBuilder filter3 = IpSecFilter.ahSpi(0x00001000L)
+ * IpSecDsl filter3 = IpSecFilter.ahSpi(0x00001000L)
  *     .ahSeq(500L);
  *
  * // Chained with validation
- * IpSecBuilder filter4 = IpSecFilter.espSpi(256L)   // Avoid reserved low values
+ * IpSecDsl filter4 = IpSecFilter.espSpi(256L)   // Avoid reserved low values
  *     .espSeq(1L);
  * }</pre>
  */
@@ -70,9 +70,9 @@ public interface IpSecFilter {
     /**
      * Creates an empty IPsec builder (no conditions).
      *
-     * @return a new {@link IpSecBuilder} instance with no filters applied
+     * @return a new {@link IpSecDsl} instance with no filters applied
      */
-    static IpSecBuilder of() {
+    static IpSecDsl of() {
         return b -> b;
     }
 
@@ -80,10 +80,10 @@ public interface IpSecFilter {
      * Creates an IPsec filter that matches a specific ESP Security Parameters Index (SPI).
      *
      * @param spi ESP SPI value (must be 0–4294967295)
-     * @return a {@link IpSecBuilder} configured with the ESP SPI condition
+     * @return a {@link IpSecDsl} configured with the ESP SPI condition
      * @throws FilterException if spi is not in the range 0–4294967295
      */
-    static IpSecBuilder espSpi(long spi) throws FilterException {
+    static IpSecDsl espSpi(long spi) throws FilterException {
         if (spi < 0 || spi > 0xFFFFFFFFL) {
             throw new FilterException("ESP SPI must be 0-4294967295 (0xFFFFFFFF), got: " + spi);
         }
@@ -94,10 +94,10 @@ public interface IpSecFilter {
      * Creates an IPsec filter that matches a specific AH Security Parameters Index (SPI).
      *
      * @param spi AH SPI value (must be 0–4294967295)
-     * @return a {@link IpSecBuilder} configured with the AH SPI condition
+     * @return a {@link IpSecDsl} configured with the AH SPI condition
      * @throws FilterException if spi is not in the range 0–4294967295
      */
-    static IpSecBuilder ahSpi(long spi) throws FilterException {
+    static IpSecDsl ahSpi(long spi) throws FilterException {
         if (spi < 0 || spi > 0xFFFFFFFFL) {
             throw new FilterException("AH SPI must be 0-4294967295 (0xFFFFFFFF), got: " + spi);
         }
@@ -114,7 +114,7 @@ public interface IpSecFilter {
      * All methods perform the same range validation as their static counterparts.
      * </p>
      */
-    interface IpSecBuilder extends HeaderFilter {
+    interface IpSecDsl extends HeaderDsl {
 
         /**
          * Adds a condition that the ESP Security Parameters Index (SPI) field must equal the given value.
@@ -123,7 +123,7 @@ public interface IpSecFilter {
          * @return this builder for chaining
          * @throws FilterException if spi is not in the range 0–4294967295
          */
-        default IpSecBuilder espSpi(long spi) throws FilterException {
+        default IpSecDsl espSpi(long spi) throws FilterException {
             if (spi < 0 || spi > 0xFFFFFFFFL) {
                 throw new FilterException("ESP SPI must be 0-4294967295 (0xFFFFFFFF), got: " + spi);
             }
@@ -137,7 +137,7 @@ public interface IpSecFilter {
          * @return this builder for chaining
          * @throws FilterException if seq is not in the range 0–4294967295
          */
-        default IpSecBuilder espSeq(long seq) throws FilterException {
+        default IpSecDsl espSeq(long seq) throws FilterException {
             if (seq < 0 || seq > 0xFFFFFFFFL) {
                 throw new FilterException("ESP Sequence Number must be 0-4294967295 (0xFFFFFFFF), got: " + seq);
             }
@@ -151,7 +151,7 @@ public interface IpSecFilter {
          * @return this builder for chaining
          * @throws FilterException if spi is not in the range 0–4294967295
          */
-        default IpSecBuilder ahSpi(long spi) throws FilterException {
+        default IpSecDsl ahSpi(long spi) throws FilterException {
             if (spi < 0 || spi > 0xFFFFFFFFL) {
                 throw new FilterException("AH SPI must be 0-4294967295 (0xFFFFFFFF), got: " + spi);
             }
@@ -165,7 +165,7 @@ public interface IpSecFilter {
          * @return this builder for chaining
          * @throws FilterException if seq is not in the range 0–4294967295
          */
-        default IpSecBuilder ahSeq(long seq) throws FilterException {
+        default IpSecDsl ahSeq(long seq) throws FilterException {
             if (seq < 0 || seq > 0xFFFFFFFFL) {
                 throw new FilterException("AH Sequence Number must be 0-4294967295 (0xFFFFFFFF), got: " + seq);
             }

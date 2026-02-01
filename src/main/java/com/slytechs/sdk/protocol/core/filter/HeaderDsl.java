@@ -18,35 +18,35 @@ package com.slytechs.sdk.protocol.core.filter;
 /**
  * Base functional interface for protocol-specific header filter builders.
  * <p>
- * A {@code HeaderFilter} emits field-level filter conditions into a
- * {@link FilterBuilder}. Each protocol-specific filter (e.g.
- * {@link VlanFilter.VlanBuilder}, {@link TcpFilter.TcpBuilder}) extends this
+ * A {@code HeaderDsl} emits field-level filter conditions into a
+ * {@link Emitter}. Each protocol-specific filter (e.g.
+ * {@link VlanFilter.VlanDsl}, {@link TcpFilter.TcpDsl}) extends this
  * interface and adds typed methods for that protocol's header fields.
  * </p>
  * <p>
- * {@code HeaderFilter} instances are composable via functional chaining. Each
- * builder method returns a new {@code HeaderFilter} that first emits the
+ * {@code HeaderDsl} instances are composable via functional chaining. Each
+ * builder method returns a new {@code HeaderDsl} that first emits the
  * previous conditions, then appends its own. This enables fluent construction
  * without mutable state:
  *
  * {@snippet :
  * // Each call wraps the previous, building a chain of emit() calls
- * VlanBuilder filter = VlanFilter.vid(100).pcp(5);
+ * VlanDsl filter = VlanFilter.vid(100).pcp(5);
  * }
  * </p>
  * <p>
- * {@code HeaderFilter} is also the common type accepted by
- * {@link ProtocolFilter#anyOf(HeaderFilter...)} for OR grouping across
+ * {@code HeaderDsl} is also the common type accepted by
+ * {@link PacketDsl#anyOf(HeaderDsl...)} for OR grouping across
  * different header conditions of the same protocol layer.
  * </p>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see ProtocolFilter
- * @see FilterBuilder
+ * @see PacketDsl
+ * @see Emitter
  */
 @FunctionalInterface
-public interface HeaderFilter {
+public interface HeaderDsl extends FilterDsl {
 
     /**
      * Emits this filter's conditions into the given builder.
@@ -59,5 +59,5 @@ public interface HeaderFilter {
      * @param b the filter builder to emit conditions into
      * @return the same builder instance, for chaining
      */
-    FilterBuilder emit(FilterBuilder b);
+    Emitter emit(Emitter b);
 }

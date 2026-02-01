@@ -34,7 +34,7 @@ package com.slytechs.sdk.protocol.core.filter;
  *
  * {@snippet :
  * try {
- *     ProtocolFilter dsl = PacketFilter.vlan(v -> v.vid(5000));
+ *     PacketDsl dsl = PacketFilter.vlan(v -> v.vid(5000));
  * } catch (FilterException e) {
  *     // "VLAN ID must be 0-4095, got: 5000"
  * }
@@ -43,8 +43,8 @@ package com.slytechs.sdk.protocol.core.filter;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @see PacketFilter
- * @see ProtocolFilter
- * @see HeaderFilter
+ * @see PacketDsl
+ * @see HeaderDsl
  */
 public class FilterException extends Exception {
 
