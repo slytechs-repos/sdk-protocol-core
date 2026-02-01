@@ -183,6 +183,29 @@
  * </tr>
  * </table>
  *
+ ** <h2>Catch-All Filter</h2>
+ * <p>
+ * Use {@link PacketFilter#all()} when no filtering is desired. Some backends
+ * (notably Napatech NTPL) require an explicit accept-all directive; without it,
+ * all packets are dropped. Other backends (libpcap, DPDK) treat catch-all as a
+ * no-op — no native filter is installed.
+ * </p>
+ *
+ * {@snippet :
+ * // Required for NTPL, safe for all backends
+ * ProtocolFilter dsl = PacketFilter.all();
+ * PacketFilter filter = builder.build(dsl);
+ *
+ * if (!filter.isCatchAll()) {
+ * 	// install native filter
+ * }
+ * }
+ * <p>
+ * The catch-all filter must not be combined with other filters or used inside
+ * {@link ProtocolFilter#anyOf(ProtocolFilter...)}. Attempting to do so throws
+ * {@link FilterException} at construction time.
+ * </p>
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @see PacketFilter

@@ -61,7 +61,15 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
  * This helps catch configuration errors at development / initialization time
  * rather than at runtime or during filter compilation.
  * </p>
- *
+ * 
+ * <h2>Catch-All Filter</h2>
+ * <p>
+ * Use {@link PacketFilter#all()} to create a filter that matches all packets
+ * unconditionally. The catch-all filter must not be combined with other filters
+ * or used inside {@link #anyOf(ProtocolFilter...)}; doing so throws
+ * {@link FilterException}.
+ * </p>
+ * 
  * <h2>Usage Examples</h2>
  *
  * {@snippet lang = java :

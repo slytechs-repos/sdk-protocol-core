@@ -68,7 +68,15 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
  *
  * // Compile to backend (example)
  * // String bpf = new BpfFilterBuilder().build(dnsTraffic).toExpression();
+ * 
+ * * // Capture all packets (required for NTPL backends)
+ * ProtocolFilter captureAll = PacketFilter.all();
+ *
+ * // Check if compiled filter is catch-all
+ * PacketFilter filter = new BpfFilterBuilder().build(captureAll);
+ * filter.isCatchAll(); // true
  * }
+ * 
  *
  * @see ProtocolFilter the chainable filter interface
  * @see FilterBuilder common contract for backend-specific compilation
@@ -77,46 +85,37 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanBuilder;
 public interface PacketFilter {
 
 	/**
-	 * Returns an empty (identity) filter that matches all packets.
+	 * The protocol keyword used internally to represent an unconditional match-all
+	 * filter.
 	 * <p>
-	 * This is the starting point for building complex filters via chaining.
+	 * This constant is emitted by the {@link #ALL} filter and recognized by backend
+	 * builders to determine catch-all semantics. It is also used by
+	 * {@link #isCatchAll()} for expression comparison.
 	 * </p>
 	 *
-	 * @return an empty {@link ProtocolFilter} ready for chaining
+	 * @see #ALL
+	 * @see #isCatchAll()
 	 */
-	static ProtocolFilter of() {
-		return b -> b;
-	}
-
-	// ──────────────────────────────────────────────────────────────────────────
-	// Logical OR combinators (convenience entry points)
-	// ──────────────────────────────────────────────────────────────────────────
+	String KEYWORD_ALL = "all";
 
 	/**
-	 * Creates a filter that matches if <strong>any</strong> of the provided header
-	 * filters match.
+	 * Predefined filter that matches all packets without any conditions.
+	 * <p>
+	 * This constant is recognized by backend builders during compilation. Backends
+	 * that require an explicit "accept all" directive (e.g. Napatech NTPL) emit the
+	 * appropriate native command. Backends where no filter means capture-all (e.g.
+	 * libpcap, DPDK) return {@code null} from their binary compilation methods.
+	 * </p>
+	 * <p>
+	 * <b>Important:</b> {@code ALL} must not be combined with other filters.
+	 * Passing it inside {@link ProtocolFilter#anyOf(ProtocolFilter...)} or chaining
+	 * additional conditions after it will throw {@link FilterException}.
+	 * </p>
 	 *
-	 * @param alternatives one or more header-specific filters (logical OR)
-	 * @return a new {@link ProtocolFilter} representing the OR group
+	 * @see #all()
+	 * @see #isCatchAll()
 	 */
-	static ProtocolFilter anyOf(HeaderFilter... alternatives) {
-		return of().anyOf(alternatives);
-	}
-
-	/**
-	 * Creates a filter that matches if <strong>any</strong> of the provided
-	 * protocol filters match.
-	 *
-	 * @param alternatives one or more protocol-level filters (logical OR)
-	 * @return a new {@link ProtocolFilter} representing the OR group
-	 */
-	static ProtocolFilter anyOf(ProtocolFilter... alternatives) {
-		return of().anyOf(alternatives);
-	}
-
-	// ──────────────────────────────────────────────────────────────────────────
-	// Protocol entry points (start chain with a specific protocol)
-	// ──────────────────────────────────────────────────────────────────────────
+	ProtocolFilter ALL = _ -> new CatchAllBuilder();
 
 	/**
 	 * Starts a filter chain that matches packets containing an AH (Authentication
@@ -139,6 +138,98 @@ public interface PacketFilter {
 	 */
 	static ProtocolFilter ah(HeaderOperator<IpSecBuilder> header) {
 		return of().ah(header);
+	}
+
+	/**
+	 * Returns a filter that matches all packets.
+	 * <p>
+	 * Equivalent to referencing {@link #ALL} directly. Provided as a method for
+	 * consistency with other static factories on this interface.
+	 * </p>
+	 *
+	 * {@snippet :
+	 * // Explicit capture-all (required for NTPL backends)
+	 * net.capture("main", port)
+	 * 		.filter(PacketFilter.all())
+	 * 		.apply();
+	 * }
+	 *
+	 * @return the {@link #ALL} catch-all filter
+	 * @see #ALL
+	 * @see #isCatchAll()
+	 */
+	static ProtocolFilter all() {
+		return ALL;
+	}
+
+	// ──────────────────────────────────────────────────────────────────────────
+	// Logical OR combinators (convenience entry points)
+	// ──────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * Creates a filter that matches if <strong>any</strong> of the provided header
+	 * filters match.
+	 *
+	 * @param alternatives one or more header-specific filters (logical OR)
+	 * @return a new {@link ProtocolFilter} representing the OR group
+	 * @throws FilterException thrown if PacketFilter.ALL is used inside
+	 */
+	static ProtocolFilter anyOf(HeaderFilter... alternatives) {
+		return of().anyOf(alternatives);
+	}
+
+	/**
+	 * Creates a filter that matches if <strong>any</strong> of the provided
+	 * protocol filters match.
+	 *
+	 * @param alternatives one or more protocol-level filters (logical OR)
+	 * @return a new {@link ProtocolFilter} representing the OR group
+	 * @throws FilterException if any alternative is {@link PacketFilter#ALL}, which
+	 *                         cannot be combined with other filters
+	 */
+	static ProtocolFilter anyOf(ProtocolFilter... alternatives) throws FilterException {
+		for (var alt : alternatives)
+			if (alt == PacketFilter.ALL)
+				throw new FilterException("PacketFilter.ALL cannot be used inside anyOf()");
+
+		return of().anyOf(alternatives);
+	}
+
+	// ──────────────────────────────────────────────────────────────────────────
+	// Protocol entry points (start chain with a specific protocol)
+	// ──────────────────────────────────────────────────────────────────────────
+
+	/**
+	 * Starts a filter that matches broadcast packets.
+	 *
+	 * @return a {@link ProtocolFilter} with broadcast match
+	 */
+	static ProtocolFilter broadcast() {
+		return of().broadcast();
+	}
+
+	/**
+	 * Starts a filter that matches packets where the destination IP equals the
+	 * given address.
+	 *
+	 * @param ip IPv4 or IPv6 address string
+	 * @return a {@link ProtocolFilter} with destination host match
+	 * @throws FilterException if the IP string is malformed
+	 */
+	static ProtocolFilter dstHost(String ip) {
+		return of().dstHost(ip);
+	}
+
+	/**
+	 * Starts a filter that matches packets where the destination IP is within the
+	 * given subnet.
+	 *
+	 * @param cidr CIDR notation
+	 * @return a {@link ProtocolFilter} with destination network match
+	 * @throws FilterException if cidr is malformed or invalid
+	 */
+	static ProtocolFilter dstNet(String cidr) {
+		return of().dstNet(cidr);
 	}
 
 	/**
@@ -189,6 +280,18 @@ public interface PacketFilter {
 	}
 
 	/**
+	 * Starts a filter that matches packets where source or destination IP equals
+	 * the given address.
+	 *
+	 * @param ip IPv4 or IPv6 address string (e.g. "192.168.1.1", "2001:db8::1")
+	 * @return a {@link ProtocolFilter} with host match
+	 * @throws FilterException if the IP string is malformed
+	 */
+	static ProtocolFilter host(String ip) {
+		return of().host(ip);
+	}
+
+	/**
 	 * Starts a filter chain that matches IPv4 packets.
 	 *
 	 * @return a {@link ProtocolFilter} scoped to IPv4
@@ -235,6 +338,28 @@ public interface PacketFilter {
 	}
 
 	/**
+	 * Starts a filter that matches packets whose length is greater than the given
+	 * value.
+	 *
+	 * @param len minimum length (exclusive)
+	 * @return a {@link ProtocolFilter} with length > condition
+	 */
+	static ProtocolFilter lengthGreater(int len) {
+		return of().lengthGreater(len);
+	}
+
+	/**
+	 * Starts a filter that matches packets whose length is less than the given
+	 * value.
+	 *
+	 * @param len maximum length (exclusive)
+	 * @return a {@link ProtocolFilter} with length < condition
+	 */
+	static ProtocolFilter lengthLess(int len) {
+		return of().lengthLess(len);
+	}
+
+	/**
 	 * Starts a filter chain that matches packets with an MPLS label stack.
 	 *
 	 * @return a {@link ProtocolFilter} scoped to MPLS
@@ -258,110 +383,12 @@ public interface PacketFilter {
 	}
 
 	/**
-	 * Starts a filter chain that matches TCP packets.
+	 * Starts a filter that matches multicast packets.
 	 *
-	 * @return a {@link ProtocolFilter} scoped to TCP
-	 * @see #tcp(HeaderOperator)
+	 * @return a {@link ProtocolFilter} with multicast match
 	 */
-	static ProtocolFilter tcp() {
-		return of().tcp();
-	}
-
-	/**
-	 * Starts a filter chain that matches TCP packets and applies additional TCP
-	 * header conditions.
-	 *
-	 * @param header lambda/operator that configures TCP fields (ports, flags, etc.)
-	 * @return a {@link ProtocolFilter} combining TCP scope with the given
-	 *         conditions
-	 */
-	static ProtocolFilter tcp(HeaderOperator<TcpBuilder> header) {
-		return of().tcp(header);
-	}
-
-	/**
-	 * Starts a filter chain that matches UDP packets.
-	 *
-	 * @return a {@link ProtocolFilter} scoped to UDP
-	 * @see #udp(HeaderOperator)
-	 */
-	static ProtocolFilter udp() {
-		return of().udp();
-	}
-
-	/**
-	 * Starts a filter chain that matches UDP packets and applies additional UDP
-	 * header conditions.
-	 *
-	 * @param header lambda/operator that configures UDP fields (ports)
-	 * @return a {@link ProtocolFilter} combining UDP scope with the given
-	 *         conditions
-	 */
-	static ProtocolFilter udp(HeaderOperator<UdpBuilder> header) {
-		return of().udp(header);
-	}
-
-	/**
-	 * Starts a filter chain that matches packets with a VLAN tag (802.1Q).
-	 *
-	 * @return a {@link ProtocolFilter} scoped to VLAN
-	 * @see #vlan(HeaderOperator)
-	 */
-	static ProtocolFilter vlan() {
-		return of().vlan();
-	}
-
-	/**
-	 * Starts a filter chain that matches VLAN-tagged packets and applies additional
-	 * VLAN conditions.
-	 *
-	 * @param header lambda/operator that configures VLAN fields (VID, PCP, DEI,
-	 *               TPID)
-	 * @return a {@link ProtocolFilter} combining VLAN scope with the given
-	 *         conditions
-	 */
-	static ProtocolFilter vlan(HeaderOperator<VlanBuilder> header) {
-		return of().vlan(header);
-	}
-
-	// ──────────────────────────────────────────────────────────────────────────
-	// Network primitives (host, subnet, port) — convenience entry points
-	// ──────────────────────────────────────────────────────────────────────────
-
-	/**
-	 * Starts a filter that matches packets where source or destination IP equals
-	 * the given address.
-	 *
-	 * @param ip IPv4 or IPv6 address string (e.g. "192.168.1.1", "2001:db8::1")
-	 * @return a {@link ProtocolFilter} with host match
-	 * @throws FilterException if the IP string is malformed
-	 */
-	static ProtocolFilter host(String ip) {
-		return of().host(ip);
-	}
-
-	/**
-	 * Starts a filter that matches packets where the source IP equals the given
-	 * address.
-	 *
-	 * @param ip IPv4 or IPv6 address string
-	 * @return a {@link ProtocolFilter} with source host match
-	 * @throws FilterException if the IP string is malformed
-	 */
-	static ProtocolFilter srcHost(String ip) {
-		return of().srcHost(ip);
-	}
-
-	/**
-	 * Starts a filter that matches packets where the destination IP equals the
-	 * given address.
-	 *
-	 * @param ip IPv4 or IPv6 address string
-	 * @return a {@link ProtocolFilter} with destination host match
-	 * @throws FilterException if the IP string is malformed
-	 */
-	static ProtocolFilter dstHost(String ip) {
-		return of().dstHost(ip);
+	static ProtocolFilter multicast() {
+		return of().multicast();
 	}
 
 	/**
@@ -376,28 +403,20 @@ public interface PacketFilter {
 		return of().net(cidr);
 	}
 
-	/**
-	 * Starts a filter that matches packets where the source IP is within the given
-	 * subnet.
-	 *
-	 * @param cidr CIDR notation
-	 * @return a {@link ProtocolFilter} with source network match
-	 * @throws FilterException if cidr is malformed or invalid
-	 */
-	static ProtocolFilter srcNet(String cidr) {
-		return of().srcNet(cidr);
-	}
+	// ──────────────────────────────────────────────────────────────────────────
+	// Network primitives (host, subnet, port) — convenience entry points
+	// ──────────────────────────────────────────────────────────────────────────
 
 	/**
-	 * Starts a filter that matches packets where the destination IP is within the
-	 * given subnet.
+	 * Returns an empty (identity) filter that matches all packets.
+	 * <p>
+	 * This is the starting point for building complex filters via chaining.
+	 * </p>
 	 *
-	 * @param cidr CIDR notation
-	 * @return a {@link ProtocolFilter} with destination network match
-	 * @throws FilterException if cidr is malformed or invalid
+	 * @return an empty {@link ProtocolFilter} ready for chaining
 	 */
-	static ProtocolFilter dstNet(String cidr) {
-		return of().dstNet(cidr);
+	static ProtocolFilter of() {
+		return b -> b;
 	}
 
 	/**
@@ -437,48 +456,126 @@ public interface PacketFilter {
 		return of().portRange(start, end);
 	}
 
+	/**
+	 * Starts a filter that matches packets where the source IP equals the given
+	 * address.
+	 *
+	 * @param ip IPv4 or IPv6 address string
+	 * @return a {@link ProtocolFilter} with source host match
+	 * @throws FilterException if the IP string is malformed
+	 */
+	static ProtocolFilter srcHost(String ip) {
+		return of().srcHost(ip);
+	}
+
+	/**
+	 * Starts a filter that matches packets where the source IP is within the given
+	 * subnet.
+	 *
+	 * @param cidr CIDR notation
+	 * @return a {@link ProtocolFilter} with source network match
+	 * @throws FilterException if cidr is malformed or invalid
+	 */
+	static ProtocolFilter srcNet(String cidr) {
+		return of().srcNet(cidr);
+	}
+
+	/**
+	 * Starts a filter chain that matches TCP packets.
+	 *
+	 * @return a {@link ProtocolFilter} scoped to TCP
+	 * @see #tcp(HeaderOperator)
+	 */
+	static ProtocolFilter tcp() {
+		return of().tcp();
+	}
+
+	/**
+	 * Starts a filter chain that matches TCP packets and applies additional TCP
+	 * header conditions.
+	 *
+	 * @param header lambda/operator that configures TCP fields (ports, flags, etc.)
+	 * @return a {@link ProtocolFilter} combining TCP scope with the given
+	 *         conditions
+	 */
+	static ProtocolFilter tcp(HeaderOperator<TcpBuilder> header) {
+		return of().tcp(header);
+	}
+
+	/**
+	 * Starts a filter chain that matches UDP packets.
+	 *
+	 * @return a {@link ProtocolFilter} scoped to UDP
+	 * @see #udp(HeaderOperator)
+	 */
+	static ProtocolFilter udp() {
+		return of().udp();
+	}
+
 	// ──────────────────────────────────────────────────────────────────────────
 	// Packet metadata entry points
 	// ──────────────────────────────────────────────────────────────────────────
 
 	/**
-	 * Starts a filter that matches packets whose length is greater than the given
-	 * value.
+	 * Starts a filter chain that matches UDP packets and applies additional UDP
+	 * header conditions.
 	 *
-	 * @param len minimum length (exclusive)
-	 * @return a {@link ProtocolFilter} with length > condition
+	 * @param header lambda/operator that configures UDP fields (ports)
+	 * @return a {@link ProtocolFilter} combining UDP scope with the given
+	 *         conditions
 	 */
-	static ProtocolFilter lengthGreater(int len) {
-		return of().lengthGreater(len);
+	static ProtocolFilter udp(HeaderOperator<UdpBuilder> header) {
+		return of().udp(header);
 	}
 
 	/**
-	 * Starts a filter that matches packets whose length is less than the given
-	 * value.
+	 * Starts a filter chain that matches packets with a VLAN tag (802.1Q).
 	 *
-	 * @param len maximum length (exclusive)
-	 * @return a {@link ProtocolFilter} with length < condition
+	 * @return a {@link ProtocolFilter} scoped to VLAN
+	 * @see #vlan(HeaderOperator)
 	 */
-	static ProtocolFilter lengthLess(int len) {
-		return of().lengthLess(len);
+	static ProtocolFilter vlan() {
+		return of().vlan();
 	}
 
 	/**
-	 * Starts a filter that matches broadcast packets.
+	 * Starts a filter chain that matches VLAN-tagged packets and applies additional
+	 * VLAN conditions.
 	 *
-	 * @return a {@link ProtocolFilter} with broadcast match
+	 * @param header lambda/operator that configures VLAN fields (VID, PCP, DEI,
+	 *               TPID)
+	 * @return a {@link ProtocolFilter} combining VLAN scope with the given
+	 *         conditions
 	 */
-	static ProtocolFilter broadcast() {
-		return of().broadcast();
+	static ProtocolFilter vlan(HeaderOperator<VlanBuilder> header) {
+		return of().vlan(header);
 	}
 
 	/**
-	 * Starts a filter that matches multicast packets.
+	 * Returns {@code true} if this compiled filter represents an unconditional
+	 * match-all filter.
+	 * <p>
+	 * Backend-specific compiled filters and capture pipelines can use this method
+	 * to skip native filter installation when no filtering is needed. The check is
+	 * based on the compiled expression content, not reference identity, so it works
+	 * correctly regardless of which builder produced the filter.
+	 * </p>
 	 *
-	 * @return a {@link ProtocolFilter} with multicast match
+	 * {@snippet :
+	 * PacketFilter filter = builder.build(dsl);
+	 *
+	 * if (!filter.isCatchAll()) {
+	 * 	BpFilter bpf = ((PcapPacketFilter) filter).toBpfProgram();
+	 * 	pcap.setFilter(bpf);
+	 * }
+	 * // else: no native filter needed, capture everything
+	 * }
+	 *
+	 * @return {@code true} if this filter matches all packets unconditionally
+	 * @see #ALL
 	 */
-	static ProtocolFilter multicast() {
-		return of().multicast();
+	default boolean isCatchAll() {
+		return KEYWORD_ALL.equalsIgnoreCase(toExpression().trim());
 	}
 
 	/**
