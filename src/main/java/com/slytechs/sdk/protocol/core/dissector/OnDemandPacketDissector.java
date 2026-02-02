@@ -23,11 +23,11 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 
 import com.slytechs.sdk.common.memory.BindableView;
-import com.slytechs.sdk.protocol.core.Header;
-import com.slytechs.sdk.protocol.core.ProtocolId;
-import com.slytechs.sdk.protocol.core.descriptor.L2FrameType;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor.BindingInfo;
+import com.slytechs.sdk.protocol.core.header.Header;
+import com.slytechs.sdk.protocol.core.id.L2FrameTypes;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 /**
  * High-performance stateless packet dissector for on-demand protocol mapping.
@@ -82,8 +82,8 @@ import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor.BindingInfo;
  * 
  * // Direct usage with raw segment:
  * long encoded = OnDemandPacketDissector.mapProtocol(
- *     L2FrameType.ETHER,
- *     ProtocolId.TCP,
+ *     L2FrameTypes.ETHER,
+ *     ProtocolIds.TCP,
  *     0,  // outer occurrence
  *     segment,
  *     0,
@@ -99,8 +99,8 @@ import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor.BindingInfo;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @see PacketDescriptor#mapProtocol(int, int)
- * @see L2FrameType
- * @see ProtocolId
+ * @see L2FrameTypes
+ * @see ProtocolIds
  * @since 1.0
  */
 public final class OnDemandPacketDissector {
@@ -118,7 +118,7 @@ public final class OnDemandPacketDissector {
 			.withOrder(ByteOrder.LITTLE_ENDIAN).varHandle();
 
 	// ════════════════════════════════════════════════════════════════════════════
-	// Protocol Constants (inline for performance)
+	// Protocol PackIds (inline for performance)
 	// ════════════════════════════════════════════════════════════════════════════
 
 	// EtherTypes
@@ -168,23 +168,23 @@ public final class OnDemandPacketDissector {
 	private static final int UDP_PORT_VXLAN = 4789;
 
 	// Descriptor IDs (masked for comparison)
-	private static final int DESC_ETHERNET = ProtocolId.ETHERNET & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_VLAN = ProtocolId.VLAN & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_VLAN_8021Q = ProtocolId.VLAN_8021Q & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_VLAN_8021AD = ProtocolId.VLAN_8021AD & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_ARP = ProtocolId.ARP & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_IP = ProtocolId.IP & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_IPV4 = ProtocolId.IPv4 & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_IPV6 = ProtocolId.IPv6 & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_ICMP = ProtocolId.ICMP & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_ICMPV4 = ProtocolId.ICMPv4 & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_ICMPV6 = ProtocolId.ICMPv6 & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_TCP = ProtocolId.TCP & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_UDP = ProtocolId.UDP & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_SCTP = ProtocolId.SCTP & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_GRE = ProtocolId.GRE & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_VXLAN = ProtocolId.VXLAN & ProtocolId.MASK_DESCRIPTOR;
-	private static final int DESC_MPLS = ProtocolId.MPLS & ProtocolId.MASK_DESCRIPTOR;
+	private static final int DESC_ETHERNET = ProtocolIds.ETHERNET & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_VLAN = ProtocolIds.VLAN & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_VLAN_8021Q = ProtocolIds.VLAN_8021Q & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_VLAN_8021AD = ProtocolIds.VLAN_8021AD & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_ARP = ProtocolIds.ARP & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_IP = ProtocolIds.IP & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_IPV4 = ProtocolIds.IPv4 & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_IPV6 = ProtocolIds.IPv6 & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_ICMP = ProtocolIds.ICMP & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_ICMPV4 = ProtocolIds.ICMPv4 & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_ICMPV6 = ProtocolIds.ICMPv6 & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_TCP = ProtocolIds.TCP & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_UDP = ProtocolIds.UDP & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_SCTP = ProtocolIds.SCTP & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_GRE = ProtocolIds.GRE & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_VXLAN = ProtocolIds.VXLAN & ProtocolIds.MASK_DESCRIPTOR;
+	private static final int DESC_MPLS = ProtocolIds.MPLS & ProtocolIds.MASK_DESCRIPTOR;
 
 	// ════════════════════════════════════════════════════════════════════════════
 	// Private constructor - utility class
@@ -238,8 +238,8 @@ public final class OnDemandPacketDissector {
 	 * {@link PacketDescriptor#decodeLength(long)} to extract values.
 	 * </p>
 	 *
-	 * @param l2FrameType the L2 frame type constant from {@link L2FrameType}
-	 * @param protocolId  the target protocol ID from {@link ProtocolId}
+	 * @param l2FrameType the L2 frame type constant from {@link L2FrameTypes}
+	 * @param protocolId  the target protocol ID from {@link ProtocolIds}
 	 * @param depth       occurrence depth (0=outer/first, 1=inner/second for
 	 *                    tunnels)
 	 * @param seg         the memory segment containing packet data
@@ -258,7 +258,7 @@ public final class OnDemandPacketDissector {
 		}
 
 		// Normalize protocol ID to descriptor format
-		int targetId = protocolId & ProtocolId.MASK_DESCRIPTOR;
+		int targetId = protocolId & ProtocolIds.MASK_DESCRIPTOR;
 
 		return dissectFromL2(l2FrameType, seg, base, limit, targetId, depth);
 	}
@@ -274,12 +274,12 @@ public final class OnDemandPacketDissector {
 			long limit, int targetId, int depth) {
 
 		return switch (l2FrameType) {
-		case L2FrameType.ETHER -> dissectEthernet(seg, base, limit, targetId, depth);
-		case L2FrameType.RAW_IP4 -> dissectIPv4(seg, base, 0, limit, targetId, depth);
-		case L2FrameType.RAW_IP6 -> dissectIPv6(seg, base, 0, limit, targetId, depth);
-		case L2FrameType.SLL -> dissectSLL(seg, base, limit, targetId, depth);
-		case L2FrameType.SLL2 -> dissectSLL2(seg, base, limit, targetId, depth);
-		case L2FrameType.LOOPBACK -> dissectLoopback(seg, base, limit, targetId, depth);
+		case L2FrameTypes.ETHER -> dissectEthernet(seg, base, limit, targetId, depth);
+		case L2FrameTypes.RAW_IP4 -> dissectIPv4(seg, base, 0, limit, targetId, depth);
+		case L2FrameTypes.RAW_IP6 -> dissectIPv6(seg, base, 0, limit, targetId, depth);
+		case L2FrameTypes.SLL -> dissectSLL(seg, base, limit, targetId, depth);
+		case L2FrameTypes.SLL2 -> dissectSLL2(seg, base, limit, targetId, depth);
+		case L2FrameTypes.LOOPBACK -> dissectLoopback(seg, base, limit, targetId, depth);
 		default -> BindingInfo.PROTOCOL_NOT_FOUND;
 		};
 	}
@@ -299,7 +299,7 @@ public final class OnDemandPacketDissector {
 			return BindingInfo.encodeLengthAndOffset(ETHER_HEADER_LEN, 0);
 		}
 
-		// Read EtherType at offset 12
+		// Read EtherTypes at offset 12
 		int etherType = getShortBE(seg, base + 12) & 0xFFFF;
 		int offset = ETHER_HEADER_LEN;
 
@@ -314,13 +314,13 @@ public final class OnDemandPacketDissector {
 				return BindingInfo.encodeLengthAndOffset(VLAN_TAG_LEN, offset);
 			}
 
-			// Skip VLAN tag and read next EtherType
+			// Skip VLAN tag and read next EtherTypes
 			etherType = getShortBE(seg, base + offset + 2) & 0xFFFF;
 			offset += VLAN_TAG_LEN;
 			vlanCount++;
 		}
 
-		// Dispatch based on EtherType
+		// Dispatch based on EtherTypes
 		return dissectByEtherType(seg, base, offset, limit, etherType, targetId, depth);
 	}
 
@@ -378,7 +378,7 @@ public final class OnDemandPacketDissector {
 	}
 
 	/**
-	 * Dispatches dissection based on EtherType.
+	 * Dispatches dissection based on EtherTypes.
 	 */
 	private static long dissectByEtherType(MemorySegment seg, long base, int offset,
 			long limit, int etherType, int targetId, int depth) {

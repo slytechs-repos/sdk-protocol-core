@@ -15,16 +15,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core.descriptor;
+package com.slytechs.sdk.protocol.core.id;
 
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.common.util.IntId;
 
 /**
  * L2 frame type metadata: base header lengths and protocol ID mappings.
  * 
  * <p>
  * This enum provides the metadata needed to process frames of each L2 type,
- * including the base header length and the corresponding {@link ProtocolId} for
+ * including the base header length and the corresponding {@link ProtocolIds} for
  * the root protocol.
  * </p>
  * 
@@ -32,7 +32,7 @@ import com.slytechs.sdk.protocol.core.ProtocolId;
  * 
  * <pre>{@code
  * int l2Type = descriptor.l2FrameType();
- * L2FrameInfo info = L2FrameInfo.of(l2Type);
+ * L2FrameType info = L2FrameType.of(l2Type);
  * 
  * int headerLen = info.baseLength();
  * int protoId = info.protocolId();
@@ -40,10 +40,10 @@ import com.slytechs.sdk.protocol.core.ProtocolId;
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see L2FrameType
- * @see ProtocolId
+ * @see L2FrameTypes
+ * @see ProtocolIds
  */
-public enum L2FrameInfo implements L2FrameType {
+public enum L2FrameType implements L2FrameTypes, IntId {
 
 	// @formatter:off
 
@@ -52,160 +52,160 @@ public enum L2FrameInfo implements L2FrameType {
     // ════════════════════════════════════════════════════════════════════════════
 
     /** Unknown/unspecified - no L2 processing. */
-    UNKNOWN         (L2FrameType.UNKNOWN,           0, ProtocolId.PAYLOAD),
+    UNKNOWN         (L2FrameTypes.UNKNOWN,           0, ProtocolIds.PAYLOAD),
 
     /** Ethernet II (DIX) or IEEE 802.3. */
-    ETHER           (L2FrameType.ETHER,            14, ProtocolId.ETHERNET),
+    ETHER           (L2FrameTypes.ETHER,            14, ProtocolIds.ETHERNET),
 
     /** Point-to-Point Protocol. */
-    PPP             (L2FrameType.PPP,               4, ProtocolId.PPP),
+    PPP             (L2FrameTypes.PPP,               4, ProtocolIds.PPP),
 
     /** Linux cooked capture v1 (now in CAPTURE pack). */
-    SLL             (L2FrameType.SLL,              16, ProtocolId.SLL),
+    SLL             (L2FrameTypes.SLL,              16, ProtocolIds.SLL),
 
     /** Linux cooked capture v2 (now in CAPTURE pack). */
-    SLL2            (L2FrameType.SLL2,             20, ProtocolId.SLL2),
+    SLL2            (L2FrameTypes.SLL2,             20, ProtocolIds.SLL2),
 
     /** BSD loopback/null encapsulation (now in CAPTURE pack). */
-    LOOPBACK        (L2FrameType.LOOPBACK,          4, ProtocolId.LOOPBACK),
+    LOOPBACK        (L2FrameTypes.LOOPBACK,          4, ProtocolIds.LOOPBACK),
 
     /** Raw IPv4 (no L2 header). */
-    RAW_IP4         (L2FrameType.RAW_IP4,           0, ProtocolId.IPv4),
+    RAW_IP4         (L2FrameTypes.RAW_IP4,           0, ProtocolIds.IPv4),
 
     /** Raw IPv6 (no L2 header). */
-    RAW_IP6         (L2FrameType.RAW_IP6,           0, ProtocolId.IPv6),
+    RAW_IP6         (L2FrameTypes.RAW_IP6,           0, ProtocolIds.IPv6),
 
     /** PPP with HDLC framing. */
-    PPP_HDLC        (L2FrameType.PPP_HDLC,          4, ProtocolId.PPP),
+    PPP_HDLC        (L2FrameTypes.PPP_HDLC,          4, ProtocolIds.PPP),
 
     /** Cisco HDLC. */
-    CHDLC           (L2FrameType.CHDLC,             4, ProtocolId.CHDLC),
+    CHDLC           (L2FrameTypes.CHDLC,             4, ProtocolIds.CHDLC),
 
     /** PPP over Ethernet. */
-    PPPOE           (L2FrameType.PPPOE,             8, ProtocolId.PPPoE),
+    PPPOE           (L2FrameTypes.PPPOE,             8, ProtocolIds.PPPoE),
 
     // ════════════════════════════════════════════════════════════════════════════
     // Wireless Frame Types
     // ════════════════════════════════════════════════════════════════════════════
 
     /** IEEE 802.11 wireless (native). Variable header 24-30 bytes. */
-    IEEE80211           (L2FrameType.IEEE80211,          24, ProtocolId.IEEE80211),
+    IEEE80211           (L2FrameTypes.IEEE80211,          24, ProtocolIds.IEEE80211),
 
     /** IEEE 802.11 with Radiotap header. Variable length. */
-    IEEE80211_RADIOTAP  (L2FrameType.IEEE80211_RADIOTAP,  8, ProtocolId.RADIOTAP),
+    IEEE80211_RADIOTAP  (L2FrameTypes.IEEE80211_RADIOTAP,  8, ProtocolIds.RADIOTAP),
 
     /** IEEE 802.11 with AVS header. */
-    IEEE80211_AVS       (L2FrameType.IEEE80211_AVS,      64, ProtocolId.AVS),
+    IEEE80211_AVS       (L2FrameTypes.IEEE80211_AVS,      64, ProtocolIds.AVS),
 
     /** IEEE 802.11 with Prism header. */
-    IEEE80211_PRISM     (L2FrameType.IEEE80211_PRISM,   144, ProtocolId.PRISM),
+    IEEE80211_PRISM     (L2FrameTypes.IEEE80211_PRISM,   144, ProtocolIds.PRISM),
 
     /** IEEE 802.11 with PPI header. Variable length. */
-    IEEE80211_PPI       (L2FrameType.IEEE80211_PPI,       8, ProtocolId.PPI),
+    IEEE80211_PPI       (L2FrameTypes.IEEE80211_PPI,       8, ProtocolIds.PPI),
 
     // ════════════════════════════════════════════════════════════════════════════
     // Linux-Specific Frame Types
     // ════════════════════════════════════════════════════════════════════════════
 
     /** Linux Netlink messages. */
-    NETLINK         (L2FrameType.NETLINK,          16, ProtocolId.NETLINK),
+    NETLINK         (L2FrameTypes.NETLINK,          16, ProtocolIds.NETLINK),
 
     /** Linux Netfilter log. */
-    NFLOG           (L2FrameType.NFLOG,             4, ProtocolId.NFLOG),
+    NFLOG           (L2FrameTypes.NFLOG,             4, ProtocolIds.NFLOG),
 
     /** Linux Netfilter queue. */
-    NFQUEUE         (L2FrameType.NFQUEUE,           4, ProtocolId.NFQUEUE),
+    NFQUEUE         (L2FrameTypes.NFQUEUE,           4, ProtocolIds.NFQUEUE),
 
     /** Linux SocketCAN. */
-    LINUX_CAN       (L2FrameType.LINUX_CAN,        16, ProtocolId.LINUX_CAN),
+    LINUX_CAN       (L2FrameTypes.LINUX_CAN,        16, ProtocolIds.LINUX_CAN),
 
     /** Linux USB capture. */
-    LINUX_USB       (L2FrameType.LINUX_USB,        48, ProtocolId.LINUX_USB),
+    LINUX_USB       (L2FrameTypes.LINUX_USB,        48, ProtocolIds.LINUX_USB),
 
     /** Linux USB capture (64-bit/mmapped). */
-    LINUX_USB_MM    (L2FrameType.LINUX_USB_MM,     64, ProtocolId.LINUX_USB),
+    LINUX_USB_MM    (L2FrameTypes.LINUX_USB_MM,     64, ProtocolIds.LINUX_USB),
 
     /** Linux VM Sockets. */
-    VSOCK           (L2FrameType.VSOCK,            16, ProtocolId.VSOCK),
+    VSOCK           (L2FrameTypes.VSOCK,            16, ProtocolIds.VSOCK),
 
     /** Linux LAPD. */
-    LAPD            (L2FrameType.LAPD,              4, ProtocolId.LAPD),
+    LAPD            (L2FrameTypes.LAPD,              4, ProtocolIds.LAPD),
 
     // ════════════════════════════════════════════════════════════════════════════
     // Legacy Frame Types
     // ════════════════════════════════════════════════════════════════════════════
 
     /** FDDI. */
-    FDDI            (L2FrameType.FDDI,             21, ProtocolId.FDDI),
+    FDDI            (L2FrameTypes.FDDI,             21, ProtocolIds.FDDI),
 
     /** Token Ring. */
-    TOKEN_RING      (L2FrameType.TOKEN_RING,       22, ProtocolId.TOKEN_RING),
+    TOKEN_RING      (L2FrameTypes.TOKEN_RING,       22, ProtocolIds.TOKEN_RING),
 
     /** ARCNET. */
-    ARCNET          (L2FrameType.ARCNET,            3, ProtocolId.ARCNET),
+    ARCNET          (L2FrameTypes.ARCNET,            3, ProtocolIds.ARCNET),
 
     /** ATM. */
-    ATM             (L2FrameType.ATM,              56, ProtocolId.ATM),
+    ATM             (L2FrameTypes.ATM,              56, ProtocolIds.ATM),
 
     /** Frame Relay. */
-    FRELAY          (L2FrameType.FRELAY,            4, ProtocolId.FRELAY),
+    FRELAY          (L2FrameTypes.FRELAY,            4, ProtocolIds.FRELAY),
 
     /** SLIP. */
-    SLIP            (L2FrameType.SLIP,              0, ProtocolId.SLIP),
+    SLIP            (L2FrameTypes.SLIP,              0, ProtocolIds.SLIP),
 
     /** Chaosnet. */
-    CHAOS           (L2FrameType.CHAOS,             4, ProtocolId.CHAOS),
+    CHAOS           (L2FrameTypes.CHAOS,             4, ProtocolIds.CHAOS),
 
     // ════════════════════════════════════════════════════════════════════════════
     // Specialty Frame Types
     // ════════════════════════════════════════════════════════════════════════════
 
     /** Bluetooth HCI H4. */
-    BLUETOOTH_HCI   (L2FrameType.BLUETOOTH_HCI,     1, ProtocolId.BLUETOOTH_HCI),
+    BLUETOOTH_HCI   (L2FrameTypes.BLUETOOTH_HCI,     1, ProtocolIds.BLUETOOTH_HCI),
 
     /** Bluetooth Low Energy Link Layer. */
-    BLUETOOTH_LE    (L2FrameType.BLUETOOTH_LE,     10, ProtocolId.BLUETOOTH_LE),
+    BLUETOOTH_LE    (L2FrameTypes.BLUETOOTH_LE,     10, ProtocolIds.BLUETOOTH_LE),
 
     /** BlueZ monitor. */
-    BLUETOOTH_MON   (L2FrameType.BLUETOOTH_MON,     6, ProtocolId.BLUETOOTH_MON),
+    BLUETOOTH_MON   (L2FrameTypes.BLUETOOTH_MON,     6, ProtocolIds.BLUETOOTH_MON),
 
     /** IP over InfiniBand. */
-    IPOIB           (L2FrameType.IPOIB,             4, ProtocolId.IPOIB),
+    IPOIB           (L2FrameTypes.IPOIB,             4, ProtocolIds.IPOIB),
 
     /** DOCSIS. */
-    DOCSIS          (L2FrameType.DOCSIS,            6, ProtocolId.DOCSIS),
+    DOCSIS          (L2FrameTypes.DOCSIS,            6, ProtocolIds.DOCSIS),
 
     /** DPDK capture. */
-    DPDK            (L2FrameType.DPDK,             24, ProtocolId.PAYLOAD),
+    DPDK            (L2FrameTypes.DPDK,             24, ProtocolIds.PAYLOAD),
 
     // ════════════════════════════════════════════════════════════════════════════
     // BSD-Specific Frame Types (all in CAPTURE pack)
     // ════════════════════════════════════════════════════════════════════════════
 
     /** OpenBSD pflog (CAPTURE pack). */
-    PFLOG           (L2FrameType.PFLOG,            48, ProtocolId.PFLOG),
+    PFLOG           (L2FrameTypes.PFLOG,            48, ProtocolIds.PFLOG),
 
     /** OpenBSD pfsync (CAPTURE pack). */
-    PFSYNC          (L2FrameType.PFSYNC,            4, ProtocolId.PFSYNC),
+    PFSYNC          (L2FrameTypes.PFSYNC,            4, ProtocolIds.PFSYNC),
 
     /** OpenBSD enc (CAPTURE pack). */
-    ENC             (L2FrameType.ENC,              12, ProtocolId.ENC),
+    ENC             (L2FrameTypes.ENC,              12, ProtocolIds.ENC),
 
     // ════════════════════════════════════════════════════════════════════════════
     // IoT/Embedded Frame Types
     // ════════════════════════════════════════════════════════════════════════════
 
     /** IEEE 802.15.4 (ZigBee PHY). */
-    IEEE802_15_4        (L2FrameType.IEEE802_15_4,      0, ProtocolId.IEEE802_15_4),
+    IEEE802_15_4        (L2FrameTypes.IEEE802_15_4,      0, ProtocolIds.IEEE802_15_4),
 
     /** IEEE 802.15.4 with TAP header. */
-    IEEE802_15_4_TAP    (L2FrameType.IEEE802_15_4_TAP,  4, ProtocolId.IEEE802_15_4_TAP),
+    IEEE802_15_4_TAP    (L2FrameTypes.IEEE802_15_4_TAP,  4, ProtocolIds.IEEE802_15_4_TAP),
 
     /** Amateur radio AX.25. Variable header. */
-    AX25                (L2FrameType.AX25,              0, ProtocolId.AX25),
+    AX25                (L2FrameTypes.AX25,              0, ProtocolIds.AX25),
 
     /** DECT. */
-    DECT                (L2FrameType.DECT,             12, ProtocolId.DECT),
+    DECT                (L2FrameTypes.DECT,             12, ProtocolIds.DECT),
 
     // @formatter:on
 	;
@@ -222,11 +222,11 @@ public enum L2FrameInfo implements L2FrameType {
 	/**
 	 * Creates a new L2 frame type info entry.
 	 *
-	 * @param l2FrameId  the L2FrameType constant value
+	 * @param l2FrameId  the L2FrameTypes constant value
 	 * @param minLength  the base header length in bytes (may be variable)
-	 * @param protocolId the ProtocolId for the root protocol
+	 * @param protocolId the ProtocolIds for the root protocol
 	 */
-	L2FrameInfo(int l2FrameId, int minLength, int protocolId) {
+	L2FrameType(int l2FrameId, int minLength, int protocolId) {
 		this.l2FrameId = l2FrameId;
 		this.minLength = minLength;
 		this.maxLength = minLength;
@@ -236,10 +236,9 @@ public enum L2FrameInfo implements L2FrameType {
 	/**
 	 * Returns the L2 frame type constant.
 	 *
-	 * @return the L2FrameType value
+	 * @return the L2FrameTypes value
 	 */
-	@Override
-	public int l2FrameId() {
+	public int id() {
 		return l2FrameId;
 	}
 
@@ -254,12 +253,10 @@ public enum L2FrameInfo implements L2FrameType {
 	 *
 	 * @return base header length in bytes
 	 */
-	@Override
 	public int minLength() {
 		return minLength;
 	}
 
-	@Override
 	public int maxLength() {
 		return maxLength;
 	}
@@ -267,9 +264,8 @@ public enum L2FrameInfo implements L2FrameType {
 	/**
 	 * Returns the protocol ID for the root protocol.
 	 *
-	 * @return ProtocolId constant for dissection
+	 * @return ProtocolIds constant for dissection
 	 */
-	@Override
 	public int protocolId() {
 		return protocolId;
 	}
@@ -280,18 +276,18 @@ public enum L2FrameInfo implements L2FrameType {
 	 * @return descriptor-compatible protocol ID
 	 */
 	public int descriptorProtocolId() {
-		return protocolId & ProtocolId.MASK_DESCRIPTOR;
+		return protocolId & ProtocolIds.MASK_DESCRIPTOR;
 	}
 
 	// ════════════════════════════════════════════════════════════════════════════
 	// Static Lookup
 	// ════════════════════════════════════════════════════════════════════════════
 
-	/** Lookup table indexed by L2FrameType constant. */
-	private static final L2FrameInfo[] BY_TYPE = new L2FrameInfo[128];
+	/** Lookup table indexed by L2FrameTypes constant. */
+	private static final L2FrameType[] BY_TYPE = new L2FrameType[128];
 
 	static {
-		for (L2FrameInfo info : values()) {
+		for (L2FrameType info : values()) {
 			if (info.l2FrameId >= 0 && info.l2FrameId < BY_TYPE.length) {
 				BY_TYPE[info.l2FrameId] = info;
 			}
@@ -299,12 +295,12 @@ public enum L2FrameInfo implements L2FrameType {
 	}
 
 	/**
-	 * Returns the L2FrameInfo for the given L2 frame type constant.
+	 * Returns the L2FrameType for the given L2 frame type constant.
 	 *
-	 * @param l2Type the L2FrameType constant
+	 * @param l2Type the L2FrameTypes constant
 	 * @return the corresponding info, or {@link #UNKNOWN} if not found
 	 */
-	public static L2FrameInfo valueOf(int l2Type) {
+	public static L2FrameType valueOf(int l2Type) {
 		if (l2Type >= 0 && l2Type < BY_TYPE.length && BY_TYPE[l2Type] != null) {
 			return BY_TYPE[l2Type];
 		}
@@ -314,7 +310,7 @@ public enum L2FrameInfo implements L2FrameType {
 	/**
 	 * Checks if the given L2 frame type is known.
 	 *
-	 * @param l2Type the L2FrameType constant
+	 * @param l2Type the L2FrameTypes constant
 	 * @return true if a mapping exists
 	 */
 	public static boolean isKnown(int l2Type) {
@@ -322,7 +318,7 @@ public enum L2FrameInfo implements L2FrameType {
 	}
 
 	/**
-	 * Maps L2FrameType to ProtocolId numerical values.
+	 * Maps L2FrameTypes to ProtocolIds numerical values.
 	 * 
 	 * @param l2FrameType frame type value to convert to protocol ID
 	 * @return equivalent protocol ID

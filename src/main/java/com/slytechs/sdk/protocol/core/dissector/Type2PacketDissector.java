@@ -24,11 +24,11 @@ import com.slytechs.sdk.common.format.StructFormattable;
 import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.common.memory.Memory;
 import com.slytechs.sdk.common.time.TimestampUnit;
-import com.slytechs.sdk.protocol.core.IpProto;
-import com.slytechs.sdk.protocol.core.ProtocolId;
-import com.slytechs.sdk.protocol.core.descriptor.L2FrameType;
-import com.slytechs.sdk.protocol.core.descriptor.L2FrameInfo;
 import com.slytechs.sdk.protocol.core.descriptor.Type2PacketDescriptor;
+import com.slytechs.sdk.protocol.core.id.IpProtoTypes;
+import com.slytechs.sdk.protocol.core.id.L2FrameType;
+import com.slytechs.sdk.protocol.core.id.L2FrameTypes;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 /**
  * Zero-allocation dissector for Net3PacketDescriptor.
@@ -168,27 +168,27 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 		int offset;
 
 		switch (l2FrameType) {
-		case L2FrameType.ETHER -> {
+		case L2FrameTypes.ETHER -> {
 			nextProto = dissectEthernet(buffer, 0);
 			offset = protocolExtendedLengths[0]; // Ethernet recorded its own length (14 or 22)
 		}
 
-		case L2FrameType.SLL -> {
+		case L2FrameTypes.SLL -> {
 			nextProto = dissectLinuxSll(buffer, 0);
 			offset = 16;
 		}
 
-		case L2FrameType.SLL2 -> {
+		case L2FrameTypes.SLL2 -> {
 			nextProto = dissectLinuxSll2(buffer, 0);
 			offset = 20;
 		}
 
-		case L2FrameType.LOOPBACK -> {
+		case L2FrameTypes.LOOPBACK -> {
 			nextProto = dissectNull(buffer, 0);
 			offset = 4;
 		}
 
-		case L2FrameType.RAW_IP4 -> {
+		case L2FrameTypes.RAW_IP4 -> {
 			// No L2 header - peek IP version
 			offset = 0;
 			if (caplen > 0) {
@@ -200,23 +200,23 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 			}
 		}
 
-		case L2FrameType.PPP, L2FrameType.PPP_HDLC -> {
+		case L2FrameTypes.PPP, L2FrameTypes.PPP_HDLC -> {
 			nextProto = dissectPpp(buffer, 0);
-			offset = L2FrameInfo.valueOf(l2FrameType).minLength();
+			offset = L2FrameType.valueOf(l2FrameType).minLength();
 		}
 
 		default -> {
 			// Unknown L2 - record as payload, no further dissection
-			addProtocol(ProtocolId.PAYLOAD, 0, caplen, 0);
+			addProtocol(ProtocolIds.PAYLOAD, 0, caplen, 0);
 			prepareTableEntries();
 			return caplen;
 		}
 		}
 
 		// Handle VLAN tags (only after Ethernet-like L2)
-		if (l2FrameType == L2FrameType.ETHER ||
-				l2FrameType == L2FrameType.SLL ||
-				l2FrameType == L2FrameType.SLL2) {
+		if (l2FrameType == L2FrameTypes.ETHER ||
+				l2FrameType == L2FrameTypes.SLL ||
+				l2FrameType == L2FrameTypes.SLL2) {
 
 			while ((nextProto == ETHER_TYPE_VLAN || nextProto == ETHER_TYPE_QINQ)
 					&& offset + 4 <= caplen) {
@@ -261,7 +261,7 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 		if (offset + 16 > captureLength)
 			return 0;
 
-		addProtocol(ProtocolId.SLL, offset, 16, 0);
+		addProtocol(ProtocolIds.SLL, offset, 16, 0);
 
 		// Protocol type at offset 14-15
 		buffer.position(offset + 14);
@@ -272,7 +272,7 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 		if (offset + 20 > captureLength)
 			return 0;
 
-		addProtocol(ProtocolId.SLL2, offset, 20, 0);
+		addProtocol(ProtocolIds.SLL2, offset, 20, 0);
 
 		// Protocol type at offset 0-1 in SLL2
 		buffer.position(offset);
@@ -283,7 +283,7 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 		if (offset + 4 > captureLength)
 			return 0;
 
-		addProtocol(ProtocolId.LOOPBACK, offset, 4, 0);
+		addProtocol(ProtocolIds.LOOPBACK, offset, 4, 0);
 
 		// BSD null header: 4-byte AF family (host byte order!)
 		buffer.position(offset);
@@ -300,7 +300,7 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 		if (offset + 4 > captureLength)
 			return 0;
 
-		addProtocol(ProtocolId.PPP, offset, 4, 0);
+		addProtocol(ProtocolIds.PPP, offset, 4, 0);
 
 		// PPP protocol field at offset 2-3
 		buffer.position(offset + 2);
@@ -423,7 +423,7 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 		if (etherType <= IEEE_802_3_MAX_LENGTH) {
 			// IEEE 802.3 with LLC/SNAP
 			if (offset + 17 > captureLength) {
-				addProtocol(ProtocolId.ETHERNET, offset, 14, 0);
+				addProtocol(ProtocolIds.ETHERNET, offset, 14, 0);
 				return 0;
 			}
 
@@ -434,20 +434,20 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 			if (dsap == (byte) 0xAA && ssap == (byte) 0xAA) {
 				// SNAP: LLC (3) + OUI (3) + Type (2) = 8 bytes
 				if (offset + 22 > captureLength) {
-					addProtocol(ProtocolId.ETHERNET, offset, 17, 0);
+					addProtocol(ProtocolIds.ETHERNET, offset, 17, 0);
 					return 0;
 				}
 				buffer.position(offset + 20);
 				etherType = buffer.getShortBE() & 0xFFFF;
-				addProtocol(ProtocolId.ETHERNET, offset, 22, 0);
+				addProtocol(ProtocolIds.ETHERNET, offset, 22, 0);
 			} else {
 				// Just LLC
-				addProtocol(ProtocolId.ETHERNET, offset, 17, 0);
-				return 0; // No EtherType, can't continue
+				addProtocol(ProtocolIds.ETHERNET, offset, 17, 0);
+				return 0; // No EtherTypes, can't continue
 			}
 		} else {
 			// Ethernet II
-			addProtocol(ProtocolId.ETHERNET, offset, 14, 0);
+			addProtocol(ProtocolIds.ETHERNET, offset, 14, 0);
 		}
 
 		return etherType;
@@ -457,7 +457,7 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 		if (offset + 4 > captureLength)
 			return offset;
 
-		addProtocol(ProtocolId.VLAN, offset, 4, instance);
+		addProtocol(ProtocolIds.VLAN, offset, 4, instance);
 		return offset + 4;
 	}
 
@@ -467,7 +467,7 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 			buffer.position(offset);
 			int labelEntry = buffer.getIntBE();
 
-			addProtocol(ProtocolId.MPLS, offset, 4, mplsCount);
+			addProtocol(ProtocolIds.MPLS, offset, 4, mplsCount);
 			mplsCount++;
 			offset += 4;
 
@@ -496,11 +496,11 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 		int headerLen = (verIhl & 0x0F) * 4;
 
 		if (offset + headerLen > captureLength) {
-			addProtocol(ProtocolId.IPv4, offset, 20, 0);
+			addProtocol(ProtocolIds.IPv4, offset, 20, 0);
 			return offset + 20;
 		}
 
-		addProtocol(ProtocolId.IPv4, offset, headerLen, 0);
+		addProtocol(ProtocolIds.IPv4, offset, headerLen, 0);
 
 		// Check fragmentation
 		buffer.position(offset + 6);
@@ -552,7 +552,7 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 			nextHeader = extNextHeader;
 		}
 
-		addProtocol(ProtocolId.IPv6, offset, totalLength, 0);
+		addProtocol(ProtocolIds.IPv6, offset, totalLength, 0);
 
 		lastIpProtocol = nextHeader;
 		lastIpOffset = offset;
@@ -580,7 +580,7 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 		if (offset + 28 > captureLength)
 			return offset;
 
-		addProtocol(ProtocolId.ARP, offset, 28, 0);
+		addProtocol(ProtocolIds.ARP, offset, 28, 0);
 		return offset + 28;
 	}
 
@@ -590,12 +590,12 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 
 	private void dissectTransportOrIpsec(MemoryBuffer buffer, int offset) {
 		switch (lastIpProtocol) {
-		case IpProto.TCP -> dissectTcp(buffer, offset);
-		case IpProto.UDP -> dissectUdp(buffer, offset);
-		case IpProto.ICMPV4 -> dissectIcmp(buffer, offset);
-		case IpProto.ICMPV6 -> dissectIcmpv6(buffer, offset);
-		case IpProto.AH -> dissectIpsecAh(buffer, offset);
-		case IpProto.ESP -> dissectIpsecEsp(buffer, offset);
+		case IpProtoTypes.TCP -> dissectTcp(buffer, offset);
+		case IpProtoTypes.UDP -> dissectUdp(buffer, offset);
+		case IpProtoTypes.ICMPV4 -> dissectIcmp(buffer, offset);
+		case IpProtoTypes.ICMPV6 -> dissectIcmpv6(buffer, offset);
+		case IpProtoTypes.AH -> dissectIpsecAh(buffer, offset);
+		case IpProtoTypes.ESP -> dissectIpsecEsp(buffer, offset);
 		}
 	}
 
@@ -612,14 +612,14 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 		if (offset + tcpLen > captureLength)
 			tcpLen = captureLength - offset;
 
-		addProtocol(ProtocolId.TCP, offset, tcpLen, 0);
+		addProtocol(ProtocolIds.TCP, offset, tcpLen, 0);
 	}
 
 	private void dissectUdp(MemoryBuffer buffer, int offset) {
 		if (offset + 8 > captureLength)
 			return;
 
-		addProtocol(ProtocolId.UDP, offset, 8, 0);
+		addProtocol(ProtocolIds.UDP, offset, 8, 0);
 	}
 
 	private void dissectIcmp(MemoryBuffer buffer, int offset) {
@@ -628,14 +628,14 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 
 		// ICMP header is at least 8 bytes, but message can be longer
 		// For now, record just the header
-		addProtocol(ProtocolId.ICMP, offset, 8, 0);
+		addProtocol(ProtocolIds.ICMP, offset, 8, 0);
 	}
 
 	private void dissectIcmpv6(MemoryBuffer buffer, int offset) {
 		if (offset + 8 > captureLength)
 			return;
 
-		addProtocol(ProtocolId.ICMPv6, offset, 8, 0);
+		addProtocol(ProtocolIds.ICMPv6, offset, 8, 0);
 	}
 
 	private void dissectIpsecAh(MemoryBuffer buffer, int offset) {
@@ -647,11 +647,11 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 		int ahLen = (payloadLen + 2) * 4;
 
 		if (offset + ahLen > captureLength) {
-			addProtocol(ProtocolId.AH, offset, 12, 0);
+			addProtocol(ProtocolIds.AH, offset, 12, 0);
 			return;
 		}
 
-		addProtocol(ProtocolId.AH, offset, ahLen, 0);
+		addProtocol(ProtocolIds.AH, offset, ahLen, 0);
 
 		// Get next header and continue dissection
 		buffer.position(offset);
@@ -670,7 +670,7 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 
 		// ESP header is 8 bytes, but payload is encrypted
 		// We can only record the header, cannot parse further
-		addProtocol(IpProto.ESP, offset, 8, 0);
+		addProtocol(IpProtoTypes.ESP, offset, 8, 0);
 
 		// Note: Cannot continue dissection - payload is encrypted
 	}
@@ -714,32 +714,32 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 
 	private int getInlineSlot(int protocolId) {
 		return switch (protocolId) {
-		case ProtocolId.ETHERNET -> INLINE_ETHERNET;
-		case ProtocolId.VLAN -> INLINE_VLAN;
-		case ProtocolId.IPv4 -> INLINE_IPV4;
-		case ProtocolId.IPv6 -> INLINE_IPV6;
-		case ProtocolId.TCP -> INLINE_TCP;
-		case ProtocolId.UDP -> INLINE_UDP;
-		case ProtocolId.ICMP, ProtocolId.ICMPv6 -> INLINE_ICMP;
-		case ProtocolId.ARP -> INLINE_ARP;
+		case ProtocolIds.ETHERNET -> INLINE_ETHERNET;
+		case ProtocolIds.VLAN -> INLINE_VLAN;
+		case ProtocolIds.IPv4 -> INLINE_IPV4;
+		case ProtocolIds.IPv6 -> INLINE_IPV6;
+		case ProtocolIds.TCP -> INLINE_TCP;
+		case ProtocolIds.UDP -> INLINE_UDP;
+		case ProtocolIds.ICMP, ProtocolIds.ICMPv6 -> INLINE_ICMP;
+		case ProtocolIds.ARP -> INLINE_ARP;
 		default -> -1; // MPLS, IPsec go to extended table
 		};
 	}
 
 	private int getProtocolBitPosition(int protocolId) {
 		return switch (protocolId) {
-		case ProtocolId.ETHERNET -> 0;
-		case ProtocolId.VLAN -> 1;
-		case ProtocolId.IPv4 -> 2;
-		case ProtocolId.IPv6 -> 3;
-		case ProtocolId.TCP -> 4;
-		case ProtocolId.UDP -> 5;
-		case ProtocolId.ICMP, ProtocolId.ICMPv6 -> 6;
-		case ProtocolId.ARP -> 7;
+		case ProtocolIds.ETHERNET -> 0;
+		case ProtocolIds.VLAN -> 1;
+		case ProtocolIds.IPv4 -> 2;
+		case ProtocolIds.IPv6 -> 3;
+		case ProtocolIds.TCP -> 4;
+		case ProtocolIds.UDP -> 5;
+		case ProtocolIds.ICMP, ProtocolIds.ICMPv6 -> 6;
+		case ProtocolIds.ARP -> 7;
 		// Extended bitmap positions (8+)
-		case ProtocolId.MPLS -> 8;
-		case ProtocolId.AH -> 9;
-		case ProtocolId.ESP -> 10;
+		case ProtocolIds.MPLS -> 8;
+		case ProtocolIds.AH -> 9;
+		case ProtocolIds.ESP -> 10;
 		default -> -1;
 		};
 	}
@@ -811,7 +811,7 @@ public class Type2PacketDissector extends BasePacketDissector implements PacketD
 				int instance = (int) ((entry >> INSTANCE_NUM_SHIFT) & INSTANCE_NUM_MASK);
 
 				p.println(String.format("  [%d] %s: offset=%d, length=%d, instance=%d",
-						i, ProtocolId.nameOf(id), offset, length, instance));
+						i, ProtocolIds.nameOf(id), offset, length, instance));
 			}
 		}
 

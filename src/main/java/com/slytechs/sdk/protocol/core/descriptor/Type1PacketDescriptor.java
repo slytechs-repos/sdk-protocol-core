@@ -23,8 +23,8 @@ import com.slytechs.sdk.common.memory.BindableView;
 import com.slytechs.sdk.common.memory.MemoryHandle.LongHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
 import com.slytechs.sdk.common.time.TimestampUnit;
-import com.slytechs.sdk.protocol.core.Header;
 import com.slytechs.sdk.protocol.core.dissector.OnDemandPacketDissector;
+import com.slytechs.sdk.protocol.core.header.Header;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -144,7 +144,7 @@ public class Type1PacketDescriptor
 	 * @param timestampUnit the initial timestamp resolution/unit
 	 */
 	public Type1PacketDescriptor(TimestampUnit timestampUnit) {
-		super(DescriptorInfo.TYPE1, timestampUnit);
+		super(DescriptorType.TYPE1, timestampUnit);
 	}
 
 	/**
@@ -193,7 +193,7 @@ public class Type1PacketDescriptor
 	 * @return L2 frame type value (0-63)
 	 */
 	@Override
-	public int l2FrameType() {
+	public int l2FrameId() {
 		return (rxInfo() >> L2_FRAME_TYPE_SHIFT) & L2_FRAME_TYPE_MASK;
 	}
 

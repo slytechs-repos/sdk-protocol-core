@@ -17,7 +17,7 @@
  */
 package com.slytechs.sdk.protocol.core.stack;
 
-import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
+import com.slytechs.sdk.protocol.core.descriptor.DescriptorType;
 
 /**
  * Backend capabilities and constraints for Spec resolution.
@@ -34,7 +34,7 @@ import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
  * <pre>{@code
  * // Backend provides its context
  * BackendContext context = new BackendContext()
- *     .nativeDescriptorType(DescriptorInfo.PCAP_PACKED)
+ *     .nativeDescriptorType(DescriptorType.PCAP_PACKED)
  *     .supportsZeroCopy(true)
  *     .maxPacketSize(65535);
  * 
@@ -48,7 +48,7 @@ import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
  */
 public class BackendContext {
 
-    private DescriptorInfo nativeDescriptorType = DescriptorInfo.PCAP_PACKED;
+    private DescriptorType nativeDescriptorType = DescriptorType.PCAP_PACKED;
     private boolean supportsZeroCopy = true;
     private boolean supportsMemoryCopy = true;
     private long maxPacketSize = 65535;
@@ -63,7 +63,7 @@ public class BackendContext {
      *
      * @return native descriptor type
      */
-    public DescriptorInfo nativeDescriptorType() {
+    public DescriptorType nativeDescriptorType() {
         return nativeDescriptorType;
     }
 
@@ -73,7 +73,7 @@ public class BackendContext {
      * @param type the native descriptor type
      * @return this for chaining
      */
-    public BackendContext nativeDescriptorType(DescriptorInfo type) {
+    public BackendContext nativeDescriptorType(DescriptorType type) {
         this.nativeDescriptorType = type;
         return this;
     }

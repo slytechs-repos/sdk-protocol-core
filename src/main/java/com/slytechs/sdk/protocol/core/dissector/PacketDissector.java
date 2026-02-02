@@ -17,12 +17,10 @@
  */
 package com.slytechs.sdk.protocol.core.dissector;
 
-import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.common.memory.Memory;
+import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.common.time.TimestampUnit;
-import com.slytechs.sdk.protocol.core.descriptor.DescriptorType;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
-import com.slytechs.sdk.protocol.core.pack.ProtocolPackManager;
 
 /**
  * 
@@ -31,21 +29,6 @@ import com.slytechs.sdk.protocol.core.pack.ProtocolPackManager;
  * @author Sly Technologies Inc.
  */
 public interface PacketDissector {
-
-	/**
-	 * @param type
-	 * @return
-	 */
-	static PacketDissector dissector(DescriptorType type) {
-		return switch (type) {
-		case null -> null;
-		default -> ProtocolPackManager.listDissectors().stream()
-				.filter(plugin -> plugin.getDescriptorType() == type)
-				.map(DissectorPlugin::getDissector)
-				.findFirst()
-				.orElse(null);
-		};
-	}
 
 	/**
 	 * Timestamp unit for this dissector to use for timestamp value.
@@ -113,7 +96,8 @@ public interface PacketDissector {
 	 * @return number of byte written
 	 */
 	int writeDescriptor(PacketDescriptor descriptor);
-	
+
 	PacketDissector setL2FrameType(int type);
+
 	int l2FrameType();
 }

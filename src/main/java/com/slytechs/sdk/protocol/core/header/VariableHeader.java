@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core;
+package com.slytechs.sdk.protocol.core.header;
 
 import java.lang.foreign.MemoryLayout;
 

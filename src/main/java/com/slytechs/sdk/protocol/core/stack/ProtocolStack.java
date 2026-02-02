@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import com.slytechs.sdk.common.util.Named;
 import com.slytechs.sdk.protocol.core.spi.ProtocolConfigProvider;
 import com.slytechs.sdk.protocol.core.stack.processor.PassthroughProcessor;
 import com.slytechs.sdk.protocol.core.stack.processor.Processor;
@@ -88,7 +89,7 @@ import com.slytechs.sdk.protocol.core.stack.processor.Processor;
  * @see ProtocolConfig
  * @see PacketPolicy
  */
-public class ProtocolStack {
+public class ProtocolStack implements Named {
 
 	// =========================================================================
 	// Factory Methods
@@ -488,5 +489,27 @@ public class ProtocolStack {
 		clone.tokenMask = this.tokenMask;
 
 		return clone;
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.util.Named#name()
+	 */
+	@Override
+	public String name() {
+		return getClass().getSimpleName();
+	}
+
+	/**
+	 * @return
+	 */
+	public ProtocolStack enableIpReassembly() {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @return
+	 */
+	public ProtocolStack enableTcpReassembly() {
+		throw new UnsupportedOperationException("not implemented yet");
 	}
 }

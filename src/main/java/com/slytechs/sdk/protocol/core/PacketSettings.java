@@ -21,7 +21,7 @@ import com.slytechs.sdk.common.memory.pool.PoolSettings;
 import com.slytechs.sdk.common.settings.BooleanProperty;
 import com.slytechs.sdk.common.settings.IntProperty;
 import com.slytechs.sdk.common.settings.Settings;
-import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
+import com.slytechs.sdk.protocol.core.descriptor.DescriptorType;
 import com.slytechs.sdk.protocol.core.descriptor.HeaderBinding;
 
 /**
@@ -50,7 +50,7 @@ import com.slytechs.sdk.protocol.core.descriptor.HeaderBinding;
  * </tr>
  * <tr>
  * <td>{@link #dissect()}</td>
- * <td>NET</td>
+ * <td>TYPE2</td>
  * <td>Hybrid</td>
  * <td>Eager dissection, full header table in descriptor</td>
  * </tr>
@@ -76,7 +76,7 @@ import com.slytechs.sdk.protocol.core.descriptor.HeaderBinding;
  *     are only valid within the capture callback scope.</li>
  * <li><b>Hybrid:</b> Packet data uses {@code ScopedMemory} (zero-copy), while
  *     the descriptor uses {@code FixedMemory} from an internal pool. Required
- *     for eager dissection since the NET descriptor stores dissection results.</li>
+ *     for eager dissection since the TYPE2 descriptor stores dissection results.</li>
  * </ul>
  * 
  * <h2>Usage Examples</h2>
@@ -84,7 +84,7 @@ import com.slytechs.sdk.protocol.core.descriptor.HeaderBinding;
  * <h3>Default Configuration (Eager Dissection)</h3>
  * <pre>{@code
  * PacketSettings settings = new PacketSettings();
- * // Defaults: dissect() mode, NET descriptor, hybrid memory
+ * // Defaults: dissect() mode, TYPE2 descriptor, hybrid memory
  * 
  * try (NetPcap pcap = NetPcap.openOffline(file, settings)) {
  *     pcap.dispatch(10, packet -> {
@@ -174,7 +174,7 @@ public class PacketSettings extends Settings {
      * Creates packet settings with default configuration.
      * 
      * <p>
-     * Defaults to eager dissection mode ({@link #dissect()}) with NET descriptor
+     * Defaults to eager dissection mode ({@link #dissect()}) with TYPE2 descriptor
      * and hybrid memory model.
      * </p>
      */
@@ -183,13 +183,13 @@ public class PacketSettings extends Settings {
         setComment("Packet pipeline configuration");
 
         this.eagerDissection = booleanProperty("dissection.eager", true)
-                .comment("Enable eager protocol dissection into NET descriptor");
+                .comment("Enable eager protocol dissection into TYPE2 descriptor");
 
         this.onDemandDissection = booleanProperty("dissection.ondemand", false)
                 .comment("Enable on-demand dissection via HeaderBinding");
 
         this.maxHeaderCount = intProperty("descriptor.maxHeaders", 16)
-                .comment("Maximum headers stored in NET descriptor table");
+                .comment("Maximum headers stored in TYPE2 descriptor table");
 
         this.poolSettings = new PoolSettings();
         this.headerBinding = null;
@@ -200,7 +200,7 @@ public class PacketSettings extends Settings {
      * 
      * <p>
      * In this mode, packets are fully dissected immediately upon receipt. The
-     * dissection results are stored in a {@link DescriptorInfo#NET} descriptor,
+     * dissection results are stored in a {@link DescriptorType#TYPE2} descriptor,
      * which requires hybrid memory (scoped data + fixed descriptor from pool).
      * </p>
      * 
@@ -267,7 +267,7 @@ public class PacketSettings extends Settings {
      * 
      * <p>
      * These settings control the internal descriptor pool used in eager dissection
-     * mode ({@link #dissect()}). The pool provides fixed memory for NET descriptors
+     * mode ({@link #dissect()}). The pool provides fixed memory for TYPE2 descriptors
      * in the hybrid memory model.
      * </p>
      * 
@@ -310,7 +310,7 @@ public class PacketSettings extends Settings {
      * Sets the maximum number of headers stored in the descriptor.
      * 
      * <p>
-     * This setting applies to the NET descriptor used in eager dissection mode.
+     * This setting applies to the TYPE2 descriptor used in eager dissection mode.
      * It limits the size of the protocol header table in the descriptor.
      * </p>
      *
@@ -354,7 +354,7 @@ public class PacketSettings extends Settings {
      * 
      * <p>
      * Hybrid memory (scoped data + fixed descriptor) is required when eager
-     * dissection is enabled, since the NET descriptor needs fixed memory to
+     * dissection is enabled, since the TYPE2 descriptor needs fixed memory to
      * store dissection results.
      * </p>
      *
@@ -368,15 +368,15 @@ public class PacketSettings extends Settings {
      * Returns the appropriate descriptor type for the current mode.
      * 
      * <p>
-     * Eager dissection requires {@link DescriptorInfo#NET} to store the protocol
-     * header table. Other modes use {@link DescriptorInfo#PCAP_PACKED} for
+     * Eager dissection requires {@link DescriptorType#TYPE2} to store the protocol
+     * header table. Other modes use {@link DescriptorType#PCAP_PACKED} for
      * zero-copy compatibility with native pcap headers.
      * </p>
      *
      * @return the descriptor type for the current configuration
      */
-    public DescriptorInfo descriptorType() {
-        return isEagerDissection() ? DescriptorInfo.NET : DescriptorInfo.PCAP_PACKED;
+    public DescriptorType descriptorType() {
+        return isEagerDissection() ? DescriptorType.TYPE2 : DescriptorType.PCAP_PACKED;
     }
 
     /**

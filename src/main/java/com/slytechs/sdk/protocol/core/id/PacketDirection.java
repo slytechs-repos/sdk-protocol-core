@@ -15,31 +15,37 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core.builtin;
+package com.slytechs.sdk.protocol.core.id;
 
-import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.ValueLayout;
-
-import com.slytechs.sdk.protocol.core.FixedHeader;
+import com.slytechs.sdk.common.util.IntId;
 
 /**
- * 
+ * Provides contextual metadata (port, direction, user data). Maps to DPDK
+ * (rte_mbuf.port, userdata), Napatech (descriptor meta), Pcap (from handle).
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public class Payload extends FixedHeader {
+public enum PacketDirection implements IntId {
+	UNKNOWN(-1), RX(0), TX(1), INOUT(2);
 
-	public static final int ID = Builtin.Constants.PAYLOAD_ID;
+	private final int id;
 
-	public static final MemoryLayout LAYOUT = ValueLayout.JAVA_BYTE;
-
-	/**
-	 * @param id
-	 * @param layout
-	 */
-	public Payload() {
-		super(ID, LAYOUT);
+	PacketDirection(int id) {
+		this.id = id;
 	}
 
+	@Override
+	public int id() {
+		return id;
+	}
+
+	public static PacketDirection of(int value) {
+		for (PacketDirection dir : values()) {
+			if (dir.id == value) {
+				return dir;
+			}
+		}
+		return UNKNOWN;
+	}
 }

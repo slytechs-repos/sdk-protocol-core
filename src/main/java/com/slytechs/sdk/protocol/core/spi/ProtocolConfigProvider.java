@@ -21,7 +21,7 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.ServiceLoader.Provider;
 
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 import com.slytechs.sdk.protocol.core.stack.ProtocolConfig;
 
 /**
@@ -44,7 +44,7 @@ import com.slytechs.sdk.protocol.core.stack.ProtocolConfig;
  *     
  *     @Override
  *     public int packId() {
- *         return ProtocolId.PACK_TCPIP;
+ *         return ProtocolIds.PACK_TCPIP;
  *     }
  *     
  *     @Override
@@ -61,7 +61,7 @@ import com.slytechs.sdk.protocol.core.stack.ProtocolConfig;
  *     
  *     @Override
  *     public ProtocolConfig findConfig(int protocolId) {
- *         int index = ProtocolId.indexOf(protocolId);
+ *         int index = ProtocolIds.indexOf(protocolId);
  *         return switch (index) {
  *             case 0x21 -> new IpProtocolConfig();   // IPv4
  *             case 0x40 -> new TcpProtocolConfig();  // TCP
@@ -128,7 +128,7 @@ public interface ProtocolConfigProvider {
      * @return the configuration, or null if no provider supports it
      */
     static ProtocolConfig createConfig(int protocolId) {
-        int packId = ProtocolId.packOf(protocolId);
+        int packId = ProtocolIds.packId(protocolId);
         
         return SERVICE.stream()
                 .map(Provider::get)
@@ -159,7 +159,7 @@ public interface ProtocolConfigProvider {
      * Gets the pack ID this provider handles.
      * 
      * <p>
-     * Pack IDs are defined in {@link ProtocolId}:
+     * ProtocolPack IDs are defined in {@link ProtocolIds}:
      * <ul>
      * <li>{@code PACK_TCPIP = 0x0200}</li>
      * <li>{@code PACK_WEB = 0x0300}</li>
@@ -212,6 +212,6 @@ public interface ProtocolConfigProvider {
      * @return true if supported
      */
     default boolean supports(int protocolId) {
-        return ProtocolId.packOf(protocolId) == packId();
+        return ProtocolIds.packId(protocolId) == packId();
     }
 }

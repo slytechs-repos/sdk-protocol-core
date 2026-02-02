@@ -15,13 +15,18 @@
  */
 package com.slytechs.sdk.protocol.core.stack;
 
+import java.lang.foreign.MemorySegment;
+
+import com.slytechs.sdk.common.memory.FixedMemory;
 import com.slytechs.sdk.common.memory.pool.BucketPool;
 import com.slytechs.sdk.common.memory.pool.BucketPool.BucketFactory;
-import com.slytechs.sdk.common.memory.pool.FreeListPool;
+import com.slytechs.sdk.common.memory.pool.LockFreePool;
 import com.slytechs.sdk.common.memory.pool.Pool;
 import com.slytechs.sdk.common.memory.pool.PoolSettings;
+import com.slytechs.sdk.common.memory.pool.SlabAllocator;
 import com.slytechs.sdk.protocol.core.Packet;
-import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
+import com.slytechs.sdk.protocol.core.descriptor.DescriptorType;
+import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
 
 /**
  * Factory for creating packet pools optimized for different capture scenarios.
@@ -43,7 +48,7 @@ import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
  * </tr>
  * <tr>
  * <td>{@link #ofFixedSize}</td>
- * <td>FreeListPool</td>
+ * <td>LockFreePool</td>
  * <td>Single fixed size</td>
  * <td>Uniform packet sizes, simple allocation</td>
  * </tr>
@@ -61,13 +66,13 @@ import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
  * </tr>
  * <tr>
  * <td>{@link #ofScoped}</td>
- * <td>FreeListPool</td>
+ * <td>LockFreePool</td>
  * <td>Zero-copy binding</td>
  * <td>High-performance native capture</td>
  * </tr>
  * <tr>
  * <td>{@link #ofHybrid}</td>
- * <td>FreeListPool</td>
+ * <td>LockFreePool</td>
  * <td>Zero-copy + fixed descriptor</td>
  * <td>Native capture with descriptor conversion</td>
  * </tr>
@@ -150,7 +155,7 @@ import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
  * @see Packet
  * @see PoolSettings
  * @see BucketPool
- * @see FreeListPool
+ * @see LockFreePool
  */
 public final class PacketPool {
 
@@ -162,6 +167,7 @@ public final class PacketPool {
 	 * </p>
 	 * <ul>
 	 * <li>64 - Minimum Ethernet frame</li>
+	 * <li>256 - Small frame</li>
 	 * <li>1518 - Standard Ethernet MTU</li>
 	 * <li>9000 - Jumbo frames</li>
 	 * <li>65536 - Maximum capture size</li>
@@ -169,6 +175,7 @@ public final class PacketPool {
 	 */
 	public static final long[] DEFAULT_BUCKET_SIZES = {
 			64,
+			256,
 			1518,
 			9000,
 			65536
@@ -215,7 +222,7 @@ public final class PacketPool {
 	 */
 	public static Pool<Packet> ofBucketed(PoolSettings settings, long... bucketSizes) {
 		validateBucketSizes(bucketSizes);
-		return new BucketPool<>(settings, bucketSizes, (BucketFactory<Packet>) Packet::ofFixed);
+		return new BucketPool<>(settings, bucketSizes, (BucketFactory<Packet>) PacketPool::packetSlabAllocator);
 	}
 
 	/**
@@ -227,10 +234,10 @@ public final class PacketPool {
 	 * @return a new bucketed packet pool
 	 * @throws IllegalArgumentException if sizes is null, empty, or not ascending
 	 */
-	public static Pool<Packet> ofBucketed(PoolSettings settings, long[] bucketSizes, DescriptorInfo type) {
+	public static Pool<Packet> ofBucketed(PoolSettings settings, long[] bucketSizes, DescriptorType type) {
 		validateBucketSizes(bucketSizes);
 		return new BucketPool<>(settings, bucketSizes,
-				(allocator, dataSize) -> Packet.ofFixedType(allocator, dataSize, type));
+				(allocator, dataSize) -> PacketPool.packetSlabAllocatorType(allocator, dataSize, type));
 	}
 
 	/**
@@ -301,10 +308,10 @@ public final class PacketPool {
 		if (segmentSize <= 0)
 			throw new IllegalArgumentException("segmentSize must be positive: " + segmentSize);
 
-		// Use PoolableFactory - allocator comes from FreeListPool's slab
-		return new FreeListPool<>(
+		// Use PoolableFactory - allocator comes from LockFreePool's slab
+		return new LockFreePool<>(
 				settings.segmentSize(segmentSize), // Set segment size for slab allocation
-				allocator -> Packet.ofFixed(allocator, segmentSize));
+				allocator -> PacketPool.packetSlabAllocator(allocator, segmentSize));
 	}
 
 	/**
@@ -316,13 +323,13 @@ public final class PacketPool {
 	 * @return a new fixed-size packet pool
 	 * @throws IllegalArgumentException if segmentSize is not positive
 	 */
-	public static Pool<Packet> ofFixedSize(PoolSettings settings, long segmentSize, DescriptorInfo type) {
+	public static Pool<Packet> ofFixedSize(PoolSettings settings, long segmentSize, DescriptorType type) {
 		if (segmentSize <= 0)
 			throw new IllegalArgumentException("segmentSize must be positive: " + segmentSize);
 
-		return new FreeListPool<>(
+		return new LockFreePool<>(
 				settings.segmentSize(segmentSize),
-				allocator -> Packet.ofFixedType(allocator, segmentSize, type));
+				allocator -> PacketPool.packetSlabAllocatorType(allocator, segmentSize, type));
 	}
 
 	/**
@@ -356,7 +363,7 @@ public final class PacketPool {
 	 * @return a new hybrid packet pool
 	 */
 	public static Pool<Packet> ofHybrid(PoolSettings settings) {
-		return new FreeListPool<>(settings, Packet::ofHybrid);
+		return new LockFreePool<>(settings, Packet::ofHybrid);
 	}
 
 	/**
@@ -397,7 +404,7 @@ public final class PacketPool {
 	 * @return a new scoped packet pool
 	 */
 	public static Pool<Packet> ofScoped(PoolSettings settings) {
-		return new FreeListPool<>(settings, Packet::ofScoped);
+		return new LockFreePool<>(settings, Packet::ofScoped);
 	}
 
 	/**
@@ -417,4 +424,73 @@ public final class PacketPool {
 
 	/** Private constructor - static factory only. */
 	private PacketPool() {}
+
+	/**
+	 * Creates a fixed-type packet using the default buffer size and descriptor
+	 * type.
+	 *
+	 * @param allocator slab allocator for memory
+	 * @return new fixed packet
+	 * @see PacketPool#packetSlabAllocatorType(SlabAllocator, long, DescriptorType)
+	 */
+	public static Packet packetSlabAllocator(SlabAllocator allocator) {
+		return PacketPool.packetSlabAllocatorType(allocator, Packet.DEFAULT_PACKET_LENGTH,
+				Packet.DEFAULT_DESCRIPTOR_TYPE);
+	}
+
+	/**
+	 * Creates a fixed-type packet with custom buffer size (default descriptor).
+	 *
+	 * @param allocator slab allocator for memory
+	 * @param dataSize  data buffer size in bytes
+	 * @return new fixed packet
+	 * @see PacketPool#packetSlabAllocatorType(SlabAllocator, long, DescriptorType)
+	 */
+	public static Packet packetSlabAllocator(SlabAllocator allocator, long dataSize) {
+		return PacketPool.packetSlabAllocatorType(allocator, dataSize, Packet.DEFAULT_DESCRIPTOR_TYPE);
+	}
+
+	/**
+	 * Creates a fixed-type packet using default buffer size but custom descriptor
+	 * type.
+	 *
+	 * @param allocator slab allocator for memory
+	 * @param type      descriptor type
+	 * @return new fixed packet
+	 * @see PacketPool#packetSlabAllocatorType(SlabAllocator, long, DescriptorType)
+	 */
+	public static Packet packetSlabAllocator(SlabAllocator allocator,
+			DescriptorType type) {
+		return PacketPool.packetSlabAllocatorType(allocator, Packet.DEFAULT_PACKET_LENGTH, type);
+	}
+
+	/**
+	 * Creates a fixed-type packet with custom buffer size and descriptor type.
+	 * 
+	 * <p>
+	 * Both packet data and descriptor use {@link FixedMemory} allocated via the
+	 * provided {@link SlabAllocator}. Suitable for packets that need to persist
+	 * independently of native capture buffers.
+	 * </p>
+	 *
+	 * @param allocator slab allocator for memory
+	 * @param dataSize  data buffer size in bytes
+	 * @param type      descriptor type
+	 * @return new fixed packet ready for pooling
+	 */
+	public static Packet packetSlabAllocatorType(SlabAllocator allocator, long dataSize,
+			DescriptorType type) {
+		PacketDescriptor descriptor = type.newPacketDescriptor();
+		MemorySegment dataSeg = allocator.allocate(dataSize, 8);
+		MemorySegment descSeg = allocator.allocate(descriptor.length(), 8);
+
+		FixedMemory dataMemory = new FixedMemory(dataSeg);
+		FixedMemory descMemory = new FixedMemory(descSeg);
+		descriptor.bind(descMemory);
+
+		Packet packet = new Packet(dataMemory, descriptor);
+		packet.poolEntry.bindSlab(allocator, dataSeg);
+
+		return packet;
+	}
 }

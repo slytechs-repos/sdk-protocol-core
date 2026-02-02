@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core;
+package com.slytechs.sdk.protocol.core.header;
 
 import java.lang.foreign.MemoryLayout;
 
@@ -60,7 +60,7 @@ public non-sealed class FixedHeader extends Header {
 	}
 
 	/**
-	 * @see com.slytechs.sdk.protocol.core.Header#isFixedHeader()
+	 * @see com.slytechs.sdk.protocol.core.header.Header#isFixedHeader()
 	 */
 	@Override
 	public final boolean isFixedHeader() {

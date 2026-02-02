@@ -17,8 +17,8 @@
  */
 package com.slytechs.sdk.protocol.core;
 
-import java.util.List;
-
+import com.slytechs.sdk.protocol.core.header.HeaderFactory;
+import com.slytechs.sdk.protocol.core.id.ProtocolId;
 import com.slytechs.sdk.protocol.core.pack.ProtocolPack;
 
 /**
@@ -27,16 +27,15 @@ import com.slytechs.sdk.protocol.core.pack.ProtocolPack;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface Protocol {
-	
+public interface Protocol extends ProtocolId {
+
+	@Override
 	int id();
 
 	String name();
 
-	ProtocolPack pack();
+	ProtocolPack protocolPack();
 
 	HeaderFactory<?> headerFactory();
-
-	List<HeaderExtension> listOptions();
 
 }

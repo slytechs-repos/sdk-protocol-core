@@ -52,7 +52,7 @@
  * 
  * <pre>{@code
  * // Get a calculator for 5-tuple sorted hashing
- * HashCalculator calc = HashCalculator.of(HashType.HASH_5_TUPLE_SORTED);
+ * HashCalculator calc = HashCalculator.of(HashTypes.HASH_5_TUPLE_SORTED);
  * 
  * // Calculate hash from ByteBuffer (uses position/limit)
  * int hash = calc.calculate(packetBuffer);
@@ -79,21 +79,21 @@
  * 
  * <p>This package follows the jNetWorks Type/Info pattern:
  * <ul>
- *   <li>{@link com.slytechs.sdk.protocol.core.hash.HashType} - Interface with integer
+ *   <li>{@link com.slytechs.sdk.protocol.core.hash.HashTypes} - Interface with integer
  *       constants for use in switch statements and hot paths</li>
  *   <li>{@link com.slytechs.sdk.protocol.core.hash.HashInfo} - Enum implementing
- *       HashType for API usage, toString, and conversion</li>
+ *       HashTypes for API usage, toString, and conversion</li>
  * </ul>
  * 
  * <pre>{@code
  * // Use constant for hot path
- * int type = HashType.HASH_5_TUPLE;
+ * int type = HashTypes.HASH_5_TUPLE;
  * 
  * // Use enum for API
  * HashInfo info = HashInfo.HASH_5_TUPLE;
  * 
  * // Convert between them
- * HashInfo info = HashInfo.valueOf(HashType.HASH_5_TUPLE);
+ * HashInfo info = HashInfo.valueOf(HashTypes.HASH_5_TUPLE);
  * int id = info.id();
  * }</pre>
  * 

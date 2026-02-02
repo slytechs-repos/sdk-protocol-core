@@ -16,6 +16,7 @@
 package com.slytechs.sdk.protocol.core.filter;
 
 import com.slytechs.sdk.protocol.core.filter.EthernetFilter.EthernetDsl;
+import com.slytechs.sdk.protocol.core.filter.FilterDsl.Emitter;
 import com.slytechs.sdk.protocol.core.filter.Ip4Filter.Ip4Dsl;
 import com.slytechs.sdk.protocol.core.filter.Ip6Filter.Ip6Dsl;
 import com.slytechs.sdk.protocol.core.filter.IpSecFilter.IpSecDsl;
@@ -30,8 +31,8 @@ import com.slytechs.sdk.protocol.core.filter.VlanFilter.VlanDsl;
  * <p>
  * {@code PacketFilter} provides convenience static methods that start a new
  * filter chain by returning an empty or pre-scoped {@link PacketDsl}. All
- * subsequent method calls on the returned {@code PacketDsl} are combined
- * with logical AND.
+ * subsequent method calls on the returned {@code PacketDsl} are combined with
+ * logical AND.
  * </p>
  * <p>
  * The resulting {@code PacketDsl} is completely independent of any
@@ -115,7 +116,7 @@ public interface PacketFilter {
 	 * @see #all()
 	 * @see #isCatchAll()
 	 */
-	PacketDsl ALL = _ -> new CatchAllEmitter();
+	PacketDsl ALL = (Emitter _) -> new CatchAllEmitter(); // Prevent any attempt to chain any other DSL
 
 	/**
 	 * Starts a filter chain that matches packets containing an AH (Authentication
@@ -162,10 +163,6 @@ public interface PacketFilter {
 		return ALL;
 	}
 
-	// ──────────────────────────────────────────────────────────────────────────
-	// Logical OR combinators (convenience entry points)
-	// ──────────────────────────────────────────────────────────────────────────
-
 	/**
 	 * Creates a filter that matches if <strong>any</strong> of the provided header
 	 * filters match.
@@ -194,10 +191,6 @@ public interface PacketFilter {
 
 		return of().anyOf(alternatives);
 	}
-
-	// ──────────────────────────────────────────────────────────────────────────
-	// Protocol entry points (start chain with a specific protocol)
-	// ──────────────────────────────────────────────────────────────────────────
 
 	/**
 	 * Starts a filter that matches broadcast packets.
@@ -249,8 +242,7 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures ESP fields (SPI, sequence
 	 *               number)
-	 * @return a {@link PacketDsl} combining ESP scope with the given
-	 *         conditions
+	 * @return a {@link PacketDsl} combining ESP scope with the given conditions
 	 */
 	static PacketDsl esp(HeaderOperator<IpSecDsl> header) {
 		return of().esp(header);
@@ -271,7 +263,7 @@ public interface PacketFilter {
 	 * Ethernet conditions.
 	 *
 	 * @param header lambda/operator that configures Ethernet fields (MAC addresses,
-	 *               EtherType)
+	 *               EtherTypes)
 	 * @return a {@link PacketDsl} combining Ethernet scope with the given
 	 *         conditions
 	 */
@@ -307,8 +299,7 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures IPv4 fields (addresses,
 	 *               protocol, TTL, etc.)
-	 * @return a {@link PacketDsl} combining IPv4 scope with the given
-	 *         conditions
+	 * @return a {@link PacketDsl} combining IPv4 scope with the given conditions
 	 */
 	static PacketDsl ip4(HeaderOperator<Ip4Dsl> header) {
 		return of().ip4(header);
@@ -330,8 +321,7 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures IPv6 fields (addresses, Next
 	 *               Header, Hop Limit, etc.)
-	 * @return a {@link PacketDsl} combining IPv6 scope with the given
-	 *         conditions
+	 * @return a {@link PacketDsl} combining IPv6 scope with the given conditions
 	 */
 	static PacketDsl ip6(HeaderOperator<Ip6Dsl> header) {
 		return of().ip6(header);
@@ -375,8 +365,7 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures MPLS fields (label, TC, BOS,
 	 *               TTL)
-	 * @return a {@link PacketDsl} combining MPLS scope with the given
-	 *         conditions
+	 * @return a {@link PacketDsl} combining MPLS scope with the given conditions
 	 */
 	static PacketDsl mpls(HeaderOperator<MplsDsl> header) {
 		return of().mpls(header);
@@ -402,10 +391,6 @@ public interface PacketFilter {
 	static PacketDsl net(String cidr) {
 		return of().net(cidr);
 	}
-
-	// ──────────────────────────────────────────────────────────────────────────
-	// Network primitives (host, subnet, port) — convenience entry points
-	// ──────────────────────────────────────────────────────────────────────────
 
 	/**
 	 * Returns an empty (identity) filter that matches all packets.
@@ -495,8 +480,7 @@ public interface PacketFilter {
 	 * header conditions.
 	 *
 	 * @param header lambda/operator that configures TCP fields (ports, flags, etc.)
-	 * @return a {@link PacketDsl} combining TCP scope with the given
-	 *         conditions
+	 * @return a {@link PacketDsl} combining TCP scope with the given conditions
 	 */
 	static PacketDsl tcp(HeaderOperator<TcpDsl> header) {
 		return of().tcp(header);
@@ -512,17 +496,12 @@ public interface PacketFilter {
 		return of().udp();
 	}
 
-	// ──────────────────────────────────────────────────────────────────────────
-	// Packet metadata entry points
-	// ──────────────────────────────────────────────────────────────────────────
-
 	/**
 	 * Starts a filter chain that matches UDP packets and applies additional UDP
 	 * header conditions.
 	 *
 	 * @param header lambda/operator that configures UDP fields (ports)
-	 * @return a {@link PacketDsl} combining UDP scope with the given
-	 *         conditions
+	 * @return a {@link PacketDsl} combining UDP scope with the given conditions
 	 */
 	static PacketDsl udp(HeaderOperator<UdpDsl> header) {
 		return of().udp(header);
@@ -544,8 +523,7 @@ public interface PacketFilter {
 	 *
 	 * @param header lambda/operator that configures VLAN fields (VID, PCP, DEI,
 	 *               TPID)
-	 * @return a {@link PacketDsl} combining VLAN scope with the given
-	 *         conditions
+	 * @return a {@link PacketDsl} combining VLAN scope with the given conditions
 	 */
 	static PacketDsl vlan(HeaderOperator<VlanDsl> header) {
 		return of().vlan(header);

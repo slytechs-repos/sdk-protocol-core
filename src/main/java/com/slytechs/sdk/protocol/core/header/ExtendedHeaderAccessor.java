@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core;
+package com.slytechs.sdk.protocol.core.header;
 
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
 
@@ -534,7 +534,7 @@ public interface ExtendedHeaderAccessor {
 	 * <h3>Example: Protocol Filtering</h3>
 	 * 
 	 * <pre>{@code
-	 * public class PacketFilter {
+	 * public class PacketDsl {
 	 * 	private final Set<Integer> allowedProtocols;
 	 * 	private final int maxDepth;
 	 * 

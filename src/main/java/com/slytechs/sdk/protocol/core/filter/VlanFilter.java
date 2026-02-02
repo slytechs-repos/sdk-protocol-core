@@ -122,7 +122,7 @@ public interface VlanFilter {
 
 	/**
 	 * Creates a VLAN filter that matches a specific Tag Protocol Identifier (TPID /
-	 * EtherType in the VLAN tag).
+	 * EtherTypes in the VLAN tag).
 	 * <p>
 	 * Common values: 0x8100 (standard 802.1Q), 0x88A8 (802.1ad / Q-in-Q outer),
 	 * 0x9100, 0x9200 (some vendor implementations).
@@ -134,7 +134,7 @@ public interface VlanFilter {
 	 */
 	static VlanDsl type(int etherType) throws FilterException {
 		if (etherType < 0 || etherType > 65535) {
-			throw new FilterException("VLAN type (EtherType/TPID) must be 0-65535, got: " + etherType);
+			throw new FilterException("VLAN type (EtherTypes/TPID) must be 0-65535, got: " + etherType);
 		}
 		return of().type(etherType);
 	}
@@ -206,7 +206,7 @@ public interface VlanFilter {
 		 */
 		default VlanDsl type(int etherType) throws FilterException {
 			if (etherType < 0 || etherType > 65535) {
-				throw new FilterException("VLAN type (EtherType/TPID) must be 0-65535, got: " + etherType);
+				throw new FilterException("VLAN type (EtherTypes/TPID) must be 0-65535, got: " + etherType);
 			}
 			return b -> this.emit(b).and().field("vlan.type", 2, 16, Op.EQ, etherType);
 		}

@@ -21,6 +21,7 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 
 import com.slytechs.sdk.common.time.TimestampUnit;
+import com.slytechs.sdk.protocol.core.id.L2FrameType;
 
 import static java.lang.foreign.MemoryLayout.PathElement.*;
 
@@ -39,8 +40,8 @@ class PcapDescriptorPackedBe extends PcapDescriptorPacked {
 	private static final VarHandle CAPLEN$BE = LAYOUT$COMPACT$BE.varHandle(groupElement("caplen"));
 	private static final VarHandle WIRELEN$BE = LAYOUT$COMPACT$BE.varHandle(groupElement("wirelen"));
 
-	protected PcapDescriptorPackedBe(L2FrameInfo l2FrameInfo, TimestampUnit timestampUnit) {
-		super(l2FrameInfo, timestampUnit);
+	protected PcapDescriptorPackedBe(L2FrameType l2FrameType, TimestampUnit timestampUnit) {
+		super(l2FrameType, timestampUnit);
 	}
 
 	/**
@@ -126,7 +127,7 @@ class PcapDescriptorPackedBe extends PcapDescriptorPacked {
 	 */
 	@Override
 	public PacketDescriptor newUnbound() {
-		return new PcapDescriptorPackedBe(l2FrameInfo(), timestampUnit());
+		return new PcapDescriptorPackedBe(l2FrameType(), timestampUnit());
 	}
 
 }

@@ -35,7 +35,7 @@ import com.slytechs.sdk.common.settings.Settings;
  * <li>System property: {@code -Dprotocol.<name>.<property>=value}</li>
  * <li>Environment variable: {@code PROTOCOL_<NAME>_<PROPERTY>=value}</li>
  * <li>Loaded configuration file</li>
- * <li>Pack defaults (from protocol pack JAR)</li>
+ * <li>ProtocolPack defaults (from protocol pack JAR)</li>
  * <li>Coded default value</li>
  * </ol>
  * 

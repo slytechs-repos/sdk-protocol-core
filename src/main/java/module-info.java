@@ -23,17 +23,21 @@ module com.slytechs.sdk.protocol.core {
 	exports com.slytechs.sdk.protocol.core;
 	exports com.slytechs.sdk.protocol.core.address;
 	exports com.slytechs.sdk.protocol.core.checksum;
+	exports com.slytechs.sdk.protocol.core.header;
+	exports com.slytechs.sdk.protocol.core.hash;
+	exports com.slytechs.sdk.protocol.core.id;
+	exports com.slytechs.sdk.protocol.core.flow;
+	exports com.slytechs.sdk.protocol.core.filter;
 	exports com.slytechs.sdk.protocol.core.pack;
-	exports com.slytechs.sdk.protocol.core.builtin;
+	exports com.slytechs.sdk.protocol.core.token;
 	exports com.slytechs.sdk.protocol.core.descriptor;
 	exports com.slytechs.sdk.protocol.core.dissector;
 	exports com.slytechs.sdk.protocol.core.stack;
 	exports com.slytechs.sdk.protocol.core.stack.processor;
 	exports com.slytechs.sdk.protocol.core.spi;
- 
+
 	requires java.logging;
 	requires transitive com.slytechs.sdk.common;
 
-	uses com.slytechs.sdk.protocol.core.pack.ProtocolPackPlugin;
-    uses com.slytechs.sdk.protocol.core.spi.ProtocolProvider;
+	uses com.slytechs.sdk.protocol.core.spi.PackProvider;
 }

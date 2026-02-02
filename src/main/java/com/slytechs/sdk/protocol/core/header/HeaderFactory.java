@@ -15,31 +15,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core.spi;
-
-import java.util.ServiceLoader;
-
-import com.slytechs.sdk.protocol.core.Protocol;
+package com.slytechs.sdk.protocol.core.header;
 
 /**
- * 
- *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface ProtocolProvider {
+public interface HeaderFactory<T extends Header> {
 
-	ServiceLoader<ProtocolProvider> service = ServiceLoader.load(ProtocolProvider.class);
-
-	static Protocol lookupProtocol(int protocolId) {
-		return service.stream()
-				.map(p -> p.get())
-				.map(p -> p.findProtocol(protocolId))
-				.filter(p -> p != null)
-				.findAny()
-				.orElse(null);
-	}
-
-	Protocol findProtocol(int protocolId);
+	T newHeader();
 
 }

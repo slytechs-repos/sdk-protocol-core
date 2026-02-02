@@ -16,6 +16,7 @@
 package com.slytechs.sdk.protocol.core.descriptor;
 
 import com.slytechs.sdk.common.time.TimestampType;
+import com.slytechs.sdk.protocol.core.id.L2FrameTypes;
 
 /**
  * Provides RX-specific metadata for received packets.
@@ -94,12 +95,12 @@ public interface RxCapabilities {
 	}
 
 	/**
-	 * Layer 2 frame type constants defined in L2FrameType class.
+	 * Layer 2 frame type constants defined in L2FrameTypes class.
 	 *
 	 * @return the L2 frame type constant
 	 */
-	default int l2FrameType() {
-		return L2FrameType.UNKNOWN;
+	default int l2FrameId() {
+		return L2FrameTypes.UNKNOWN;
 	}
 
 	/**

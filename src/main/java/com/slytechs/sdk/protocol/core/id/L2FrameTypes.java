@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core.descriptor;
+package com.slytechs.sdk.protocol.core.id;
 
 /**
  * L2 frame type constants for descriptor encoding.
@@ -31,12 +31,12 @@ package com.slytechs.sdk.protocol.core.descriptor;
  * 
  * <pre>{@code
  * int l2Type = descriptor.l2FrameType();
- * if (l2Type == L2FrameType.ETHER) {
+ * if (l2Type == L2FrameTypes.ETHER) {
  * 	// Ethernet frame
  * }
  * 
  * // Get metadata
- * L2FrameInfo info = L2FrameInfo.of(l2Type);
+ * L2FrameType info = L2FrameType.of(l2Type);
  * int baseLen = info.baseLength();
  * }</pre>
  * 
@@ -53,9 +53,9 @@ package com.slytechs.sdk.protocol.core.descriptor;
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see L2FrameInfo
+ * @see L2FrameType
  */
-public interface L2FrameType {
+public sealed interface L2FrameTypes permits L2FrameType {
 
 	// @formatter:off
 
@@ -325,11 +325,4 @@ public interface L2FrameType {
 		};
 	}
 
-	int minLength();
-
-	int maxLength();
-
-	int l2FrameId();
-
-	int protocolId();
 }

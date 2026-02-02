@@ -24,6 +24,7 @@ import java.nio.ByteOrder;
 
 import com.slytechs.sdk.common.memory.pool.PoolEntry;
 import com.slytechs.sdk.common.time.TimestampUnit;
+import com.slytechs.sdk.protocol.core.id.L2FrameType;
 
 import static java.lang.foreign.MemoryLayout.*;
 import static java.lang.foreign.MemoryLayout.PathElement.*;
@@ -105,17 +106,17 @@ public abstract class PcapDescriptorPacked
 	public static final MemoryLayout LAYOUT$COMPACT$BE = LAYOUT$NATIVE_ABI.select(groupElement("llp64_be"));
 
 	public static PcapDescriptorPacked of(ByteOrder order) {
-		return of(order, L2FrameInfo.ETHER, TimestampUnit.PCAP_MICRO);
+		return of(order, L2FrameType.ETHER, TimestampUnit.PCAP_MICRO);
 	}
 
-	public static PcapDescriptorPacked of(ByteOrder order, L2FrameInfo l2FrameInfo, TimestampUnit timestampUnit) {
+	public static PcapDescriptorPacked of(ByteOrder order, L2FrameType l2FrameType, TimestampUnit timestampUnit) {
 		return (order == ByteOrder.BIG_ENDIAN)
-				? new PcapDescriptorPackedBe(l2FrameInfo, timestampUnit)
-				: new PcapDescriptorPackedLe(l2FrameInfo, timestampUnit);
+				? new PcapDescriptorPackedBe(l2FrameType, timestampUnit)
+				: new PcapDescriptorPackedLe(l2FrameType, timestampUnit);
 	}
 
-	protected PcapDescriptorPacked(L2FrameInfo l2FrameInfo, TimestampUnit timestampUnit) {
-		super(DescriptorInfo.PCAP_PACKED, l2FrameInfo, timestampUnit);
+	protected PcapDescriptorPacked(L2FrameType l2FrameType, TimestampUnit timestampUnit) {
+		super(DescriptorType.PCAP_PACKED, l2FrameType, timestampUnit);
 	}
 
 	/**
@@ -123,7 +124,7 @@ public abstract class PcapDescriptorPacked
 	 */
 	@Override
 	public int descriptorId() {
-		return DescriptorType.PCAP_PACKED;
+		return DescriptorTypes.PCAP_PACKED;
 	}
 
 	/**

@@ -18,47 +18,65 @@
 package com.slytechs.sdk.protocol.core.pack;
 
 /**
- * 
+ * Signals an error during protocol pack operations.
+ *
+ * <p>
+ * Thrown when a pack-related operation fails, such as SPI discovery errors,
+ * pack initialization failures, or licensing violations. This is an unchecked
+ * exception since pack errors typically represent configuration or deployment
+ * problems rather than recoverable runtime conditions.
+ * </p>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
+ * @see ProtocolPack
  */
 public class ProtocolPackException extends RuntimeException {
 
 	private static final long serialVersionUID = -7249663824308873319L;
 
 	/**
-	 * 
+	 * Constructs a new protocol pack exception with no detail message.
 	 */
 	public ProtocolPackException() {}
 
 	/**
-	 * @param message
+	 * Constructs a new protocol pack exception with the specified detail message.
+	 *
+	 * @param message the detail message
 	 */
 	public ProtocolPackException(String message) {
 		super(message);
 	}
 
 	/**
-	 * @param cause
+	 * Constructs a new protocol pack exception with the specified cause.
+	 *
+	 * @param cause the cause
 	 */
 	public ProtocolPackException(Throwable cause) {
 		super(cause);
 	}
 
 	/**
-	 * @param message
-	 * @param cause
+	 * Constructs a new protocol pack exception with the specified detail message
+	 * and cause.
+	 *
+	 * @param message the detail message
+	 * @param cause   the cause
 	 */
 	public ProtocolPackException(String message, Throwable cause) {
 		super(message, cause);
 	}
 
 	/**
-	 * @param message
-	 * @param cause
-	 * @param enableSuppression
-	 * @param writableStackTrace
+	 * Constructs a new protocol pack exception with full control over the
+	 * exception properties.
+	 *
+	 * @param message            the detail message
+	 * @param cause              the cause
+	 * @param enableSuppression  whether suppression is enabled
+	 * @param writableStackTrace whether the stack trace is writable
 	 */
 	public ProtocolPackException(String message, Throwable cause, boolean enableSuppression,
 			boolean writableStackTrace) {

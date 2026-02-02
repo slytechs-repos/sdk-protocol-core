@@ -17,24 +17,32 @@
  */
 package com.slytechs.sdk.protocol.core.descriptor;
 
-import com.slytechs.sdk.common.memory.BindableView;
-import com.slytechs.sdk.protocol.core.header.Header;
+/**
+ * Descriptor type constants.
+ *
+ * @author Mark Bednarczyk
+ * @author Sly Technologies Inc.
+ */
+public sealed interface DescriptorTypes permits DescriptorType {
 
-public interface HeaderBinding {
+	int UNKNOWN = 0;
 
-	/**
-	 * Unsupported header binding instance. This instance always returns false on
-	 * bindHeader.
-	 */
-	HeaderBinding INSTANCE = new HeaderBinding() {
+	/** SDK packet descriptor - on demand protocol dissection (16 bytes) */
+	int TYPE1 = 1;
 
-		@Override
-		public boolean bindHeader(BindableView packet, Header header, int l2FrameType, int protocolId, int depth) {
-			return false;
-		}
+	/** SDK packet descriptor - full protocol table (~96 bytes) */
+	int TYPE2 = 2;
 
-	};
+	/** Pcap file header - kernel format (24-byte on x64 padded) */
+	int PCAP_PADDED = 12;
 
-	boolean bindHeader(BindableView packet, Header header,
-			int l2FrameType, int protocolId, int depth);
+	/** Pcap packet - file format (16-byte c-struct packed) */
+	int PCAP_PACKED = 13;
+
+	/** Napatech native */
+	int NTAPI = 14;
+
+	/** DPDK native */
+	int DPDK = 15;
+
 }

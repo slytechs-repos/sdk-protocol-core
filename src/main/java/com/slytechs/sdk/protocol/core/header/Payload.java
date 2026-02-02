@@ -15,35 +15,31 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core.descriptor;
+package com.slytechs.sdk.protocol.core.header;
+
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.ValueLayout;
+
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 /**
- * Provides contextual metadata (port, direction, user data).
- * Maps to DPDK (rte_mbuf.port, userdata), Napatech (descriptor meta), Pcap (from handle).
+ * 
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public enum PacketDirection {
-    RX(0), TX(1), UNKNOWN(-1);
+public class Payload extends FixedHeader {
 
-    private final int value;
+	public static final int ID = ProtocolIds.PAYLOAD;
 
-    PacketDirection(int value) {
-        this.value = value;
-    }
+	public static final MemoryLayout LAYOUT = ValueLayout.JAVA_BYTE;
 
-    public int value() {
-        return value;
-    }
+	/**
+	 * @param id
+	 * @param layout
+	 */
+	public Payload() {
+		super(ID, LAYOUT);
+	}
 
-    public static PacketDirection of(int value) {
-        for (PacketDirection dir : values()) {
-            if (dir.value == value) {
-                return dir;
-            }
-        }
-        return UNKNOWN;
-    }
 }
-

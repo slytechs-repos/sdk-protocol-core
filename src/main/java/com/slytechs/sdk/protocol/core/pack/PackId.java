@@ -17,15 +17,59 @@
  */
 package com.slytechs.sdk.protocol.core.pack;
 
+import com.slytechs.sdk.common.util.IntId;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
+
 /**
+ * Type-safe enum of protocol pack identifiers.
+ *
+ * <p>
+ * Each constant corresponds to a protocol pack module and maps to the pack ID
+ * encoded in the upper byte of the descriptor portion of a
+ * {@link ProtocolIds protocol ID}. Use {@link #valueOf(int)} to resolve a pack
+ * or protocol ID to its pack constant.
+ * </p>
+ *
+ * <h2>Usage</h2>
+ *
+ * {@snippet :
+ * // Resolve from a full protocol ID
+ * PackId pack = PackId.valueOf(ProtocolIds.IPv4);  // TCPIP
+ *
+ * // Resolve from a pack ID
+ * PackId pack = PackId.valueOf(ProtocolIds.PACK_TCPIP);  // TCPIP
+ *
+ * // Get the raw pack ID value
+ * int rawId = PackId.TCPIP.id();  // 0x0200
+ * }
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
+ * @see ProtocolIds
+ * @see ProtocolPack
  */
-public enum PackId {
+public enum PackId implements IntId {
 
-	PACK_ID_BUILTIN(Constants.PACK_ID_BUILTIN),
-	PACK_ID_TCPIP(Constants.PACK_ID_TCPIP),
-	PACK_ID_WEB(Constants.PACK_ID_WEB),
+	/** Unrecognized or invalid pack identifier. */
+	UNKNOWN(-1),
+
+	/** System protocols: PAYLOAD, UNKNOWN, PAD. */
+	BUILTIN(ProtocolIds.PACK_BUILTIN),
+
+	/** Infrastructure: bridge, routing, discovery, management. */
+	INFRA(ProtocolIds.PACK_INFRA),
+
+	/** Core TCP/IP stack: Ethernet, IP, TCP, UDP, IPsec, MPLS, etc. */
+	TCPIP(ProtocolIds.PACK_TCPIP),
+
+	/** Application layer: HTTP, HTML, TLS, DNS, DHCP, etc. */
+	WEB(ProtocolIds.PACK_WEB),
+
+	/** Telecommunications: GTP, SCTP, SS7, PFCP, etc. */
+	TELCO(ProtocolIds.PACK_TELCO),
+
+	/** Industrial protocols: SCADA, Modbus, DNP3 (future). */
+	INDUSTRIAL(ProtocolIds.PACK_INDUSTRIAL),
 
 	;
 
@@ -35,39 +79,37 @@ public enum PackId {
 		this.id = id;
 	}
 
-	public int packId() {
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @return the raw pack ID value as encoded in {@link ProtocolIds}
+	 */
+	@Override
+	public int id() {
 		return id;
 	}
 
-	public static int packId(int id) {
-		return (id & Constants.PACK_MASK_PACK_ID) >> Constants.PACK_BITSHIFT_PACK_ID;
-	}
-
+	/**
+	 * Resolves a pack or protocol ID to its {@code PackId} constant.
+	 *
+	 * <p>
+	 * Extracts the pack portion from the given ID using
+	 * {@link ProtocolIds#packId(int)} and matches it against known pack
+	 * constants.
+	 * </p>
+	 *
+	 * @param packOrProtocolId a raw pack ID or a full 32-bit protocol ID
+	 * @return the matching {@code PackId}, or {@link #UNKNOWN} if not recognized
+	 */
 	public static PackId valueOf(int packOrProtocolId) {
-		int ordinal = (packOrProtocolId & Constants.PACK_MASK_PACK_ID) >> Constants.PACK_BITSHIFT_PROTO_ID;
+		int id = ProtocolIds.packId(packOrProtocolId);
 
-		return values()[ordinal];
-	}
+		for (var c : values()) {
+			if (c.id == id)
+				return c;
+		}
 
-	public interface Constants {
-
-		int PACK_FLAG_PROTO_EXTENSION = (1 << 22);
-		int PACK_FLAG_PROTO_OPTION = (1 << 23);
-
-		int PACK_MASK_PROTO_ID = 0x0000FF;
-		int PACK_MASK_PACK_ID = 0x00FF00;
-		int PACK_MASK_OPTION_ID = 0x3F0000;
-		int PACK_MASK_EXTENSION_ID = 0x3F0000;
-		int PACK_MASK_FLAGS = 0xC00000;
-		
-		int PACK_BITSHIFT_PROTO_ID = 0;
-		int PACK_BITSHIFT_PACK_ID = 8;
-		int PACK_BITSHIFT_OPTION_ID = 16;
-		int PACK_BITSHIFT_EXTENSION_ID = 16;
-
-		int PACK_ID_BUILTIN = (0 << PACK_BITSHIFT_PACK_ID);
-		int PACK_ID_TCPIP = (2 << PACK_BITSHIFT_PACK_ID);
-		int PACK_ID_WEB = (3 << PACK_BITSHIFT_PACK_ID);
+		return UNKNOWN;
 	}
 
 }

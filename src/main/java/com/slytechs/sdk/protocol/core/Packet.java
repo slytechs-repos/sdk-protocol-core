@@ -1,24 +1,19 @@
 /*
- * Sly Technologies Free License
- * 
- * Copyright 2024 Sly Technologies Inc.
+ * Copyright 2005-2026 Sly Technologies Inc.
  *
- * Licensed under the Sly Technologies Free License (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- * 
- * http://www.slytechs.com/free-license-text
- * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.slytechs.sdk.protocol.core;
-
-import java.lang.foreign.MemorySegment;
-import java.nio.ByteOrder;
 
 import com.slytechs.sdk.common.detail.Detail;
 import com.slytechs.sdk.common.detail.DetailBuilder;
@@ -30,18 +25,16 @@ import com.slytechs.sdk.common.memory.FixedMemory;
 import com.slytechs.sdk.common.memory.Memory;
 import com.slytechs.sdk.common.memory.ScopedMemory;
 import com.slytechs.sdk.common.memory.pool.Persistable;
-import com.slytechs.sdk.common.memory.pool.Pool;
 import com.slytechs.sdk.common.memory.pool.PoolEntry;
 import com.slytechs.sdk.common.memory.pool.Poolable;
-import com.slytechs.sdk.common.memory.pool.SlabAllocator;
 import com.slytechs.sdk.common.time.Timestamp;
-import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
-import com.slytechs.sdk.protocol.core.descriptor.NetPacketDescriptor;
+import com.slytechs.sdk.protocol.core.descriptor.DescriptorType;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor.BindingInfo;
-import com.slytechs.sdk.protocol.core.descriptor.PacketTag;
-import com.slytechs.sdk.protocol.core.descriptor.PcapDescriptorPacked;
-import com.slytechs.sdk.protocol.core.descriptor.PcapDescriptorPadded;
+import com.slytechs.sdk.protocol.core.header.Header;
+import com.slytechs.sdk.protocol.core.descriptor.RxCapabilities;
+import com.slytechs.sdk.protocol.core.descriptor.TxCapabilities;
+import com.slytechs.sdk.protocol.core.descriptor.Type2PacketDescriptor;
 import com.slytechs.sdk.protocol.core.stack.PacketPool;
 
 /**
@@ -159,129 +152,52 @@ import com.slytechs.sdk.protocol.core.stack.PacketPool;
  * @see PacketDescriptor
  * @see BoundView
  */
-public class Packet extends BoundView
-		implements Poolable, Persistable<Packet>, Detailable {
+public class Packet
+		implements BindableView, Poolable, Persistable<Packet>, Detailable {
 
 	/**
-	 * The Constant DEFAULT_DESCRIPTOR_TYPE set to NetPacketDescriptor type. Net
-	 * descriptor type is the most versitile descriptor type, capable of storing
-	 * full packet dissection table as well as, TX settings, color, hash and many
-	 * flag types.
-	 */
-	private static final DescriptorInfo DEFAULT_DESCRIPTOR_TYPE = DescriptorInfo.NET;
-
-	/**
-	 * The Constant DEFAULT_PACKET_LENGTH. The packet length with TSO (TCP Segment
-	 * Offload, a common NIC feature) can be up to 64KB when TCP segments are
-	 * reassembled before capture.
-	 */
-	private static final long DEFAULT_PACKET_LENGTH = 65_536;
-
-	/**
-	 * Creates a descriptor of the specified type.
-	 */
-	private static PacketDescriptor createDescriptor(DescriptorInfo type) {
-		return switch (type) {
-		case NET -> new NetPacketDescriptor();
-		case PCAP_PACKED -> PcapDescriptorPacked.of(ByteOrder.nativeOrder());
-		case PCAP_PADDED -> new PcapDescriptorPadded();
-		default -> throw new IllegalArgumentException("Unsupported descriptor type: " + type);
-		};
-	}
-
-	/**
-	 * Creates a fixed packet with slab-allocated memory.
+	 * Default descriptor type: {@link DescriptorType#TYPE2 Type2PacketDescriptor}.
 	 * 
 	 * <p>
-	 * Both data and descriptor use {@link FixedMemory} allocated from the provided
-	 * slab allocator. Data is copied into this memory and persists across recycle
-	 * cycles.
+	 * The most versatile descriptor capable of storing full dissection tables, TX
+	 * settings, color, hash, and various flags.
 	 * </p>
-	 *
-	 * @param allocator the slab allocator for memory allocation
-	 * @return a new fixed packet
 	 */
-	public static Packet ofFixed(SlabAllocator allocator) {
-		return ofFixedType(allocator, DEFAULT_PACKET_LENGTH, DEFAULT_DESCRIPTOR_TYPE); // Default jumbo frame size
-	}
+	public static final DescriptorType DEFAULT_DESCRIPTOR_TYPE = DescriptorType.TYPE2;
 
 	/**
-	 * Creates a fixed packet with slab-allocated memory of specified size.
-	 *
-	 * @param allocator the slab allocator for memory allocation
-	 * @param dataSize  the size of the data buffer in bytes
-	 * @return a new fixed packet
-	 */
-	public static Packet ofFixed(SlabAllocator allocator, long dataSize) {
-		return ofFixedType(allocator, dataSize, DEFAULT_DESCRIPTOR_TYPE);
-	}
-
-	/**
-	 * Creates a fixed packet with slab-allocated memory.
+	 * Default packet buffer length (65,536 bytes).
 	 * 
 	 * <p>
-	 * Both data and descriptor use {@link FixedMemory} allocated from the provided
-	 * slab allocator. Data is copied into this memory and persists across recycle
-	 * cycles.
+	 * Accommodates jumbo frames and TSO-reassembled packets up to 64KB.
 	 * </p>
-	 *
-	 * @param allocator the slab allocator for memory allocation
-	 * @return a new fixed packet
 	 */
-	public static Packet ofFixedType(SlabAllocator allocator, DescriptorInfo type) {
-		return ofFixedType(allocator, DEFAULT_PACKET_LENGTH, type); // Default jumbo frame size
-	}
+	public static final long DEFAULT_PACKET_LENGTH = 65_536;
 
 	/**
-	 * Creates a fixed packet with slab-allocated memory of specified size.
+	 * Creates a hybrid packet using the default descriptor type.
 	 *
-	 * @param allocator the slab allocator for memory allocation
-	 * @param dataSize  the size of the data buffer in bytes
-	 * @return a new fixed packet
-	 */
-	public static Packet ofFixedType(SlabAllocator allocator, long dataSize, DescriptorInfo type) {
-		PacketDescriptor descriptor = createDescriptor(type);
-		MemorySegment dataSeg = allocator.allocate(dataSize, 8);
-		MemorySegment descSeg = allocator.allocate(descriptor.length(), 8);
-
-		FixedMemory dataMemory = new FixedMemory(dataSeg);
-		FixedMemory descMemory = new FixedMemory(descSeg);
-		descriptor.bind(descMemory);
-
-		Packet packet = new Packet(dataMemory, descriptor);
-		packet.poolEntry.bindSlab(allocator, dataSeg);
-
-		return packet;
-	}
-
-	/**
-	 * Creates a hybrid packet with scoped data and fixed descriptor.
-	 * 
-	 * <p>
-	 * Data uses {@link ScopedMemory} for zero-copy native access, while the
-	 * descriptor uses {@link FixedMemory} for persistence. Useful when native
-	 * descriptors need conversion while data remains zero-copy.
-	 * </p>
-	 *
-	 * @return a new hybrid packet
+	 * @return new hybrid packet
+	 * @see #ofHybridType(DescriptorType)
 	 */
 	public static Packet ofHybrid() {
 		return ofHybridType(DEFAULT_DESCRIPTOR_TYPE);
 	}
 
 	/**
-	 * Creates a hybrid packet with scoped data and fixed descriptor.
+	 * Creates a hybrid packet with the specified descriptor type.
 	 * 
 	 * <p>
-	 * Data uses {@link ScopedMemory} for zero-copy native access, while the
-	 * descriptor uses {@link FixedMemory} for persistence. Useful when native
-	 * descriptors need conversion while data remains zero-copy.
+	 * Packet data uses {@link ScopedMemory} (zero-copy binding to native memory),
+	 * while the descriptor uses {@link FixedMemory} for independent persistence.
+	 * Ideal when converting native descriptors but keeping zero-copy data access.
 	 * </p>
 	 *
-	 * @return a new hybrid packet
+	 * @param type descriptor type
+	 * @return new hybrid packet
 	 */
-	public static Packet ofHybridType(DescriptorInfo type) {
-		PacketDescriptor descriptor = createDescriptor(type);
+	public static Packet ofHybridType(DescriptorType type) {
+		PacketDescriptor descriptor = type.newPacketDescriptor();
 		ScopedMemory dataMemory = new ScopedMemory();
 		FixedMemory descMemory = new FixedMemory(descriptor.length());
 		descriptor.bind(descMemory);
@@ -290,260 +206,213 @@ public class Packet extends BoundView
 	}
 
 	/**
-	 * Creates a scoped packet for zero-copy capture.
-	 * 
-	 * <p>
-	 * Both data and descriptor use {@link ScopedMemory} that binds directly to
-	 * native segments without copying. Ideal for high-speed capture where packets
-	 * don't need to persist beyond immediate processing.
-	 * </p>
+	 * Creates a scoped packet using the default descriptor type.
 	 *
-	 * @return a new scoped packet
+	 * @return new scoped packet
+	 * @see #ofScopedType(DescriptorType)
 	 */
 	public static Packet ofScoped() {
 		return ofScopedType(DEFAULT_DESCRIPTOR_TYPE);
-
 	}
 
 	/**
-	 * Creates a scoped packet for zero-copy capture.
+	 * Creates a scoped packet with the specified descriptor type.
 	 * 
 	 * <p>
-	 * Both data and descriptor use {@link ScopedMemory} that binds directly to
-	 * native segments without copying. Ideal for high-speed capture where packets
-	 * don't need to persist beyond immediate processing.
+	 * Both data and descriptor use {@link ScopedMemory} for direct zero-copy
+	 * binding to native memory segments. Optimal for high-performance capture paths
+	 * where packets are processed immediately and do not need persistence.
 	 * </p>
 	 *
-	 * @return a new scoped packet
+	 * @param type descriptor type
+	 * @return new scoped packet
 	 */
-	public static Packet ofScopedType(DescriptorInfo type) {
+	public static Packet ofScopedType(DescriptorType type) {
 		ScopedMemory dataMemory = new ScopedMemory();
 		ScopedMemory descMemory = new ScopedMemory();
-		PacketDescriptor descriptor = createDescriptor(type);
+		PacketDescriptor descriptor = type.newPacketDescriptor();
 		descriptor.bind(descMemory);
 
 		return new Packet(dataMemory, descriptor);
 	}
 
-	/** The packet descriptor containing dissection results. */
+	/** Packet descriptor holding dissection results and metadata. */
 	private PacketDescriptor packetDescriptor;
 
-	// =========================================================================
-	// Factory Methods
-	// =========================================================================
+	/**
+	 * The memory view binding with assert checks for pooled packets. When java
+	 * asserts are enabled, the binding checks to ensure that a pooled packet with
+	 * complex structure is not being rebound to some other user memory. Pooled
+	 * packets need to preserve their structure so that they can be reused. When
+	 * assert is disabled (from command line), all these are no-ops and delegate to
+	 * base class implementation.
+	 */
+	private final BoundView boundView = new BoundView() {
+		/**
+		 * {@inheritDoc}
+		 * 
+		 * <p>
+		 * <b>Warning:</b> Manual rebinding of pooled packets corrupts the pool's
+		 * pre-allocated structure. Check {@link #isPooled()} first.
+		 * </p>
+		 */
+		@Override
+		public void bind(BindableView view) {
+			assert !isPooled() : "Rebinding pooled packet destroys pool structure";
+			super.bind(view);
+		}
 
-	/** Head of the packet tag chain for extended metadata. */
-	private PacketTag headTag;
+		/**
+		 * {@inheritDoc}
+		 * 
+		 * <p>
+		 * <b>Warning:</b> Manual rebinding of pooled packets corrupts the pool's
+		 * pre-allocated structure. Check {@link #isPooled()} first.
+		 * </p>
+		 */
+		@Override
+		public void bind(BindableView view, long offset) {
+			assert !isPooled() : "Rebinding pooled packet destroys pool structure";
+			super.bind(view, offset);
+		}
+
+		/**
+		 * {@inheritDoc}
+		 * 
+		 * <p>
+		 * <b>Warning:</b> Manual rebinding of pooled packets corrupts the pool's
+		 * pre-allocated structure. Check {@link #isPooled()} first.
+		 * </p>
+		 */
+		@Override
+		public void bind(BindableView view, long offset, long length) {
+			assert !isPooled() : "Rebinding pooled packet destroys pool structure";
+			super.bind(view, offset, length);
+		}
+
+		/**
+		 * {@inheritDoc}
+		 * 
+		 * <p>
+		 * <b>Warning:</b> Manual rebinding of pooled packets corrupts the pool's
+		 * pre-allocated structure. Check {@link #isPooled()} first.
+		 * </p>
+		 */
+		@Override
+		public void bind(Memory memory) {
+			assert !isPooled() : "Rebinding pooled packet destroys pool structure";
+			super.bind(memory);
+		}
+
+		/**
+		 * {@inheritDoc}
+		 * 
+		 * <p>
+		 * <b>Warning:</b> Manual rebinding of pooled packets corrupts the pool's
+		 * pre-allocated structure. Check {@link #isPooled()} first.
+		 * </p>
+		 */
+		@Override
+		public void bind(Memory memory, long offset) {
+			assert !isPooled() : "Rebinding pooled packet destroys pool structure";
+			super.bind(memory, offset);
+		}
+
+		/**
+		 * {@inheritDoc}
+		 * 
+		 * <p>
+		 * <b>Warning:</b> Manual rebinding of pooled packets corrupts the pool's
+		 * pre-allocated structure. Check {@link #isPooled()} first.
+		 * </p>
+		 */
+		@Override
+		public void bind(Memory memory, long offset, long length) {
+			assert !isPooled() : "Rebinding pooled packet destroys pool structure";
+			super.bind(memory, offset, length);
+		}
+
+		/**
+		 * {@inheritDoc}
+		 * 
+		 * <p>
+		 * <b>Warning:</b> Manual unbinding of pooled packets corrupts the pool. Use
+		 * {@link #recycle()} instead.
+		 * </p>
+		 */
+		@Override
+		public void unbind() {
+			assert !isPooled() : "Unbinding pooled packet destroys pool structure - use poolRecycle()";
+			super.unbind();
+		}
+	};
 
 	/**
-	 * Pool entry for pool lifecycle management.
-	 * 
-	 * <p>
-	 * Handles allocation/recycle callbacks and maintains pool linkage. The inner
-	 * class pattern gives callbacks access to packet fields.
-	 * </p>
+	 * Internal pool entry managing lifecycle callbacks for pooled instances.
 	 */
-	private final PoolEntry poolEntry = new PoolEntry() {
+	public final PoolEntry poolEntry = new PoolEntry() {
 
 		@Override
 		protected void onAllocate() {
-			// Ready for new use - bindings preserved from pool structure
-		}
-
-		@Override
-		protected void onEvict() {
-			super.onEvict();
-			// Additional cleanup if needed when permanently removed from pool
+			// Packet is ready for new use; memory bindings are preserved from pool
 		}
 
 		@Override
 		protected void onRecycle() {
-			// Reset packet state for reuse
-			headTag = null;
-
-			if (isPooled()) {
-				// Pooled packets: preserve data/descriptor view structures,
-				// only unbind scoped segments (FixedMemory.unbindIfScoped is no-op)
+			if (super.isPooled()) {
 				boundMemory().unbindIfScoped();
 				packetDescriptor.boundMemory().unbindIfScoped();
 			} else {
-				// Non-pooled packets: full unbind, view can be reused elsewhere
 				unbind();
 			}
 		}
 	};
 
 	/**
-	 * Constructs an unbound packet.
+	 * Creates an unbound packet with the default {@link Type2PacketDescriptor}.
 	 * 
 	 * <p>
-	 * The packet must be bound to memory before use, either directly via
-	 * {@link #bind(Memory)} or through pool allocation.
+	 * The packet must be subsequently bound to memory (via {@link #bind(Memory)} or
+	 * pool allocation) before use.
 	 * </p>
 	 */
 	public Packet() {
-		this.packetDescriptor = new NetPacketDescriptor();
+		this(DescriptorType.DEFAULT_TYPE);
 	}
 
 	/**
-	 * Constructs a packet with the specified descriptor type.
+	 * Creates an unbound packet with a specific descriptor type.
 	 *
 	 * @param descriptorType the descriptor type to use
 	 */
-	public Packet(DescriptorInfo descriptorType) {
-		this.packetDescriptor = createDescriptor(descriptorType);
+	public Packet(DescriptorType descriptorType) {
+		this.packetDescriptor = descriptorType.newPacketDescriptor();
 	}
 
-	// =========================================================================
-	// Pool Management
-	// =========================================================================
-
 	/**
-	 * Constructs a packet with pre-allocated memory structures.
-	 * 
-	 * <p>
-	 * Used by pool factories to create packets with specific memory configurations.
-	 * </p>
+	 * Package-private constructor used by factory methods to create pre-configured
+	 * packets.
 	 *
-	 * @param dataMemory the memory for packet data
-	 * @param descriptor the packet descriptor
+	 * @param dataMemory pre-allocated memory for packet data (may be null)
+	 * @param descriptor pre-created descriptor instance
 	 */
-	protected Packet(Memory dataMemory, PacketDescriptor descriptor) {
+	public Packet(Memory dataMemory, PacketDescriptor descriptor) {
 		this.packetDescriptor = descriptor;
 		if (dataMemory != null) {
-			super.bind(dataMemory);
+			boundView.bind(dataMemory);
 		}
 	}
 
-	/**
-	 * Adds a tag to the packet tag chain.
-	 *
-	 * @param tag the tag to add
-	 */
-	public void addTag(PacketTag tag) {
-		assert tag != null : "Tag cannot be null";
-		tag.setNext(headTag);
-		headTag = tag;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
-	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
-	 * rebinding.
-	 * </p>
-	 *
-	 * @param view the view to bind to
-	 * @throws AssertionError if assertions enabled and packet is pooled
-	 */
 	@Override
-	public void bind(BindableView view) {
-		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
-		super.bind(view);
+	public BoundView boundView() {
+		return boundView;
 	}
 
 	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
-	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
-	 * rebinding.
-	 * </p>
+	 * Builds detailed textual representation of the packet and its headers.
 	 *
-	 * @param view   the view to bind to
-	 * @param offset the offset within the view's active data
-	 * @throws AssertionError if assertions enabled and packet is pooled
+	 * @param detail builder to append detail information to
 	 */
-	@Override
-	public void bind(BindableView view, long offset) {
-		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
-		super.bind(view, offset);
-	}
-
-	// =========================================================================
-	// Binding Overrides (with pool protection assertions)
-	// =========================================================================
-
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
-	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
-	 * rebinding.
-	 * </p>
-	 *
-	 * @param view   the view to bind to
-	 * @param offset the offset within the view's active data
-	 * @param length the length of the new view
-	 * @throws AssertionError if assertions enabled and packet is pooled
-	 */
-	@Override
-	public void bind(BindableView view, long offset, long length) {
-		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
-		super.bind(view, offset, length);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
-	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
-	 * rebinding.
-	 * </p>
-	 *
-	 * @param memory the memory to bind to
-	 * @throws AssertionError if assertions enabled and packet is pooled
-	 */
-	@Override
-	public void bind(Memory memory) {
-		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
-		super.bind(memory);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
-	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
-	 * rebinding.
-	 * </p>
-	 *
-	 * @param memory the memory to bind to
-	 * @param offset the offset within the memory's active data
-	 * @throws AssertionError if assertions enabled and packet is pooled
-	 */
-	@Override
-	public void bind(Memory memory, long offset) {
-		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
-		super.bind(memory, offset);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * <b>Warning:</b> For pooled packets, rebinding destroys the pool's
-	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
-	 * rebinding.
-	 * </p>
-	 *
-	 * @param memory the memory to bind to
-	 * @param offset the offset within the memory's active data
-	 * @param length the length of the view
-	 * @throws AssertionError if assertions enabled and packet is pooled
-	 */
-	@Override
-	public void bind(Memory memory, long offset, long length) {
-		assert !isPooled() : "Rebinding pooled packet destroys pool structure - use isPooled() to check";
-		super.bind(memory, offset, length);
-	}
-
 	@Override
 	public void buildDetail(DetailBuilder detail) {
 		for (BindingInfo info : packetDescriptor) {
@@ -564,29 +433,19 @@ public class Packet extends BoundView
 	}
 
 	/**
-	 * Returns the capture length in bytes.
-	 * 
-	 * <p>
-	 * This is the number of bytes actually captured and available in the packet
-	 * data. May be less than {@link #wireLength()} if the packet was truncated
-	 * during capture.
-	 * </p>
+	 * Returns the number of bytes captured from the wire (may be less than wire
+	 * length if truncated).
 	 *
-	 * @return the captured length in bytes
+	 * @return capture length in bytes
 	 */
 	public int captureLength() {
 		return packetDescriptor.captureLength();
 	}
 
 	/**
-	 * Clears all tags from this packet.
-	 */
-	public void clearTags() {
-		headTag = null;
-	}
-
-	/**
-	 * @see com.slytechs.sdk.common.memory.pool.Persistable#copy()
+	 * Creates a deep copy of this packet with independently allocated memory.
+	 *
+	 * @return new independent packet containing copied data and descriptor
 	 */
 	@Override
 	public Packet copy() {
@@ -603,151 +462,104 @@ public class Packet extends BoundView
 	}
 
 	/**
-	 * Copies this packet's data and descriptor into the target packet.
+	 * Copies packet data and descriptor into the provided target packet.
 	 * 
 	 * <p>
-	 * The target packet must have sufficient capacity for both data and descriptor.
-	 * This method is useful for copying into pooled packets to avoid allocation.
+	 * Target must have sufficient pre-allocated capacity. Useful for copying into
+	 * pooled packets without additional allocation.
 	 * </p>
-	 * 
-	 * <pre>{@code
-	 * Pool<Packet> copyPool = PacketPool.ofFixed();
-	 * Packet target = copyPool.allocate(packet.captureLength());
-	 * packet.copyTo(target);
-	 * // target now contains copy of packet data
-	 * }</pre>
 	 *
-	 * @param target the target packet to copy into
-	 * @throws IllegalArgumentException if target has insufficient capacity
+	 * @param target destination packet
+	 * @return the target packet (for chaining)
+	 * @throws IllegalArgumentException if target capacity is insufficient
 	 */
 	@Override
 	public Packet copyTo(Packet target) {
 		assert target != null : "Target packet cannot be null";
 		assert target.boundMemory().segment().byteSize() >= this.captureLength()
-				: "Target packet has insufficient data capacity, boundMemory length=" + target.boundMemory()
-						+ ", captureLength=" + this.captureLength();
+				: "Target packet has insufficient data capacity";
 		assert target.packetDescriptor.boundMemory().segment().byteSize() >= this.packetDescriptor.boundMemory()
 				.segment().byteSize()
 				: "Target packet has insufficient descriptor capacity";
 
-		// Copy packet data
 		Persistable.super.copyTo(target);
-
-		// Copy descriptor
 		packetDescriptor.copyTo(target.descriptor());
-
-		// Copy tags if present
-		if (headTag != null) {
-			target.headTag = headTag.copy();
-		} else {
-			target.headTag = null;
-		}
 
 		return target;
 	}
 
 	/**
-	 * Returns the packet descriptor containing dissection results.
-	 * 
-	 * <p>
-	 * The descriptor provides protocol presence information and header
-	 * offset/length data for efficient header access.
-	 * </p>
+	 * Returns the current packet descriptor.
 	 *
-	 * @return the packet descriptor
+	 * @return packet descriptor instance
 	 */
 	public PacketDescriptor descriptor() {
 		return packetDescriptor;
 	}
 
 	/**
-	 * @see com.slytechs.sdk.common.memory.pool.Persistable#duplicate(com.slytechs.sdk.common.memory.pool.Persistable)
+	 * Creates a shallow duplicate sharing memory references (reference-counted).
+	 *
+	 * @param target packet to duplicate into
+	 * @return the target packet
 	 */
 	@Override
 	public Packet duplicate(Packet target) {
 		Persistable.super.duplicate(target);
 
-		// Descriptor shared
 		packetDescriptor.boundMemory().incrementRef();
 		target.packetDescriptor.bind(this.packetDescriptor.boundView());
 
-		target.headTag = this.headTag;
 		return target;
 	}
 
 	/**
-	 * Returns the head of the packet tag chain.
+	 * Binds a reusable header instance to this packet (default depth 0).
 	 *
-	 * @return the first tag, or null if no tags
-	 */
-	public PacketTag getTags() {
-		return headTag;
-	}
-
-	/**
-	 * Binds a header instance to this packet if the protocol is present.
-	 * 
-	 * <p>
-	 * This is the primary zero-allocation header access pattern. The same header
-	 * instance can be reused across packets.
-	 * </p>
-	 * 
-	 * <pre>{@code
-	 * Tcp tcp = new Tcp();
-	 * if (packet.hasHeader(tcp)) {
-	 * 	int srcPort = tcp.srcPort();
-	 * 	int dstPort = tcp.dstPort();
-	 * }
-	 * }</pre>
-	 *
-	 * @param header the header instance to bind
-	 * @return true if the header was bound (protocol present)
+	 * @param header header instance to bind
+	 * @return {@code true} if protocol is present and header was bound
+	 * @see #hasHeader(Header, int)
 	 */
 	public boolean hasHeader(Header header) {
 		return hasHeader(header, 0);
 	}
 
 	/**
-	 * Binds a header instance at the specified depth.
+	 * Binds a reusable header instance at the specified occurrence depth.
 	 *
-	 * @param header the header instance to bind
-	 * @param depth  the occurrence depth (0 = first/outer)
-	 * @return true if the header was bound
+	 * @param header header instance to bind
+	 * @param depth  protocol occurrence (0 = outermost)
+	 * @return {@code true} if protocol present at depth and header bound
 	 */
 	public boolean hasHeader(Header header, int depth) {
 		return packetDescriptor.bindHeader(this, header, header.getProtocolId(), depth);
 	}
 
 	/**
-	 * Checks if this packet is owned by a pool.
+	 * Checks whether this packet instance is managed by a pool.
 	 *
-	 * @return true if this packet belongs to a pool
+	 * @return {@code true} if owned by a pool
 	 */
 	public boolean isPooled() {
 		return poolEntry.isPooled();
 	}
 
 	/**
-	 * Checks if a protocol header is present in this packet.
+	 * Checks if a protocol is present (default depth 0).
 	 *
-	 * @param id the protocol ID constant
-	 * @return true if the protocol is present
+	 * @param id protocol ID
+	 * @return {@code true} if protocol present
 	 */
 	public boolean isPresent(int id) {
 		return isPresent(id, 0);
 	}
 
 	/**
-	 * Checks if a protocol header is present at the specified depth.
-	 * 
-	 * <p>
-	 * Depth is used for tunneled protocols where multiple instances of the same
-	 * protocol may be present (e.g., outer IP vs inner IP).
-	 * </p>
+	 * Checks if a protocol is present at the specified depth.
 	 *
-	 * @param id    the protocol ID constant
-	 * @param depth the occurrence depth (0 = first/outer)
-	 * @return true if the protocol is present at the specified depth
+	 * @param id    protocol ID
+	 * @param depth occurrence depth (0 = outermost)
+	 * @return {@code true} if protocol present at depth
 	 */
 	public boolean isPresent(int id, int depth) {
 		long encoded = packetDescriptor.mapProtocol(id, depth);
@@ -755,32 +567,19 @@ public class Packet extends BoundView
 	}
 
 	/**
-	 * @see com.slytechs.sdk.common.memory.pool.Persistable#newUnbound()
+	 * Creates a new unbound packet of the same descriptor type.
+	 *
+	 * @return new unbound packet instance
 	 */
 	@Override
 	public Packet newUnbound() {
-		return new Packet(descriptor().descriptorInfo());
+		return new Packet(descriptor().descriptorType());
 	}
 
 	/**
-	 * Returns the pool that owns this packet.
-	 * 
-	 * <p>
-	 * The returned pool is always typed as {@code Pool<Packet>} since packets are
-	 * only ever allocated from packet pools.
-	 * </p>
+	 * Returns the internal pool entry for lifecycle management.
 	 *
-	 * @return the owning pool, or null if not pooled
-	 */
-	@SuppressWarnings("unchecked")
-	public Pool<Packet> pool() {
-		return (Pool<Packet>) poolEntry.owningPool();
-	}
-
-	/**
-	 * Returns the pool entry for pool lifecycle management.
-	 *
-	 * @return the pool entry (never null)
+	 * @return pool entry (never null)
 	 */
 	@Override
 	public PoolEntry poolEntry() {
@@ -788,56 +587,22 @@ public class Packet extends BoundView
 	}
 
 	/**
-	 * Returns this packet to its owning pool.
-	 * 
-	 * <p>
-	 * If this packet was allocated from a pool, it is returned to that pool for
-	 * reuse. The {@code onRecycle()} callback clears packet state and unbinds
-	 * scoped memory while preserving pool structure.
-	 * </p>
-	 * 
-	 * <p>
-	 * If this packet is not pooled, this method does nothing.
-	 * </p>
+	 * Returns RX offload/capabilities from the descriptor.
+	 *
+	 * @return RX capabilities
 	 */
-	@Override
-	public void poolRecycle() {
-		poolEntry.recycle();
+	public RxCapabilities rx() {
+		return descriptor().rx();
 	}
 
 	/**
-	 * Removes a tag from the packet tag chain.
-	 *
-	 * @param tag the tag to remove
-	 * @return true if the tag was found and removed
-	 */
-	public boolean removeTag(PacketTag tag) {
-		if (headTag == tag) {
-			headTag = tag.next();
-			return true;
-		}
-
-		PacketTag current = headTag;
-		while (current != null && current.next() != null) {
-			if (current.next() == tag) {
-				current.setNext(tag.next());
-				return true;
-			}
-			current = current.next();
-		}
-
-		return false;
-	}
-
-	/**
-	 * Sets the packet descriptor containing dissection results.
+	 * Replaces the current packet descriptor.
 	 * 
 	 * <p>
-	 * The descriptor is typically produced by a dissector after analyzing the
-	 * packet data.
+	 * Typically used after dissection to attach new results.
 	 * </p>
 	 *
-	 * @param descriptor the packet descriptor to set
+	 * @param descriptor new descriptor
 	 */
 	public void setDescriptor(PacketDescriptor descriptor) {
 		assert descriptor != null : "Descriptor cannot be null";
@@ -845,65 +610,68 @@ public class Packet extends BoundView
 	}
 
 	/**
-	 * Returns the packet capture timestamp.
+	 * Returns the raw packet capture timestamp value.
 	 *
-	 * @return the timestamp value
+	 * @return timestamp in native units
 	 */
 	public long timestamp() {
 		return packetDescriptor.timestamp();
 	}
 
 	/**
-	 * Returns the packet timestamp with unit information.
+	 * Returns the packet timestamp with resolution/unit information.
 	 *
-	 * @return the timestamp info
+	 * @return {@link Timestamp} object
 	 */
 	public Timestamp timestampInfo() {
 		return new Timestamp(packetDescriptor.timestamp(), packetDescriptor.timestampUnit());
 	}
 
-	@Override
-	public String toString() {
-		return toDetailString();
-	}
-
 	/**
-	 * {@inheritDoc}
-	 * 
-	 * <p>
-	 * <b>Warning:</b> For pooled packets, unbinding destroys the pool's
-	 * pre-allocated structure. Use {@link #isPooled()} to check before manual
-	 * unbinding. Use {@link #poolRecycle()} instead to properly return pooled
-	 * packets.
-	 * </p>
+	 * Creates a string representation of the packet. Formats the three main packet
+	 * fields into a typical object description string.
 	 *
-	 * @throws AssertionError if assertions enabled and packet is pooled
+	 * @return formatted packet summary
 	 */
 	@Override
-	public void unbind() {
-		assert !isPooled() : "Unbinding pooled packet destroys pool structure - use recycle() instead";
-		super.unbind();
+	public String toString() {
+		String fmt = (captureLength() == wireLength())
+				? "Packet [len=%,-6d ts=%3$s]"
+				: "Packet [len=%,-6d wirelen=%,-6d ts=%s]";
+
+		return fmt.formatted(captureLength(), wireLength(), timestampInfo().toString());
 	}
 
 	/**
-	 * Returns the wire length in bytes.
-	 * 
-	 * <p>
-	 * This is the original size of the packet as it appeared on the network, which
-	 * may be larger than {@link #captureLength()} if truncated.
-	 * </p>
+	 * Returns a detailed string representation according to the specified detail
+	 * level.
 	 *
-	 * @return the original packet size in bytes
+	 * @param detail detail level
+	 * @return formatted packet summary or full dissection
+	 */
+	public String toString(Detail detail) {
+		if (detail == Detail.OFF)
+			return toString();
+
+		return new TextRenderer(detail).render(getDetail());
+	}
+
+	/**
+	 * Returns TX offload/capabilities from the descriptor.
+	 *
+	 * @return TX capabilities
+	 */
+	public TxCapabilities tx() {
+		return descriptor().tx();
+	}
+
+	/**
+	 * Returns the original wire length of the packet (before any capture
+	 * truncation).
+	 *
+	 * @return wire length in bytes
 	 */
 	public int wireLength() {
 		return packetDescriptor.wireLength();
-	}
-
-	/**
-	 * @param summary
-	 * @return
-	 */
-	public String toString(Detail detail) {
-		return new TextRenderer(detail).render(getDetail());
 	}
 }

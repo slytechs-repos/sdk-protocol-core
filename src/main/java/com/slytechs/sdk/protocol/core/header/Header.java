@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core;
+package com.slytechs.sdk.protocol.core.header;
 
 import java.lang.foreign.MemoryLayout;
 
@@ -23,7 +23,10 @@ import com.slytechs.sdk.common.memory.BindableView;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryStructure;
 import com.slytechs.sdk.common.util.Named;
-import com.slytechs.sdk.protocol.core.pack.ProtocolPackManager;
+import com.slytechs.sdk.protocol.core.Packet;
+import com.slytechs.sdk.protocol.core.Protocol;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
+import com.slytechs.sdk.protocol.core.spi.PackProvider;
 
 /**
  * @author Mark Bednarczyk [mark@slytechs.com]
@@ -59,7 +62,7 @@ public sealed abstract class Header
 			long offset,
 			long extendedLength) {
 
-		assert ProtocolId.descriptorId(this.protocolId) == ProtocolId.descriptorId(protocolId)
+		assert ProtocolIds.descriptorId(this.protocolId) == ProtocolIds.descriptorId(protocolId)
 				: "Header protocolId 0x" + Integer.toHexString(protocolId)
 						+ "does not match this header's id 0x" + Integer.toHexString(this.protocolId);
 
@@ -75,7 +78,7 @@ public sealed abstract class Header
 	}
 
 	public Protocol getHeaderProtocol() {
-		return ProtocolPackManager.lookupProtocol(getClass());
+		return PackProvider.lookupProtocol(getProtocolId());
 	}
 
 	public final int getInnerDepth() {

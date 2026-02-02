@@ -17,7 +17,7 @@
  */
 package com.slytechs.sdk.protocol.core.dissector;
 
-import com.slytechs.sdk.protocol.core.descriptor.DescriptorType;
+import com.slytechs.sdk.protocol.core.descriptor.DescriptorTypes;
 
 /**
  * 
@@ -29,5 +29,5 @@ public interface DissectorPlugin {
 
 	PacketDissector getDissector();
 
-	DescriptorType getDescriptorType();
+	DescriptorTypes getDescriptorType();
 }

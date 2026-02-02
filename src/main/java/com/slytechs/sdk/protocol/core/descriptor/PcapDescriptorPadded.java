@@ -23,6 +23,7 @@ import java.lang.invoke.VarHandle;
 import com.slytechs.sdk.common.foreign.NativeABI;
 import com.slytechs.sdk.common.format.StructFormattable;
 import com.slytechs.sdk.common.time.TimestampUnit;
+import com.slytechs.sdk.protocol.core.id.L2FrameType;
 
 import static java.lang.foreign.MemoryLayout.PathElement.*;
 
@@ -71,7 +72,7 @@ public class PcapDescriptorPadded
 	 * Instantiates a new pcap hdr descriptor.
 	 */
 	public PcapDescriptorPadded() {
-		this(L2FrameInfo.ETHER);
+		this(L2FrameType.ETHER);
 	}
 
 	/**
@@ -79,8 +80,8 @@ public class PcapDescriptorPadded
 	 *
 	 * @param l2Type the l 2 type
 	 */
-	public PcapDescriptorPadded(L2FrameInfo l2FrameInfo) {
-		super(DescriptorInfo.PCAP_PADDED, l2FrameInfo, TimestampUnit.PCAP_MICRO);
+	public PcapDescriptorPadded(L2FrameType l2FrameType) {
+		super(DescriptorType.PCAP_PADDED, l2FrameType, TimestampUnit.PCAP_MICRO);
 	}
 
 	/**
@@ -89,8 +90,8 @@ public class PcapDescriptorPadded
 	 * @param l2Type        the l 2 type
 	 * @param timestampUnit the timestamp unit
 	 */
-	public PcapDescriptorPadded(L2FrameInfo l2FrameInfo, TimestampUnit timestampUnit) {
-		super(DescriptorInfo.PCAP_PADDED, l2FrameInfo, timestampUnit);
+	public PcapDescriptorPadded(L2FrameType l2FrameType, TimestampUnit timestampUnit) {
+		super(DescriptorType.PCAP_PADDED, l2FrameType, timestampUnit);
 	}
 
 	/**
@@ -112,7 +113,7 @@ public class PcapDescriptorPadded
 	 */
 	@Override
 	public int descriptorId() {
-		return DescriptorType.PCAP_PADDED;
+		return DescriptorTypes.PCAP_PADDED;
 	}
 
 	/**
@@ -225,6 +226,6 @@ public class PcapDescriptorPadded
 	 */
 	@Override
 	public PacketDescriptor newUnbound() {
-		return new PcapDescriptorPadded(l2FrameInfo());
+		return new PcapDescriptorPadded(l2FrameType());
 	}
 }

@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core;
+package com.slytechs.sdk.protocol.core.id;
 
 /**
  * Internal protocol identifiers with hierarchical family encoding.
@@ -49,7 +49,7 @@ package com.slytechs.sdk.protocol.core;
  * <h2>Usage</h2>
  * 
  * <pre>{@code
- * import static com.slytechs.sdk.protocol.core.ProtocolId.*;
+ * import static com.slytechs.sdk.protocol.core.ProtocolIds.*;
  * 
  * // Descriptor stores lower 16 bits only
  * int descriptorValue = IPv4 & MASK_DESCRIPTOR;  // 0x0221
@@ -67,12 +67,12 @@ package com.slytechs.sdk.protocol.core;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface ProtocolId {
+public interface ProtocolIds {
 
 	// @formatter:off
     
     // ════════════════════════════════════════════════════════════════════════════
-    // Pack IDs (bits 15-8)
+    // ProtocolPack IDs (bits 15-8)
     // ════════════════════════════════════════════════════════════════════════════
 
     int PACK_BUILTIN    = 0x0000;  // System protocols
@@ -379,7 +379,7 @@ public interface ProtocolId {
     int PPP      = PACK_TCPIP | PPP_ORD;                                  // 0x0280 - PPP Family
     int PPPoE    = PACK_TCPIP | 0x81 | (PPP_ORD << 16);                   // 0x0281 - PPP over Ethernet
     int PPPoE_D  = PACK_TCPIP | 0x82 | (PPP_ORD << 16);                   // 0x0282 - PPPoE Discovery
-    int PPPoE_S  = PACK_TCPIP | 0x83 | (PPP_ORD << 16);                   // 0x0283 - PPPoE Session
+    int PPPoE_S  = PACK_TCPIP | 0x83 | (PPP_ORD << 16);                   // 0x0283 - PPPoE SystemSession
     int HDLC     = PACK_TCPIP | 0x84;                                     // 0x0284 - HDLC
     int CHDLC    = PACK_TCPIP | 0x85;                                     // 0x0285 - Cisco HDLC
 
@@ -603,7 +603,13 @@ public interface ProtocolId {
     int RESERVED_AUTH_1 = PACK_WEB | 0x9E;                                // Reserved
     int RESERVED_AUTH_2 = PACK_WEB | 0x9F;                                // Reserved
 
-    // Reserved: 0x03A0-0x03FF
+    // ──────────────────────────────────────────────────────────────────────────
+    // WEB APPLICATION LAYER (0x03A0-0x03AF)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    int HTML = PACK_WEB | 0xA0;                                           // 0x03A0 - HTML
+
+    // Reserved: 0x03B0-0x03FF
 
     // ════════════════════════════════════════════════════════════════════════════
     // TELCO PACK (0x04xx) - Telecommunications Protocols
@@ -790,9 +796,10 @@ public interface ProtocolId {
 	/**
 	 * Extracts the pack ID.
 	 */
-	static int packOf(int id) {
+	static int packId(int id) {
 		return id & MASK_PACK;
 	}
+
 
 	/**
 	 * Extracts the protocol index within the pack.
@@ -834,7 +841,7 @@ public interface ProtocolId {
 	 * Checks if two IDs are in the same family.
 	 */
 	static boolean sameFamily(int id1, int id2) {
-		if (packOf(id1) != packOf(id2))
+		if (packId(id1) != packId(id2))
 			return false;
 
 		int parent1 = parentOrdinal(id1);
@@ -885,7 +892,7 @@ public interface ProtocolId {
 	 */
 	static String nameOf(int id) {
 		int descId = descriptorId(id);
-		int pack = packOf(id);
+		int pack = packId(id);
 		int idx = indexOf(id);
 
 		// Handle by pack for efficiency

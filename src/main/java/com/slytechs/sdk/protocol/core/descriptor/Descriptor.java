@@ -136,7 +136,7 @@ package com.slytechs.sdk.protocol.core.descriptor;
  * a single thread or protected by appropriate synchronization.
  * 
  * @see PacketDescriptor
- * @see DescriptorType
+ * @see DescriptorTypes
  * @see PacketTag
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
@@ -186,7 +186,7 @@ public interface Descriptor {
 	 * 
 	 * <pre>{@code
 	 * public void processDescriptor(Descriptor desc) {
-	 * 	DescriptorType type = desc.type();
+	 * 	DescriptorTypes type = desc.type();
 	 * 
 	 * 	// Log descriptor type for monitoring
 	 * 	logger.debug("Processing {} descriptor, ID: {}, Length: {}",
@@ -203,13 +203,13 @@ public interface Descriptor {
 	 * }</pre>
 	 * 
 	 * @return the descriptor type, never {@code null}
-	 * @see DescriptorType
+	 * @see DescriptorTypes
 	 */
-	default DescriptorType descriptorType() {
-		return descriptorInfo();
+	default DescriptorTypes descriptorTypes() {
+		return descriptorType();
 	}
 
-	DescriptorInfo descriptorInfo();
+	DescriptorType descriptorType();
 
 	/**
 	 * Returns the unique identifier for this descriptor.
@@ -255,7 +255,7 @@ public interface Descriptor {
 	 * @return the descriptor identifier, typically non-negative
 	 */
 	default int descriptorId() {
-		return descriptorInfo().descriptorId();
+		return descriptorType().id();
 	}
 
 	/**

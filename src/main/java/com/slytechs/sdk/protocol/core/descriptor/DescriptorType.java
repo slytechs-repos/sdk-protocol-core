@@ -1,54 +1,134 @@
 /*
- * Sly Technologies Free License
- * 
- * Copyright 2024 Sly Technologies Inc.
+ * Copyright 2005-2026 Sly Technologies Inc.
  *
- * Licensed under the Sly Technologies Free License (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- * 
- * http://www.slytechs.com/free-license-text
- * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.slytechs.sdk.protocol.core.descriptor;
 
+import java.nio.ByteOrder;
+import java.util.function.Supplier;
+
+import com.slytechs.sdk.common.util.IntId;
+
 /**
- * Descriptor type constants.
+ * Descriptor type metadata.
  *
  * @author Mark Bednarczyk
  * @author Sly Technologies Inc.
  */
-public interface DescriptorType {
+public enum DescriptorType implements DescriptorTypes, IntId {
 
-	/** SDK packet descriptor - on demand protocol dissection (16 bytes) */
-	int TYPE1 = 1;
+	/** Unknown type */
+	UNKNOWN(DescriptorTypes.UNKNOWN, "UNKNOWN"),
 
-	/** SDK packet descriptor - full protocol table (~96 bytes) */
-	int TYPE2 = 2;
+	/** The net. */
+	TYPE1(DescriptorTypes.TYPE1, "TYPE1", Type1PacketDescriptor::new),
 
-	/** Pcap file header - kernel format (24-byte on x64 padded) */
-	int PCAP_PADDED = 12;
+	/** The type2. */
+	TYPE2(DescriptorTypes.TYPE2, "TYPE2", Type2PacketDescriptor::new),
 
-	/** Pcap packet - file format (16-byte c-struct packed) */
-	int PCAP_PACKED = 13;
-
-	/** Napatech native */
-	int NTAPI = 14;
-
-	/** DPDK native */
-	int DPDK = 15;
+	/** The pcap padded (24-bytes on x64 c-struct padded.) */
+	PCAP_PADDED(DescriptorTypes.PCAP_PADDED, "PCAP_PADDED", PcapDescriptorPadded::new),
 
 	/**
-	 * Gets the descriptor type constant.
-	 *
-	 * @return the descriptor type
+	 * The pcap packed (16-bytes c-struct packed.) Typically used when reading from
+	 * pcap capture files.
 	 */
-	int descriptorId();
+	PCAP_PACKED(DescriptorTypes.PCAP_PACKED, "PCAP_PACKED", () -> PcapDescriptorPacked.of(ByteOrder.nativeOrder())),
 
-	PacketDescriptor newPacketDescriptor();
+	/** The ntapi. */
+	NTAPI(DescriptorTypes.NTAPI, "NTAPI"),
+
+	/** The dpdk. */
+	DPDK(DescriptorTypes.DPDK, "DPDK"),
+
+	;
+
+	/**
+	 * The default descriptor type (TYPE2) with full dissected packet protocol table
+	 * support and TX/RX capabilities.
+	 */
+	public static final DescriptorType DEFAULT_TYPE = TYPE2;
+
+	/** The id. */
+	private final int descriptorType;
+
+	/** The label. */
+	private final String label;
+
+	private final Supplier<PacketDescriptor> factory;
+
+	/**
+	 * Instantiates a new descriptor type info.
+	 *
+	 * @param descriptorType the id
+	 * @param label          the label
+	 */
+	DescriptorType(int descriptorType, String label) {
+		this.descriptorType = descriptorType;
+		this.label = label;
+
+		this.factory = () -> {
+			throw new IllegalArgumentException("Unsupported descriptor type: " + label);
+		};
+	}
+
+	/**
+	 * Instantiates a new descriptor type info.
+	 *
+	 * @param descriptorType the id
+	 * @param label          the label
+	 */
+	DescriptorType(int descriptorType, String label, Supplier<PacketDescriptor> factory) {
+		this.descriptorType = descriptorType;
+		this.label = label;
+		this.factory = factory;
+	}
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.DescriptorTypes#id()
+	 */
+	@Override
+	public int id() {
+		return descriptorType;
+	}
+
+	/**
+	 * Gets the label.
+	 *
+	 * @return the label
+	 */
+	public String getLabel() {
+		return label;
+	}
+
+	/**
+	 * Value of.
+	 *
+	 * @param type the type
+	 * @return the descriptor type info
+	 */
+	public static DescriptorType valueOf(int type) {
+		for (DescriptorType info : values()) {
+			if (info.descriptorType == type)
+				return info;
+		}
+
+		return UNKNOWN;
+	}
+
+	public PacketDescriptor newPacketDescriptor() {
+		return factory.get();
+	}
+
 }

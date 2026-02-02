@@ -31,10 +31,10 @@ import org.junit.jupiter.api.Test;
 
 import com.slytechs.sdk.common.memory.Memory;
 import com.slytechs.sdk.common.memory.ScopedMemory;
-import com.slytechs.sdk.common.memory.pool.FreeListPool;
+import com.slytechs.sdk.common.memory.pool.LockFreePool;
 import com.slytechs.sdk.common.memory.pool.Pool;
 import com.slytechs.sdk.common.memory.pool.PoolSettings;
-import com.slytechs.sdk.protocol.core.descriptor.DescriptorInfo;
+import com.slytechs.sdk.protocol.core.descriptor.DescriptorType;
 import com.slytechs.sdk.protocol.core.descriptor.PcapDescriptorPadded;
 
 /**
@@ -42,7 +42,7 @@ import com.slytechs.sdk.protocol.core.descriptor.PcapDescriptorPadded;
  * 
  * <p>
  * Tests cover packet creation, binding, persistence, copying, pooling,
- * and descriptor access using {@link DescriptorInfo#PCAP_PADDED}.
+ * and descriptor access using {@link DescriptorType#PCAP_PADDED}.
  * </p>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
@@ -51,12 +51,12 @@ import com.slytechs.sdk.protocol.core.descriptor.PcapDescriptorPadded;
 @DisplayName("Packet Tests")
 class PacketTest {
 
-    /** Sample Ethernet frame: Dst MAC + Src MAC + EtherType (IPv4) + payload */
+    /** Sample Ethernet frame: Dst MAC + Src MAC + EtherTypes (IPv4) + payload */
     private static final byte[] SAMPLE_PACKET = {
         // Ethernet header (14 bytes)
         (byte) 0x00, (byte) 0x11, (byte) 0x22, (byte) 0x33, (byte) 0x44, (byte) 0x55,  // Dst MAC
         (byte) 0x66, (byte) 0x77, (byte) 0x88, (byte) 0x99, (byte) 0xAA, (byte) 0xBB,  // Src MAC
-        (byte) 0x08, (byte) 0x00,  // EtherType: IPv4
+        (byte) 0x08, (byte) 0x00,  // EtherTypes: IPv4
         // IPv4 header (20 bytes minimum)
         (byte) 0x45, (byte) 0x00, (byte) 0x00, (byte) 0x28,  // Version, IHL, TOS, Total Length
         (byte) 0x00, (byte) 0x01, (byte) 0x00, (byte) 0x00,  // ID, Flags, Fragment Offset
@@ -119,10 +119,10 @@ class PacketTest {
         @Test
         @DisplayName("Constructor with descriptor type creates correct descriptor")
         void constructorWithDescriptorType() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             
             assertNotNull(packet.descriptor());
-            assertEquals(DescriptorInfo.PCAP_PADDED, packet.descriptor().descriptorInfo());
+            assertEquals(DescriptorType.PCAP_PADDED, packet.descriptor().descriptorType());
         }
 
         @Test
@@ -159,7 +159,7 @@ class PacketTest {
         @Test
         @DisplayName("Bind to fixed memory makes packet persistent")
         void bindToFixedMemoryMakesPersistent() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             Memory fixed = Memory.of(PACKET_LENGTH);
             
             packet.bind(fixed);
@@ -171,7 +171,7 @@ class PacketTest {
         @Test
         @DisplayName("Bind to scoped memory makes packet non-persistent")
         void bindToScopedMemoryMakesNonPersistent() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             ScopedMemory scoped = new ScopedMemory();
             MemorySegment seg = createPacketData(arena);
             scoped.bind(seg, 0, PACKET_LENGTH);
@@ -185,7 +185,7 @@ class PacketTest {
         @Test
         @DisplayName("Unbind clears binding")
         void unbindClearsBinding() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             Memory fixed = Memory.of(PACKET_LENGTH);
             packet.bind(fixed);
             
@@ -197,7 +197,7 @@ class PacketTest {
         @Test
         @DisplayName("Bound packet provides segment access")
         void boundPacketProvidesSegmentAccess() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             Memory fixed = Memory.of(PACKET_LENGTH);
             packet.bind(fixed);
             
@@ -209,7 +209,7 @@ class PacketTest {
             
             // Verify
             assertEquals(SAMPLE_PACKET[0], seg.get(ValueLayout.JAVA_BYTE, 0));
-            assertEquals(SAMPLE_PACKET[12], seg.get(ValueLayout.JAVA_BYTE, 12));  // EtherType high byte
+            assertEquals(SAMPLE_PACKET[12], seg.get(ValueLayout.JAVA_BYTE, 12));  // EtherTypes high byte
         }
     }
 
@@ -223,7 +223,7 @@ class PacketTest {
         @BeforeEach
         void setUp() {
             arena = Arena.ofConfined();
-            packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            packet = new Packet(DescriptorType.PCAP_PADDED);
             
             // Bind packet data
             Memory dataMemory = Memory.of(PACKET_LENGTH);
@@ -234,7 +234,7 @@ class PacketTest {
             packet.bind(dataMemory);
             
             // Bind descriptor
-            Memory descMemory = Memory.of(PcapDescriptorPadded.DEFAULT_DESCRIPTOR_SIZE);
+            Memory descMemory = Memory.of(PcapDescriptorPadded.LARGEST_DESCRIPTOR_SIZE);
             MemorySegment descSeg = descMemory.segment();
             descSeg.set(ValueLayout.JAVA_INT, 0, PCAP_TS_SEC);
             descSeg.set(ValueLayout.JAVA_INT, 8, PCAP_TS_USEC);
@@ -290,7 +290,7 @@ class PacketTest {
         @Test
         @DisplayName("isPersistent returns true for fixed memory")
         void isPersistentReturnsTrueForFixed() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             Memory fixed = Memory.of(PACKET_LENGTH);
             packet.bind(fixed);
             
@@ -311,7 +311,7 @@ class PacketTest {
         @Test
         @DisplayName("persist on fixed returns same instance")
         void persistOnFixedReturnsSame() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             Memory fixed = Memory.of(PACKET_LENGTH);
             packet.bind(fixed);
             
@@ -323,7 +323,7 @@ class PacketTest {
         @Test
         @DisplayName("persist on scoped returns new persistent copy")
         void persistOnScopedReturnsNewCopy() {
-            Packet packet = Packet.ofScopedType(DescriptorInfo.PCAP_PADDED);
+            Packet packet = Packet.ofScopedType(DescriptorType.PCAP_PADDED);
             ScopedMemory scoped = new ScopedMemory();
             scoped.bind(createPacketData(arena), 0, PACKET_LENGTH);
             packet.bind(scoped);
@@ -362,7 +362,7 @@ class PacketTest {
         @BeforeEach
         void setUp() {
             arena = Arena.ofConfined();
-            sourcePacket = new Packet(DescriptorInfo.PCAP_PADDED);
+            sourcePacket = new Packet(DescriptorType.PCAP_PADDED);
             
             // Bind data
             Memory dataMemory = Memory.of(PACKET_LENGTH);
@@ -433,7 +433,7 @@ class PacketTest {
         @Test
         @DisplayName("copyTo copies to target")
         void copyToCopiesToTarget() {
-            Packet target = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet target = new Packet(DescriptorType.PCAP_PADDED);
             Memory targetData = Memory.of(PACKET_LENGTH);
             target.bind(targetData);
             Memory targetDesc = Memory.of(PcapDescriptorPadded.BYTE_SIZE);
@@ -458,7 +458,7 @@ class PacketTest {
 
         @BeforeEach
         void setUp() {
-            sourcePacket = new Packet(DescriptorInfo.PCAP_PADDED);
+            sourcePacket = new Packet(DescriptorType.PCAP_PADDED);
             
             Memory dataMemory = Memory.of(PACKET_LENGTH);
             MemorySegment dataSeg = dataMemory.segment();
@@ -513,17 +513,17 @@ class PacketTest {
         @Test
         @DisplayName("newUnbound creates unbound packet with correct descriptor type")
         void newUnboundCreatesCorrectType() {
-            Packet source = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet source = new Packet(DescriptorType.PCAP_PADDED);
             Packet unbound = source.newUnbound();
             
             assertFalse(unbound.isBound());
-            assertEquals(DescriptorInfo.PCAP_PADDED, unbound.descriptor().descriptorInfo());
+            assertEquals(DescriptorType.PCAP_PADDED, unbound.descriptor().descriptorType());
         }
 
         @Test
         @DisplayName("Packet not from pool - isPooled returns false")
         void packetNotFromPoolIsNotPooled() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             
             assertFalse(packet.poolEntry().isPooled());
         }
@@ -531,7 +531,7 @@ class PacketTest {
         @Test
         @DisplayName("recycle on non-pooled packet is no-op")
         void recycleOnNonPooledIsNoOp() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             Memory fixed = Memory.of(PACKET_LENGTH);
             packet.bind(fixed);
             
@@ -547,8 +547,8 @@ class PacketTest {
                     .segmentSize(PACKET_LENGTH)
                     .preallocate(true);
             
-            Pool<Packet> pool = new FreeListPool<>(settings, () -> {
-                Packet p = new Packet(DescriptorInfo.PCAP_PADDED);
+            Pool<Packet> pool = new LockFreePool<>(settings, () -> {
+                Packet p = new Packet(DescriptorType.PCAP_PADDED);
                 Memory fixed = Memory.of(PACKET_LENGTH);
                 p.bind(fixed);
                 Memory descMem = Memory.of(PcapDescriptorPadded.BYTE_SIZE);
@@ -576,7 +576,7 @@ class PacketTest {
 
         @BeforeEach
         void setUp() {
-            packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            packet = new Packet(DescriptorType.PCAP_PADDED);
             Memory dataMemory = Memory.of(PACKET_LENGTH);
             MemorySegment dataSeg = dataMemory.segment();
             for (int i = 0; i < SAMPLE_PACKET.length; i++) {
@@ -597,7 +597,7 @@ class PacketTest {
         @Test
         @DisplayName("segment() returns memory segment via view")
         void segmentReturnsSegmentViaView() {
-            MemorySegment seg = packet.segment();
+            MemorySegment seg = packet.boundMemory().segment();
             
             assertNotNull(seg);
             assertEquals(SAMPLE_PACKET[0], seg.get(ValueLayout.JAVA_BYTE, 0));
@@ -606,7 +606,7 @@ class PacketTest {
         @Test
         @DisplayName("Can read Ethernet destination MAC")
         void canReadEthernetDstMac() {
-            MemorySegment seg = packet.segment();
+            MemorySegment seg = packet.boundMemory().segment();
             
             byte[] dstMac = new byte[6];
             for (int i = 0; i < 6; i++) {
@@ -620,9 +620,9 @@ class PacketTest {
         }
 
         @Test
-        @DisplayName("Can read EtherType")
+        @DisplayName("Can read EtherTypes")
         void canReadEtherType() {
-            MemorySegment seg = packet.segment();
+            MemorySegment seg = packet.boundMemory().segment();
             
             short etherType = seg.get(ValueLayout.JAVA_SHORT_UNALIGNED, 12);
             
@@ -637,15 +637,15 @@ class PacketTest {
         @Test
         @DisplayName("Unbound packet throws on segment access")
         void unboundPacketThrowsOnSegmentAccess() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             
-            assertThrows(IllegalStateException.class, () -> packet.segment());
+            assertThrows(NullPointerException.class, () -> packet.boundMemory().segment());
         }
 
         @Test
         @DisplayName("Unbound packet throws on memory access")
         void unboundPacketThrowsOnMemoryAccess() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             
             // boundMemory() returns null for unbound
             assertNull(packet.boundMemory());
@@ -654,7 +654,7 @@ class PacketTest {
         @Test
         @DisplayName("isPersistent returns false for unbound packet")
         void isPersistentReturnsFalseForUnbound() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             
             assertFalse(packet.isPersistent());
         }
@@ -662,7 +662,7 @@ class PacketTest {
         @Test
         @DisplayName("Multiple persist calls on fixed return same instance")
         void multiplePersistCallsReturnSame() {
-            Packet packet = new Packet(DescriptorInfo.PCAP_PADDED);
+            Packet packet = new Packet(DescriptorType.PCAP_PADDED);
             Memory fixed = Memory.of(PACKET_LENGTH);
             packet.bind(fixed);
             

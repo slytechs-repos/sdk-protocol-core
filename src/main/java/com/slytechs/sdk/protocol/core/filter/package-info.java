@@ -112,7 +112,7 @@
  * methods; the inner builder enables fluent field chaining:
  * </p>
  * <ul>
- * <li>{@link EthernetFilter} — MAC addresses, EtherType</li>
+ * <li>{@link EthernetFilter} — MAC addresses, EtherTypes</li>
  * <li>{@link VlanFilter} — 802.1Q VID, PCP, DEI, TPID</li>
  * <li>{@link Ip4Filter} — IPv4 addresses, protocol, TTL</li>
  * <li>{@link Ip6Filter} — IPv6 addresses, Next Header, Hop Limit, Flow

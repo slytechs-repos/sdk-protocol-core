@@ -35,8 +35,10 @@ import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryHandle.LongHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
 import com.slytechs.sdk.common.time.TimestampUnit;
-import com.slytechs.sdk.protocol.core.Header;
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.header.Header;
+import com.slytechs.sdk.protocol.core.id.L2FrameType;
+import com.slytechs.sdk.protocol.core.id.L2FrameTypes;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 import static java.lang.foreign.MemoryLayout.*;
 import static java.lang.foreign.MemoryLayout.PathElement.*;
@@ -222,7 +224,7 @@ public class Type2PacketDescriptor
 
 	private static final long TX_CAPABILITIES = TxCapabilities.TX_NONE;
 	private static final long RX_CAPABILITIES = RxCapabilities.RX_NONE;
-	private static final int DESCRIPTOR_ID = DescriptorType.TYPE2;
+	private static final int DESCRIPTOR_ID = DescriptorTypes.TYPE2;
 	private int extendedIndex = 0;
 	private int encounterOrder = 0;
 
@@ -233,7 +235,7 @@ public class Type2PacketDescriptor
 	}
 
 	public Type2PacketDescriptor(TimestampUnit unit) {
-		super(DescriptorInfo.TYPE2, unit);
+		super(DescriptorType.TYPE2, unit);
 	}
 
 	public void addProtocol(int protocolId, int offset, int length) {
@@ -255,7 +257,7 @@ public class Type2PacketDescriptor
 		incrementProtocolCount();
 		updateBitmap(protocolId);
 
-		if (protocolId == ProtocolId.VLAN) {
+		if (protocolId == ProtocolIds.VLAN) {
 			incrementVlanCount();
 		}
 	}
@@ -331,7 +333,7 @@ public class Type2PacketDescriptor
 				s.section("RX Info", "rx", rx -> {
 					rx.fieldHex("Raw", rxInfoVal, 4, DetailBuilder.shortAt(0x0A));
 					rx.field("RX Port", rxPort());
-					rx.field("L2 Frame Type", l2FrameInfo().l2FrameId(), l2FrameInfo().toString());
+					rx.field("L2 Frame Type", l2FrameId(), L2FrameTypes.nameOf(l2FrameId()));
 					rx.field("L2 Extensions", hasL2Extensions());
 					rx.field("Timestamp Unit", timestampUnit().name());
 				});
@@ -443,7 +445,7 @@ public class Type2PacketDescriptor
 				.println("captureLength", captureLength())
 				.println("wireLength", wireLength())
 				.println("rxPort", rxPort())
-				.println("l2FrameType", l2FrameInfo())
+				.println("l2FrameType", l2FrameId())
 				.println("l2Extensions", hasL2Extensions())
 				.println("txPort", txPort())
 				.println("txEnabled", isTxEnabled())
@@ -499,14 +501,14 @@ public class Type2PacketDescriptor
 
 	private int getBitmapPosition(int protocolId) {
 		return switch (protocolId & 0xFFFF) {
-		case ProtocolId.ETHERNET -> 0;
-		case ProtocolId.VLAN -> 1;
-		case ProtocolId.IPv4 -> 2;
-		case ProtocolId.IPv6 -> 3;
-		case ProtocolId.TCP -> 4;
-		case ProtocolId.UDP -> 5;
-		case ProtocolId.ICMP -> 6;
-		case ProtocolId.ARP -> 7;
+		case ProtocolIds.ETHERNET -> 0;
+		case ProtocolIds.VLAN -> 1;
+		case ProtocolIds.IPv4 -> 2;
+		case ProtocolIds.IPv6 -> 3;
+		case ProtocolIds.TCP -> 4;
+		case ProtocolIds.UDP -> 5;
+		case ProtocolIds.ICMP -> 6;
+		case ProtocolIds.ARP -> 7;
 		default -> -1;
 		};
 	}
@@ -526,14 +528,14 @@ public class Type2PacketDescriptor
 
 	private int getInlineSlot(int protocolId) {
 		return switch (protocolId) {
-		case ProtocolId.ETHERNET -> INLINE_ETHERNET;
-		case ProtocolId.VLAN -> INLINE_VLAN;
-		case ProtocolId.IPv4 -> INLINE_IPV4;
-		case ProtocolId.IPv6 -> INLINE_IPV6;
-		case ProtocolId.TCP -> INLINE_TCP;
-		case ProtocolId.UDP -> INLINE_UDP;
-		case ProtocolId.ICMP -> INLINE_ICMP;
-		case ProtocolId.ARP -> INLINE_ARP;
+		case ProtocolIds.ETHERNET -> INLINE_ETHERNET;
+		case ProtocolIds.VLAN -> INLINE_VLAN;
+		case ProtocolIds.IPv4 -> INLINE_IPV4;
+		case ProtocolIds.IPv6 -> INLINE_IPV6;
+		case ProtocolIds.TCP -> INLINE_TCP;
+		case ProtocolIds.UDP -> INLINE_UDP;
+		case ProtocolIds.ICMP -> INLINE_ICMP;
+		case ProtocolIds.ARP -> INLINE_ARP;
 		default -> -1;
 		};
 	}
@@ -663,6 +665,7 @@ public class Type2PacketDescriptor
 		return list.iterator();
 	}
 
+	@Override
 	public int l2FrameId() {
 		return (rxInfo() >> L2_FRAME_TYPE_SHIFT) & L2_FRAME_TYPE_MASK;
 	}
@@ -786,15 +789,17 @@ public class Type2PacketDescriptor
 		int info = rxInfo() & ~(L2_FRAME_TYPE_MASK << L2_FRAME_TYPE_SHIFT);
 		info |= ((l2Type & L2_FRAME_TYPE_MASK) << L2_FRAME_TYPE_SHIFT);
 		setRxInfo(info);
+
+		super.setL2FrameType(l2Type);
 	}
 
 	/**
 	 * @return
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#setL2FrameType(com.slytechs.sdk.protocol.core.descriptor.L2FrameInfo)
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#setL2FrameType(com.slytechs.sdk.protocol.core.id.L2FrameType)
 	 */
 	@Override
-	public Type2PacketDescriptor setL2FrameType(L2FrameInfo l2FrameInfo) {
-		setL2FrameId(l2FrameInfo.l2FrameId());
+	public Type2PacketDescriptor setL2FrameType(L2FrameType l2FrameType) {
+		setL2FrameId(l2FrameType.id());
 
 		return this;
 	}
@@ -962,14 +967,6 @@ public class Type2PacketDescriptor
 		extended.set(ValueLayout.JAVA_LONG, extendedIndex * 8, entry);
 		extendedIndex++;
 		EXTENDED_SIZE.setShort(view(), (short) extendedIndex);
-	}
-
-	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#l2FrameInfo()
-	 */
-	@Override
-	public L2FrameInfo l2FrameInfo() {
-		return L2FrameInfo.valueOf(l2FrameId());
 	}
 
 }

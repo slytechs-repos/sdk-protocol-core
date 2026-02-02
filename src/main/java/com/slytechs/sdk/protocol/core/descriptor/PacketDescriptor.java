@@ -22,12 +22,14 @@ import java.util.stream.Stream;
 import com.slytechs.sdk.common.memory.BindableView;
 import com.slytechs.sdk.common.memory.pool.Persistable;
 import com.slytechs.sdk.common.time.TimestampUnit;
-import com.slytechs.sdk.protocol.core.Header;
-import com.slytechs.sdk.protocol.core.HeaderAccessor;
 import com.slytechs.sdk.protocol.core.Protocol;
-import com.slytechs.sdk.protocol.core.ProtocolId;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor.BindingInfo;
-import com.slytechs.sdk.protocol.core.spi.ProtocolProvider;
+import com.slytechs.sdk.protocol.core.header.Header;
+import com.slytechs.sdk.protocol.core.header.HeaderAccessor;
+import com.slytechs.sdk.protocol.core.id.L2FrameType;
+import com.slytechs.sdk.protocol.core.id.L2FrameTypes;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
+import com.slytechs.sdk.protocol.core.spi.PackProvider;
 
 /**
  * Descriptor containing packet dissection results and protocol header metadata.
@@ -240,7 +242,7 @@ public interface PacketDescriptor
 	 * @param offset the byte offset from the start of the packet to this header
 	 * @param length the length of this header in bytes
 	 * @see PacketDescriptor#iterator()
-	 * @see ProtocolId
+	 * @see ProtocolIds
 	 * @since 1.0
 	 */
 	public record BindingInfo(int order, int id, long offset, long length) {
@@ -284,7 +286,7 @@ public interface PacketDescriptor
 		 * <h3>Example</h3>
 		 * 
 		 * <pre>{@code
-		 * long encoded = descriptor.mapProtocol(ProtocolId.TCP, 0);
+		 * long encoded = descriptor.mapProtocol(ProtocolIds.TCP, 0);
 		 * if (encoded != PROTOCOL_NOT_FOUND) {
 		 * 	int length = PacketDescriptor.decodeLength(encoded);
 		 * 	int offset = PacketDescriptor.decodeOffset(encoded);
@@ -324,7 +326,7 @@ public interface PacketDescriptor
 		 * <h3>Example</h3>
 		 * 
 		 * <pre>{@code
-		 * long encoded = descriptor.mapProtocol(ProtocolId.UDP, 0);
+		 * long encoded = descriptor.mapProtocol(ProtocolIds.UDP, 0);
 		 * if (encoded != PROTOCOL_NOT_FOUND) {
 		 * 	int offset = PacketDescriptor.decodeOffset(encoded);
 		 * 	// Read UDP header starting at offset
@@ -411,12 +413,11 @@ public interface PacketDescriptor
 		 */
 		@SuppressWarnings("unchecked")
 		public <T extends Header> T newUnboundHeader() {
-			Protocol protocol = ProtocolProvider.lookupProtocol(id);
+			Protocol protocol = PackProvider.lookupProtocol(id);
 			if (protocol == null)
 				return null;
 
 			Header header = protocol.headerFactory()
-					.proxy()
 					.newHeader();
 
 			return (T) header;
@@ -500,7 +501,7 @@ public interface PacketDescriptor
 	 * For TX it stores, TX egres port, tx-immediate flag, tx-enable flag.
 	 * </p>
 	 */
-	DescriptorInfo DEFAULT_DESCRIPTOR_TYPE = DescriptorInfo.TYPE1;
+	DescriptorType DEFAULT_DESCRIPTOR_TYPE = DescriptorType.TYPE1;
 
 	/**
 	 * Binds a protocol header to its location within the packet.
@@ -544,12 +545,12 @@ public interface PacketDescriptor
 	 * Ip4Header ip = new Ip4Header();
 	 * 
 	 * // Bind to outer IP header
-	 * if (descriptor.bindProtocol(packet, ip, ProtocolId.IP4, 0)) {
+	 * if (descriptor.bindProtocol(packet, ip, ProtocolIds.IP4, 0)) {
 	 * 	System.out.println("Source IP: " + ip.sourceAddress());
 	 * }
 	 * 
 	 * // For tunneled packets, bind to inner IP header
-	 * if (descriptor.bindProtocol(packet, ip, ProtocolId.IP4, 1)) {
+	 * if (descriptor.bindProtocol(packet, ip, ProtocolIds.IP4, 1)) {
 	 * 	System.out.println("Inner Source IP: " + ip.sourceAddress());
 	 * }
 	 * }</pre>
@@ -566,7 +567,7 @@ public interface PacketDescriptor
 	 *         not supported
 	 * @see Header#bindPacket(long, long, com.slytechs.sdk.protocol.core.Packet)
 	 * @see #mapProtocol(int, int)
-	 * @see ProtocolId
+	 * @see ProtocolIds
 	 */
 	boolean bindHeader(BindableView packet, Header header, int protocolId, int depth);
 
@@ -635,58 +636,26 @@ public interface PacketDescriptor
 	 */
 	@Override
 	default Iterator<BindingInfo> iterator() {
-		var info = switch (l2FrameInfo()) {
-		case L2FrameInfo.ETHER -> new BindingInfo(0, ProtocolId.ETHERNET, 0, 14);
+		var info = switch (l2FrameId()) {
+		case L2FrameTypes.ETHER -> new BindingInfo(0, ProtocolIds.ETHERNET, 0, 14);
 
-		default -> throw new IllegalArgumentException("Unexpected value: " + l2FrameInfo());
+		default -> throw new IllegalArgumentException("Unexpected value: " + l2FrameId());
 		};
 
 		return Stream.of(info).iterator();
 	}
 
-	/**
-	 * Gets the Layer 2 frame type information.
-	 * 
-	 * <p>
-	 * Returns the L2 frame type extracted from the RX_INFO field (bits 0-4) as an
-	 * {@link L2FrameInfo} enumeration value. This method provides type-safe access
-	 * to the frame type for determining the data link layer protocol.
-	 * </p>
-	 * 
-	 * <h3>Supported Frame Types</h3>
-	 * <ul>
-	 * <li>{@code ETHER} - Ethernet II frame format</li>
-	 * <li>{@code IEEE_802_3} - IEEE 802.3 frame format</li>
-	 * <li>{@code LLC} - Logical Link Control frame</li>
-	 * <li>{@code SNAP} - Subnetwork Access Protocol frame</li>
-	 * </ul>
-	 * 
-	 * <h3>Example</h3>
-	 * 
-	 * <pre>{@code
-	 * L2FrameInfo frameInfo = descriptor.l2FrameInfo();
-	 * switch (frameInfo) {
-	 * case ETHER -> processEthernet(packet);
-	 * case IEEE_802_3 -> process802_3(packet);
-	 * case LLC -> processLLC(packet);
-	 * case SNAP -> processSNAP(packet);
-	 * }
-	 * }</pre>
-	 * 
-	 * @return the L2 frame type information enumeration value
-	 * @see L2FrameInfo
-	 */
-	L2FrameInfo l2FrameInfo();
+	L2FrameType l2FrameType();
 
 	/**
-	 * Layer 2 frame type as defined by L2FrameType constants.
+	 * Layer 2 frame type as defined by L2FrameTypes constants.
 	 *
 	 * @return the L2 frame type
 	 */
-	int l2FrameType();
+	int l2FrameId();
 
 	/**
-	 * Layer 2 protocol ID as defined by ProtocolId constants.
+	 * Layer 2 protocol ID as defined by ProtocolIds constants.
 	 *
 	 * @return the L2 protocol ID
 	 */
@@ -726,7 +695,7 @@ public interface PacketDescriptor
 	 * 
 	 * <pre>{@code
 	 * // Look up TCP header location
-	 * long encoded = descriptor.mapProtocol(ProtocolId.TCP, 0);
+	 * long encoded = descriptor.mapProtocol(ProtocolIds.TCP, 0);
 	 * if (encoded != PacketDescriptor.PROTOCOL_NOT_FOUND) {
 	 * 	int offset = PacketDescriptor.decodeOffset(encoded);
 	 * 	int length = PacketDescriptor.decodeLength(encoded);
@@ -745,7 +714,7 @@ public interface PacketDescriptor
 	 * @see #decodeLength(long)
 	 * @see #decodeOffset(long)
 	 * @see #bindHeader(BindableView, Header, int, int)
-	 * @see ProtocolId
+	 * @see ProtocolIds
 	 */
 	long mapProtocol(int protocolId, int depth);
 
@@ -813,17 +782,17 @@ public interface PacketDescriptor
 	 * <h3>Example</h3>
 	 * 
 	 * <pre>{@code
-	 * descriptor.setL2FrameType(L2FrameInfo.ETHER)
+	 * descriptor.setL2FrameType(L2FrameType.ETHER)
 	 * 		.setCaptureLength(packetLength);
 	 * }</pre>
 	 *
 	 * @param info the L2 frame information enumeration value
 	 * @return this descriptor for method chaining
-	 * @see #l2FrameInfo()
-	 * @see L2FrameInfo
+	 * @see #l2FrameId()
+	 * @see L2FrameType
 	 */
-	default PacketDescriptor setL2FrameType(L2FrameInfo info) {
-		return setL2FrameType(info.l2FrameId());
+	default PacketDescriptor setL2FrameType(L2FrameType info) {
+		return setL2FrameType(info.id());
 	}
 
 	/**

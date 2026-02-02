@@ -25,8 +25,8 @@ import com.slytechs.sdk.common.memory.MemoryView;
 import com.slytechs.sdk.common.memory.MemoryHandle.LongHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
 import com.slytechs.sdk.common.time.TimestampUnit;
-import com.slytechs.sdk.protocol.core.descriptor.L2FrameType;
 import com.slytechs.sdk.protocol.core.descriptor.Type2PacketDescriptor;
+import com.slytechs.sdk.protocol.core.id.L2FrameTypes;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
 
 /**
@@ -91,7 +91,7 @@ public class BasePacketDissector implements PacketDissector {
 	private int rxPort = 0;
 
 	/** L2 frame type to use */
-	protected int l2FrameType = L2FrameType.ETHER;
+	protected int l2FrameType = L2FrameTypes.ETHER;
 
 	/** Dissection state - stored as primitives for efficiency */
 	protected long timestamp;
@@ -106,7 +106,7 @@ public class BasePacketDissector implements PacketDissector {
 	 * Creates a new BasePacketDissector with default Ethernet L2 type.
 	 */
 	public BasePacketDissector() {
-		this(L2FrameType.ETHER);
+		this(L2FrameTypes.ETHER);
 	}
 
 	/**
@@ -159,10 +159,10 @@ public class BasePacketDissector implements PacketDissector {
 	 */
 	private boolean detectL2Extensions(MemoryBuffer packet, int caplen) {
 		switch (l2FrameType) {
-		case L2FrameType.ETHER:
+		case L2FrameTypes.ETHER:
 			return detectEthernetExtensions(packet, caplen);
 
-//		case L2FrameType.ETHER:
+//		case L2FrameTypes.ETHER:
 //			return detectWifiExtensions(packet, caplen);
 
 		// Add other L2 types as needed
@@ -234,9 +234,9 @@ public class BasePacketDissector implements PacketDissector {
 	 */
 	private int getExaminedBytes() {
 		switch (l2FrameType) {
-		case L2FrameType.ETHER:
-			return Math.min(14, captureLength); // EtherType at bytes 12-13
-//		case L2FrameType.ETHER:
+		case L2FrameTypes.ETHER:
+			return Math.min(14, captureLength); // EtherTypes at bytes 12-13
+//		case L2FrameTypes.ETHER:
 //			return Math.min(2, currentCaplen); // Frame Control at bytes 0-1
 		default:
 			return 0;

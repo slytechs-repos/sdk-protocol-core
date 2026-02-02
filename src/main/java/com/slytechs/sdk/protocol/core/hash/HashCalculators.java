@@ -36,24 +36,24 @@ final class HashCalculators {
     private static final HashCalculator[] CALCULATORS = new HashCalculator[18];
 
     static {
-        CALCULATORS[HashType.NONE] = new None();
-        CALCULATORS[HashType.ROUND_ROBIN] = new RoundRobin();
-        CALCULATORS[HashType.HASH_2_TUPLE] = new Hash2Tuple(false);
-        CALCULATORS[HashType.HASH_2_TUPLE_SORTED] = new Hash2Tuple(true);
-        CALCULATORS[HashType.HASH_5_TUPLE] = new Hash5Tuple(false);
-        CALCULATORS[HashType.HASH_5_TUPLE_SORTED] = new Hash5Tuple(true);
-        CALCULATORS[HashType.HASH_INNER_2_TUPLE] = new HashInner2Tuple(false);
-        CALCULATORS[HashType.HASH_INNER_2_TUPLE_SORTED] = new HashInner2Tuple(true);
-        CALCULATORS[HashType.HASH_INNER_5_TUPLE] = new HashInner5Tuple(false);
-        CALCULATORS[HashType.HASH_INNER_5_TUPLE_SORTED] = new HashInner5Tuple(true);
-        CALCULATORS[HashType.HASH_5_TUPLE_SCTP] = new Hash5TupleSctp(false);
-        CALCULATORS[HashType.HASH_5_TUPLE_SCTP_SORTED] = new Hash5TupleSctp(true);
-        CALCULATORS[HashType.HASH_3_TUPLE_GTP] = new Hash3TupleGtp(false);
-        CALCULATORS[HashType.HASH_3_TUPLE_GTP_SORTED] = new Hash3TupleGtp(true);
-        CALCULATORS[HashType.HASH_LAST_MPLS_LABEL] = new HashLastMplsLabel();
-        CALCULATORS[HashType.HASH_ALL_MPLS_LABELS] = new HashAllMplsLabels();
-        CALCULATORS[HashType.HASH_LAST_VLAN_ID] = new HashLastVlanId();
-        CALCULATORS[HashType.HASH_ALL_VLAN_IDS] = new HashAllVlanIds();
+        CALCULATORS[HashTypes.NONE] = new None();
+        CALCULATORS[HashTypes.ROUND_ROBIN] = new RoundRobin();
+        CALCULATORS[HashTypes.HASH_2_TUPLE] = new Hash2Tuple(false);
+        CALCULATORS[HashTypes.HASH_2_TUPLE_SORTED] = new Hash2Tuple(true);
+        CALCULATORS[HashTypes.HASH_5_TUPLE] = new Hash5Tuple(false);
+        CALCULATORS[HashTypes.HASH_5_TUPLE_SORTED] = new Hash5Tuple(true);
+        CALCULATORS[HashTypes.HASH_INNER_2_TUPLE] = new HashInner2Tuple(false);
+        CALCULATORS[HashTypes.HASH_INNER_2_TUPLE_SORTED] = new HashInner2Tuple(true);
+        CALCULATORS[HashTypes.HASH_INNER_5_TUPLE] = new HashInner5Tuple(false);
+        CALCULATORS[HashTypes.HASH_INNER_5_TUPLE_SORTED] = new HashInner5Tuple(true);
+        CALCULATORS[HashTypes.HASH_5_TUPLE_SCTP] = new Hash5TupleSctp(false);
+        CALCULATORS[HashTypes.HASH_5_TUPLE_SCTP_SORTED] = new Hash5TupleSctp(true);
+        CALCULATORS[HashTypes.HASH_3_TUPLE_GTP] = new Hash3TupleGtp(false);
+        CALCULATORS[HashTypes.HASH_3_TUPLE_GTP_SORTED] = new Hash3TupleGtp(true);
+        CALCULATORS[HashTypes.HASH_LAST_MPLS_LABEL] = new HashLastMplsLabel();
+        CALCULATORS[HashTypes.HASH_ALL_MPLS_LABELS] = new HashAllMplsLabels();
+        CALCULATORS[HashTypes.HASH_LAST_VLAN_ID] = new HashLastVlanId();
+        CALCULATORS[HashTypes.HASH_ALL_VLAN_IDS] = new HashAllVlanIds();
     }
 
     static HashCalculator of(int hashType) {
@@ -76,7 +76,7 @@ final class HashCalculators {
 
         @Override
         public int hashType() {
-            return HashType.NONE;
+            return HashTypes.NONE;
         }
     }
 
@@ -95,7 +95,7 @@ final class HashCalculators {
 
         @Override
         public int hashType() {
-            return HashType.ROUND_ROBIN;
+            return HashTypes.ROUND_ROBIN;
         }
     }
 
@@ -106,7 +106,7 @@ final class HashCalculators {
 
         Hash2Tuple(boolean sorted) {
             this.sorted = sorted;
-            this.type = sorted ? HashType.HASH_2_TUPLE_SORTED : HashType.HASH_2_TUPLE;
+            this.type = sorted ? HashTypes.HASH_2_TUPLE_SORTED : HashTypes.HASH_2_TUPLE;
         }
 
         @Override
@@ -155,7 +155,7 @@ final class HashCalculators {
 
         Hash5Tuple(boolean sorted) {
             this.sorted = sorted;
-            this.type = sorted ? HashType.HASH_5_TUPLE_SORTED : HashType.HASH_5_TUPLE;
+            this.type = sorted ? HashTypes.HASH_5_TUPLE_SORTED : HashTypes.HASH_5_TUPLE;
         }
 
         @Override
@@ -222,7 +222,7 @@ final class HashCalculators {
 
         HashInner2Tuple(boolean sorted) {
             this.sorted = sorted;
-            this.type = sorted ? HashType.HASH_INNER_2_TUPLE_SORTED : HashType.HASH_INNER_2_TUPLE;
+            this.type = sorted ? HashTypes.HASH_INNER_2_TUPLE_SORTED : HashTypes.HASH_INNER_2_TUPLE;
         }
 
         @Override
@@ -271,7 +271,7 @@ final class HashCalculators {
 
         HashInner5Tuple(boolean sorted) {
             this.sorted = sorted;
-            this.type = sorted ? HashType.HASH_INNER_5_TUPLE_SORTED : HashType.HASH_INNER_5_TUPLE;
+            this.type = sorted ? HashTypes.HASH_INNER_5_TUPLE_SORTED : HashTypes.HASH_INNER_5_TUPLE;
         }
 
         @Override
@@ -338,7 +338,7 @@ final class HashCalculators {
 
         Hash5TupleSctp(boolean sorted) {
             this.sorted = sorted;
-            this.type = sorted ? HashType.HASH_5_TUPLE_SCTP_SORTED : HashType.HASH_5_TUPLE_SCTP;
+            this.type = sorted ? HashTypes.HASH_5_TUPLE_SCTP_SORTED : HashTypes.HASH_5_TUPLE_SCTP;
         }
 
         @Override
@@ -405,7 +405,7 @@ final class HashCalculators {
 
         Hash3TupleGtp(boolean sorted) {
             this.sorted = sorted;
-            this.type = sorted ? HashType.HASH_3_TUPLE_GTP_SORTED : HashType.HASH_3_TUPLE_GTP;
+            this.type = sorted ? HashTypes.HASH_3_TUPLE_GTP_SORTED : HashTypes.HASH_3_TUPLE_GTP;
         }
 
         @Override
@@ -492,7 +492,7 @@ final class HashCalculators {
 
         @Override
         public int hashType() {
-            return HashType.HASH_LAST_MPLS_LABEL;
+            return HashTypes.HASH_LAST_MPLS_LABEL;
         }
     }
 
@@ -535,7 +535,7 @@ final class HashCalculators {
 
         @Override
         public int hashType() {
-            return HashType.HASH_ALL_MPLS_LABELS;
+            return HashTypes.HASH_ALL_MPLS_LABELS;
         }
     }
 
@@ -570,7 +570,7 @@ final class HashCalculators {
 
         @Override
         public int hashType() {
-            return HashType.HASH_LAST_VLAN_ID;
+            return HashTypes.HASH_LAST_VLAN_ID;
         }
     }
 
@@ -607,7 +607,7 @@ final class HashCalculators {
 
         @Override
         public int hashType() {
-            return HashType.HASH_ALL_VLAN_IDS;
+            return HashTypes.HASH_ALL_VLAN_IDS;
         }
     }
 

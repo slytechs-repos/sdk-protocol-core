@@ -21,24 +21,24 @@ import com.slytechs.sdk.protocol.core.filter.FilterDsl.Emitter.Op;
  * Factory and builder interface for constructing Ethernet (IEEE 802.3 / Ethernet II) filter expressions.
  * <p>
  * This interface provides both static convenience methods for creating simple single-condition Ethernet filters
- * and a fluent builder pattern for combining multiple Ethernet field conditions (destination MAC, source MAC, EtherType/length).
+ * and a fluent builder pattern for combining multiple Ethernet field conditions (destination MAC, source MAC, EtherTypes/length).
  * </p>
  * <p>
  * All setter methods perform input validation according to the Ethernet specification:
  * <ul>
  *   <li>Destination/Source MAC: 6-byte array (48 bits); must not be null and exactly 6 bytes long</li>
- *   <li>EtherType/Length: 0–65535 (16 bits, unsigned)</li>
+ *   <li>EtherTypes/Length: 0–65535 (16 bits, unsigned)</li>
  * </ul>
  * Any invalid input throws a {@link FilterException}.
  * </p>
  * <p>
- * <strong>Note on EtherType/Length interpretation:</strong>
+ * <strong>Note on EtherTypes/Length interpretation:</strong>
  * <ul>
  *   <li>If the value ≤ 1500 (0x05DC), it is interpreted as the payload length (IEEE 802.3 format)</li>
- *   <li>If the value ≥ 1536 (0x0600), it is interpreted as an EtherType (Ethernet II format), identifying the encapsulated protocol</li>
+ *   <li>If the value ≥ 1536 (0x0600), it is interpreted as an EtherTypes (Ethernet II format), identifying the encapsulated protocol</li>
  *   <li>Values 1501–1535 (0x05DD–0x05FF) are reserved/invalid</li>
  * </ul>
- * Common EtherType values include:
+ * Common EtherTypes values include:
  * <ul>
  *   <li>0x0800 (IPv4)</li>
  *   <li>0x0806 (ARP)</li>
@@ -104,18 +104,18 @@ public interface EthernetFilter {
     }
 
     /**
-     * Creates an Ethernet filter that matches a specific EtherType (or length) value.
+     * Creates an Ethernet filter that matches a specific EtherTypes (or length) value.
      * <p>
      * Common values: 0x0800 (IPv4), 0x0806 (ARP), 0x86DD (IPv6), 0x8100 (802.1Q VLAN).
      * </p>
      *
-     * @param etherType the 16-bit EtherType/length value (must be 0–65535)
+     * @param etherType the 16-bit EtherTypes/length value (must be 0–65535)
      * @return a {@link EthernetDsl} configured with the type condition
      * @throws FilterException if etherType is not in the range 0–65535
      */
     static EthernetDsl type(int etherType) throws FilterException {
         if (etherType < 0 || etherType > 65535) {
-            throw new FilterException("EtherType/length must be 0-65535, got: " + etherType);
+            throw new FilterException("EtherTypes/length must be 0-65535, got: " + etherType);
         }
         return of().type(etherType);
     }
@@ -161,15 +161,15 @@ public interface EthernetFilter {
         }
 
         /**
-         * Adds a condition that the EtherType/length field must equal the given value.
+         * Adds a condition that the EtherTypes/length field must equal the given value.
          *
-         * @param etherType 16-bit EtherType/length value (0–65535)
+         * @param etherType 16-bit EtherTypes/length value (0–65535)
          * @return this builder for chaining
          * @throws FilterException if etherType is not in the range 0–65535
          */
         default EthernetDsl type(int etherType) throws FilterException {
             if (etherType < 0 || etherType > 65535) {
-                throw new FilterException("EtherType/length must be 0-65535, got: " + etherType);
+                throw new FilterException("EtherTypes/length must be 0-65535, got: " + etherType);
             }
             return b -> this.emit(b).and().field("eth.type", 12, 16, Op.EQ, etherType);
         }

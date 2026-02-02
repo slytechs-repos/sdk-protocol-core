@@ -6,7 +6,7 @@ import com.slytechs.sdk.common.util.Registration;
 import com.slytechs.sdk.protocol.core.filter.FilterDsl.Emitter;
 
 // Package-private
-final class CatchAllBuilder implements Emitter {
+final class CatchAllEmitter implements Emitter {
 
     private static final String MSG = 
         "PacketFilter.ALL cannot be combined with other filters";

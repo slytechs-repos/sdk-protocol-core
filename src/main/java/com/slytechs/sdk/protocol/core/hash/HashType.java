@@ -17,32 +17,60 @@
  */
 package com.slytechs.sdk.protocol.core.hash;
 
+import com.slytechs.sdk.common.util.IntId;
+
 /**
- * Hash type constants for packet distribution across channels.
+ * Hash type enumeration for packet distribution across channels.
  * 
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface HashType {
+public enum HashType implements HashTypes, IntId {
 
-    int NONE                      = 0;
-    int ROUND_ROBIN               = 1;
-    int HASH_2_TUPLE              = 2;
-    int HASH_2_TUPLE_SORTED       = 3;
-    int HASH_5_TUPLE              = 4;
-    int HASH_5_TUPLE_SORTED       = 5;
-    int HASH_INNER_2_TUPLE        = 6;
-    int HASH_INNER_2_TUPLE_SORTED = 7;
-    int HASH_INNER_5_TUPLE        = 8;
-    int HASH_INNER_5_TUPLE_SORTED = 9;
-    int HASH_5_TUPLE_SCTP         = 10;
-    int HASH_5_TUPLE_SCTP_SORTED  = 11;
-    int HASH_3_TUPLE_GTP          = 12;
-    int HASH_3_TUPLE_GTP_SORTED   = 13;
-    int HASH_LAST_MPLS_LABEL      = 14;
-    int HASH_ALL_MPLS_LABELS      = 15;
-    int HASH_LAST_VLAN_ID         = 16;
-    int HASH_ALL_VLAN_IDS         = 17;
+	NONE(HashTypes.NONE),
+	ROUND_ROBIN(HashTypes.ROUND_ROBIN),
+	HASH_2_TUPLE(HashTypes.HASH_2_TUPLE),
+	HASH_2_TUPLE_SORTED(HashTypes.HASH_2_TUPLE_SORTED),
+	HASH_5_TUPLE(HashTypes.HASH_5_TUPLE),
+	HASH_5_TUPLE_SORTED(HashTypes.HASH_5_TUPLE_SORTED),
+	HASH_INNER_2_TUPLE(HashTypes.HASH_INNER_2_TUPLE),
+	HASH_INNER_2_TUPLE_SORTED(HashTypes.HASH_INNER_2_TUPLE_SORTED),
+	HASH_INNER_5_TUPLE(HashTypes.HASH_INNER_5_TUPLE),
+	HASH_INNER_5_TUPLE_SORTED(HashTypes.HASH_INNER_5_TUPLE_SORTED),
+	HASH_5_TUPLE_SCTP(HashTypes.HASH_5_TUPLE_SCTP),
+	HASH_5_TUPLE_SCTP_SORTED(HashTypes.HASH_5_TUPLE_SCTP_SORTED),
+	HASH_3_TUPLE_GTP(HashTypes.HASH_3_TUPLE_GTP),
+	HASH_3_TUPLE_GTP_SORTED(HashTypes.HASH_3_TUPLE_GTP_SORTED),
+	HASH_LAST_MPLS_LABEL(HashTypes.HASH_LAST_MPLS_LABEL),
+	HASH_ALL_MPLS_LABELS(HashTypes.HASH_ALL_MPLS_LABELS),
+	HASH_LAST_VLAN_ID(HashTypes.HASH_LAST_VLAN_ID),
+	HASH_ALL_VLAN_IDS(HashTypes.HASH_ALL_VLAN_IDS),
 
-    int id();
+	;
+
+	private final int id;
+	private final HashCalculator calculator;
+
+	HashType(int id) {
+		this.id = id;
+		this.calculator = HashCalculators.of(id);
+	}
+
+	public HashCalculator calculator() {
+		return calculator;
+	}
+
+	@Override
+	public int id() {
+		return id;
+	}
+
+	public static HashType valueOf(int id) {
+		for (HashType info : values()) {
+			if (info.id == id)
+				return info;
+		}
+
+		return null;
+	}
 }

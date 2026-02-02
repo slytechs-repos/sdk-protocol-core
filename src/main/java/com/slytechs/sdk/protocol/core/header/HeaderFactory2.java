@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core;
+package com.slytechs.sdk.protocol.core.header;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -27,14 +27,14 @@ import java.lang.reflect.Modifier;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public record HeaderFactory<T extends Header>(
+public record HeaderFactory2<T extends Header>(
 		Class<T> headerClass,
 		ProxyCreated<T> proxy,
 		ArenaAllocated<T> allocated,
 		Reinterpreted<T> reintrepreted,
 		Binding<T> binding) {
 
-	public HeaderFactory(Class<T> headerClass) {
+	public HeaderFactory2(Class<T> headerClass) {
 		this(headerClass,
 				proxy(headerClass),
 				allocated(headerClass),

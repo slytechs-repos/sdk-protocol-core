@@ -22,7 +22,9 @@ import java.util.Objects;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.pool.PoolEntry;
 import com.slytechs.sdk.common.time.TimestampUnit;
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.id.L2FrameType;
+import com.slytechs.sdk.protocol.core.id.L2FrameTypes;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 /**
  * 
@@ -35,22 +37,23 @@ public abstract class AbstractPacketDescriptor
 		implements PacketDescriptor {
 
 	private TimestampUnit timestampUnit;
-	private final DescriptorInfo descriptorInfo;
+	private final DescriptorType descriptorType;
 	protected long flags = 0;
-	private int l2FrameType = L2FrameType.UNKNOWN;
-	private int protocolId = ProtocolId.UNKNOWN;
+	private int l2FrameId = L2FrameTypes.UNKNOWN;
+	private L2FrameType l2FrameType = L2FrameType.UNKNOWN;
+	private int l2ProtocolId = ProtocolIds.UNKNOWN;
 
 	private final PoolEntry poolEntry = new PoolEntry();
 
 	protected HeaderBinding onDemandDissector;
 
-	protected AbstractPacketDescriptor(DescriptorInfo descriptorInfo) {
-		this(descriptorInfo, PacketDescriptor.DEFAULT_TIMESTAMP_UNIT);
+	protected AbstractPacketDescriptor(DescriptorType descriptorType) {
+		this(descriptorType, PacketDescriptor.DEFAULT_TIMESTAMP_UNIT);
 	}
 
-	protected AbstractPacketDescriptor(DescriptorInfo descriptorInfo, TimestampUnit timestampUnit) {
+	protected AbstractPacketDescriptor(DescriptorType descriptorType, TimestampUnit timestampUnit) {
 		this.timestampUnit = Objects.requireNonNull(timestampUnit, "timestampUnit");
-		this.descriptorInfo = Objects.requireNonNull(descriptorInfo, "descriptorInfo");
+		this.descriptorType = Objects.requireNonNull(descriptorType, "descriptorType");
 	}
 
 	@Override
@@ -67,20 +70,30 @@ public abstract class AbstractPacketDescriptor
 		return target;
 	}
 
-	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#l2FrameInfo()
-	 */
 	@Override
-	public L2FrameInfo l2FrameInfo() {
-		return L2FrameInfo.valueOf(l2FrameType);
+	public L2FrameType l2FrameType() {
+		return l2FrameType;
 	}
 
 	/**
-	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#l2FrameType()
+	 * @return
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#setL2FrameType(L2FrameType)
 	 */
 	@Override
-	public int l2FrameType() {
-		return l2FrameType;
+	public AbstractPacketDescriptor setL2FrameType(L2FrameType l2FrameType) {
+		this.l2FrameType = l2FrameType;
+		this.l2FrameId = l2FrameType.id();
+		this.l2ProtocolId = l2FrameType.protocolId();
+
+		return this;
+	}
+
+	/**
+	 * @see com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor#l2FrameId()
+	 */
+	@Override
+	public int l2FrameId() {
+		return l2FrameId;
 	}
 
 	/**
@@ -88,19 +101,20 @@ public abstract class AbstractPacketDescriptor
 	 */
 	@Override
 	public int l2ProtocolId() {
-		return protocolId;
+		return l2ProtocolId;
 	}
 
 	@Override
-	public PacketDescriptor setL2FrameType(int l2FrameType) {
-		this.l2FrameType = l2FrameType;
-		this.protocolId = L2FrameInfo.mapToProtocolId(l2FrameType);
+	public PacketDescriptor setL2FrameType(int l2FrameId) {
+		this.l2FrameId = l2FrameId;
+		this.l2FrameType = L2FrameType.valueOf(l2FrameId);
+		this.l2ProtocolId = l2FrameType.protocolId();
 		return this;
 	}
 
 	@Override
-	public final DescriptorInfo descriptorInfo() {
-		return descriptorInfo;
+	public final DescriptorType descriptorType() {
+		return descriptorType;
 	}
 
 	public void setOnDemandDissector(HeaderBinding newDissector) {

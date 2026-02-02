@@ -191,7 +191,7 @@ public interface PacketDsl extends FilterDsl {
 
 	/**
 	 * Matches Ethernet frames and applies additional Ethernet header conditions
-	 * (MAC, EtherType).
+	 * (MAC, EtherTypes).
 	 *
 	 * @param header operator that configures Ethernet fields
 	 * @return a new filter combining Ethernet scope with the specified conditions

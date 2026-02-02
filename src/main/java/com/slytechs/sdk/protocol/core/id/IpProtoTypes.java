@@ -15,7 +15,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.slytechs.sdk.protocol.core;
+package com.slytechs.sdk.protocol.core.id;
 
 /**
  * IP Protocol field values (wire format).
@@ -28,7 +28,7 @@ package com.slytechs.sdk.protocol.core;
  * 
  * <p>
  * Note: These are wire-level values, not internal protocol IDs. Use
- * {@link ProtocolId} for internal identification.
+ * {@link ProtocolIds} for internal identification.
  * </p>
  * 
  * <h2>Usage</h2>
@@ -48,7 +48,7 @@ package com.slytechs.sdk.protocol.core;
  * @see <a href="https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml">
  *      IANA Protocol Numbers</a>
  */
-public interface IpProto {
+public interface IpProtoTypes {
 
     // ════════════════════════════════════════════════════════════════════════
     // IPv6 Extension Headers (also used as Next Header values)
