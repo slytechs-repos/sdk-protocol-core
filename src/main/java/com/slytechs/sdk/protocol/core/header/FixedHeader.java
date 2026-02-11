@@ -27,7 +27,7 @@ import com.slytechs.sdk.common.memory.BindableView;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public non-sealed class FixedHeader extends Header {
+public non-sealed abstract class FixedHeader extends Header {
 
 	/**
 	 * @param id

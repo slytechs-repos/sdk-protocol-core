@@ -15,10 +15,8 @@
  */
 package com.slytechs.sdk.protocol.core;
 
-import com.slytechs.sdk.common.detail.Detail;
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
-import com.slytechs.sdk.common.detail.render.TextRenderer;
+import java.util.Iterator;
+
 import com.slytechs.sdk.common.memory.BindableView;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.FixedMemory;
@@ -27,14 +25,21 @@ import com.slytechs.sdk.common.memory.ScopedMemory;
 import com.slytechs.sdk.common.memory.pool.Persistable;
 import com.slytechs.sdk.common.memory.pool.PoolEntry;
 import com.slytechs.sdk.common.memory.pool.Poolable;
+import com.slytechs.sdk.common.text.DataEmitter;
+import com.slytechs.sdk.common.text.DataEmitter.DataContexts;
+import com.slytechs.sdk.common.text.DataEmitter.DataRender;
+import com.slytechs.sdk.common.text.Detail;
+import com.slytechs.sdk.common.text.Textual;
 import com.slytechs.sdk.common.time.Timestamp;
+import com.slytechs.sdk.common.util.Size;
 import com.slytechs.sdk.protocol.core.descriptor.DescriptorType;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor.BindingInfo;
-import com.slytechs.sdk.protocol.core.header.Header;
 import com.slytechs.sdk.protocol.core.descriptor.RxCapabilities;
 import com.slytechs.sdk.protocol.core.descriptor.TxCapabilities;
 import com.slytechs.sdk.protocol.core.descriptor.Type2PacketDescriptor;
+import com.slytechs.sdk.protocol.core.header.Header;
+import com.slytechs.sdk.protocol.core.header.HeaderAccessor;
 import com.slytechs.sdk.protocol.core.stack.PacketPool;
 
 /**
@@ -153,7 +158,56 @@ import com.slytechs.sdk.protocol.core.stack.PacketPool;
  * @see BoundView
  */
 public class Packet
-		implements BindableView, Poolable, Persistable<Packet>, Detailable {
+		implements BindableView, Poolable, Persistable<Packet>, HeaderAccessor, Textual {
+
+	private static final String SUMMARY = "Frame {frame.number}: "
+			+ "{frame.cap_len} bytes on wire ({frame.cap_len * 8} bits), "
+			+ "{frame.wire_len} bytes captured ({frame.wire_len * 8} bits)";
+
+	private static final DataEmitter<Packet> PACKET_EMITTER = DataEmitter.of(SUMMARY, sec -> sec
+			.field("Encapsulation type", p -> "Ethernet (" + p.descriptor().l2FrameType() + ")")
+			.field("Arrival Time", FrameTiming.class, FrameTiming::arrivalTime, "frame.time")
+			.field("UTC Arrival Time", FrameTiming.class, FrameTiming::arrivalUtcTime, "frame.time_utc")
+			.field("Epoch Arrival Time", FrameTiming.class, FrameTiming::arrivalEpocTime, "frame.time_epoch")
+			.meta("Time shift for this packet", FrameTiming.class, FrameTiming::timeShift, "frame.offset_shift")
+			.meta("Time delta from previous captured frame",
+					FrameTiming.class, FrameTiming::deltaTime, "frame.time_delta")
+			.meta("Time delta from previous displayed frame",
+					FrameTiming.class, FrameTiming::deltaTime, "frame.time_delta_displayed")
+			.meta("Time since reference or first frame",
+					FrameTiming.class, FrameTiming::deltaTime, "frame.time_relative")
+			.field("Frame Number", Packet::frameNumber, "frame.number")
+			.field("Frame Length", "{frame.cap_len} bytes ({frame.cap_len * 8} bits)",
+					Packet::captureLength, "frame.cap_len")
+			.field("Capture Length", "{frame.wire_len} bytes ({frame.wire_len * 8} bits)",
+					Packet::wireLength, "frame.wire_len")
+			.meta("Frame is marked", p -> "False")
+			.meta("Frame is ignored", p -> "False")
+			.meta("Protocols in frame", p -> p.descriptor().protocolSummary(), "frame.protocols")
+			.delegate((e, pkt, c) -> {
+
+				System.out.println("Packet::delegate pkt.descriptor=" + pkt.descriptor());
+				Iterator<BindingInfo> iterator = pkt.descriptor().iterateProtocols(pkt.boundMemory());
+				while (iterator.hasNext()) {
+
+					BindingInfo info = iterator.next();
+					Header hdr = info.newBoundHeader(pkt);
+					if (hdr == null) {
+						e.line("not found " + info);
+
+						continue;
+					}
+
+					if (hdr instanceof Textual data)
+						data.emitText(e, c);
+					else {
+						e.line("skipped " + hdr.name());
+					}
+				}
+				return e;
+			})
+
+	);
 
 	/**
 	 * Default descriptor type: {@link DescriptorType#TYPE2 Type2PacketDescriptor}.
@@ -368,6 +422,19 @@ public class Packet
 		}
 	};
 
+	/** The frame number. */
+	private long frameNumber = 0; // Default if not set
+
+	public long frameNumber() {
+		return frameNumber;
+	}
+
+	public Packet setFrameNumber(long frameNumber) {
+		this.frameNumber = frameNumber;
+
+		return this;
+	}
+
 	/**
 	 * Creates an unbound packet with the default {@link Type2PacketDescriptor}.
 	 * 
@@ -409,30 +476,6 @@ public class Packet
 	}
 
 	/**
-	 * Builds detailed textual representation of the packet and its headers.
-	 *
-	 * @param detail builder to append detail information to
-	 */
-	@Override
-	public void buildDetail(DetailBuilder detail) {
-		for (BindingInfo info : packetDescriptor) {
-			Header header = info.newBoundHeader(this);
-
-			if (header == null) {
-				detail.header("Unknown Protocol (0x%04X)".formatted(info.id()), "",
-						info.id(), info.offset(), info.length(), _ -> {});
-				continue;
-			}
-
-			if (header instanceof Detailable d) {
-				d.buildDetail(detail);
-			} else {
-				detail.header(header.name(), "", info.id(), info.offset(), info.length(), _ -> {});
-			}
-		}
-	}
-
-	/**
 	 * Returns the number of bytes captured from the wire (may be less than wire
 	 * length if truncated).
 	 *
@@ -440,6 +483,10 @@ public class Packet
 	 */
 	public int captureLength() {
 		return packetDescriptor.captureLength();
+	}
+
+	public Size captureSize() {
+		return Size.ofBytes(captureLength());
 	}
 
 	/**
@@ -520,6 +567,7 @@ public class Packet
 	 * @return {@code true} if protocol is present and header was bound
 	 * @see #hasHeader(Header, int)
 	 */
+	@Override
 	public boolean hasHeader(Header header) {
 		return hasHeader(header, 0);
 	}
@@ -531,6 +579,7 @@ public class Packet
 	 * @param depth  protocol occurrence (0 = outermost)
 	 * @return {@code true} if protocol present at depth and header bound
 	 */
+	@Override
 	public boolean hasHeader(Header header, int depth) {
 		return packetDescriptor.bindHeader(this, header, header.getProtocolId(), depth);
 	}
@@ -550,6 +599,7 @@ public class Packet
 	 * @param id protocol ID
 	 * @return {@code true} if protocol present
 	 */
+	@Override
 	public boolean isPresent(int id) {
 		return isPresent(id, 0);
 	}
@@ -561,6 +611,7 @@ public class Packet
 	 * @param depth occurrence depth (0 = outermost)
 	 * @return {@code true} if protocol present at depth
 	 */
+	@Override
 	public boolean isPresent(int id, int depth) {
 		long encoded = packetDescriptor.mapProtocol(id, depth);
 		return encoded >= 0;
@@ -653,7 +704,7 @@ public class Packet
 		if (detail == Detail.OFF)
 			return toString();
 
-		return new TextRenderer(detail).render(getDetail());
+		return toText(detail).toString();
 	}
 
 	/**
@@ -673,5 +724,26 @@ public class Packet
 	 */
 	public int wireLength() {
 		return packetDescriptor.wireLength();
+	}
+
+	public Size wireSize() {
+		return Size.ofBytes(wireLength());
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.text.Textual#emitText(com.slytechs.sdk.common.text.DataEmitter.DataRender,
+	 *      com.slytechs.sdk.common.text.DataEmitter.DataContexts)
+	 */
+	@Override
+	public void emitText(DataRender render, DataContexts parentContexts) {
+		throw new UnsupportedOperationException("not implemented yet");
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
+	 */
+	@Override
+	public DataEmitter<?> dataEmitter() {
+		return PACKET_EMITTER;
 	}
 }

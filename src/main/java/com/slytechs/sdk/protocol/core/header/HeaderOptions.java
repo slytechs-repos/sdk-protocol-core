@@ -17,8 +17,6 @@
  */
 package com.slytechs.sdk.protocol.core.header;
 
-import com.slytechs.sdk.common.detail.Detailable;
-
 /**
  * Common interface for protocol header options containers.
  * 
@@ -38,17 +36,18 @@ import com.slytechs.sdk.common.detail.Detailable;
  * </ul>
  * 
  * <h2>Usage Example</h2>
+ * 
  * <pre>{@code
  * HeaderOptions<TcpOption> opts = tcp.options();
  * 
  * // Check presence
  * if (opts.hasOption(TcpOptions.MSS)) {
- *     TcpOption opt = opts.option(TcpOptions.MSS);
+ * 	TcpOption opt = opts.option(TcpOptions.MSS);
  * }
  * 
  * // Iterate all options
  * for (TcpOption opt : opts) {
- *     System.out.println(opt.optionName());
+ * 	System.out.println(opt.optionName());
  * }
  * }</pre>
  *
@@ -59,56 +58,56 @@ import com.slytechs.sdk.common.detail.Detailable;
  * @since 1.0
  * @see HeaderOption
  */
-public interface HeaderOptions<O extends HeaderOption> extends Iterable<O>, Detailable {
+public interface HeaderOptions<O extends HeaderOption> extends Iterable<O> {
 
-    /**
-     * Returns the number of options present.
-     * 
-     * @return option count
-     */
-    int count();
+	/**
+	 * Returns the number of options present.
+	 * 
+	 * @return option count
+	 */
+	int count();
 
-    /**
-     * Checks if an option with the specified ID is present.
-     * 
-     * @param id the option identifier
-     * @return true if option is present
-     */
-    boolean hasOption(int id);
+	/**
+	 * Checks if an option with the specified ID is present.
+	 * 
+	 * @param id the option identifier
+	 * @return true if option is present
+	 */
+	boolean hasOption(int id);
 
-    /**
-     * Returns the option instance for the specified ID.
-     * 
-     * <p>
-     * Returns the pre-allocated option instance regardless of presence. Use
-     * {@link #hasOption(int)} or {@link HeaderOption#isPresent()} to check if
-     * the option exists in the current packet.
-     * </p>
-     * 
-     * @param id the option identifier
-     * @return the option instance, or null if ID is not recognized
-     */
-    O option(int id);
+	/**
+	 * Returns the option instance for the specified ID.
+	 * 
+	 * <p>
+	 * Returns the pre-allocated option instance regardless of presence. Use
+	 * {@link #hasOption(int)} or {@link HeaderOption#isPresent()} to check if the
+	 * option exists in the current packet.
+	 * </p>
+	 * 
+	 * @param id the option identifier
+	 * @return the option instance, or null if ID is not recognized
+	 */
+	O option(int id);
 
-    /**
-     * Returns the total length of all options in bytes.
-     * 
-     * @return total options length
-     */
-    default long totalLength() {
-        long total = 0;
-        for (O opt : this) {
-            total += opt.optionLength();
-        }
-        return total;
-    }
+	/**
+	 * Returns the total length of all options in bytes.
+	 * 
+	 * @return total options length
+	 */
+	default long totalLength() {
+		long total = 0;
+		for (O opt : this) {
+			total += opt.optionLength();
+		}
+		return total;
+	}
 
-    /**
-     * Checks if any options are present.
-     * 
-     * @return true if at least one option exists
-     */
-    default boolean hasOptions() {
-        return count() > 0;
-    }
+	/**
+	 * Checks if any options are present.
+	 * 
+	 * @return true if at least one option exists
+	 */
+	default boolean hasOptions() {
+		return count() > 0;
+	}
 }

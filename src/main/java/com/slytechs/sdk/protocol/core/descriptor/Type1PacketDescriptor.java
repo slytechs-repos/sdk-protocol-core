@@ -22,6 +22,8 @@ import java.lang.foreign.MemoryLayout;
 import com.slytechs.sdk.common.memory.BindableView;
 import com.slytechs.sdk.common.memory.MemoryHandle.LongHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
+import com.slytechs.sdk.common.text.Textual;
 import com.slytechs.sdk.common.time.TimestampUnit;
 import com.slytechs.sdk.protocol.core.dissector.OnDemandPacketDissector;
 import com.slytechs.sdk.protocol.core.header.Header;
@@ -85,7 +87,7 @@ import static java.lang.foreign.MemoryLayout.*;
  */
 public class Type1PacketDescriptor
 		extends AbstractPacketDescriptor
-		implements TxCapabilities, RxCapabilities {
+		implements TxCapabilities, RxCapabilities, Textual {
 
 	/** Total descriptor size: 16 bytes, packed with 1-byte alignment */
 	public static final MemoryLayout LAYOUT = structLayout(
@@ -121,6 +123,37 @@ public class Type1PacketDescriptor
 	private static final long TX_CAPABILITIES = TxCapabilities.TX_PORT
 			| TxCapabilities.TX_ENABLE
 			| TxCapabilities.TX_IMMEDIATE;
+
+	// @formatter:off
+	private static final String SUMMARY = "Packet Descriptor (Type1), cap={desc.caplen}, wire={desc.wirelen}";
+
+	private static final DataEmitter<Type1PacketDescriptor> TYPE1_EMITTER;
+	static {
+		TYPE1_EMITTER = new DataEmitter<>();
+
+		TYPE1_EMITTER.section(SUMMARY, sec -> sec
+				.field("Timestamp", d -> "%d (%s)".formatted(d.timestamp(), d.timestampUnit()),
+						"desc.timestamp")
+				.field("Capture Length", Type1PacketDescriptor::captureLength, "desc.caplen")
+				.field("Wire Length", Type1PacketDescriptor::wireLength, "desc.wirelen")
+
+				.field("RX Info: {desc.rxinfo:0x%04X}", Type1PacketDescriptor::rxInfo, "desc.rxinfo", rx -> rx
+						.bitfield("{/.... .... 1111 1111/} = RX Port: {>>}",
+								"desc.rx.port", 0, 8, Type1PacketDescriptor::rxInfo)
+						.bitfield("{/.... .111 .... ..../} = Timestamp Unit: {>>}",
+								"desc.rx.tsunit", 8, 3, Type1PacketDescriptor::rxInfo)
+						.bitfield("{/1111 1... .... ..../} = L2 Frame Type: {>>}",
+								"desc.rx.l2type", 11, 5, Type1PacketDescriptor::rxInfo))
+
+				.field("TX Info: {desc.txinfo:0x%04X}", Type1PacketDescriptor::txInfo, "desc.txinfo", tx -> tx
+						.bitfield("{/.... .... 1111 1111/} = TX Port: {>>}",
+								"desc.tx.port", 0, 8, Type1PacketDescriptor::txInfo)
+						.bitfield("{/.... ...1 .... ..../} = TX Enabled: {@set}",
+								"desc.tx.enabled", 8, 1, Type1PacketDescriptor::txInfo)
+						.bitfield("{/.... ..1. .... ..../} = TX Immediate: {@set}",
+								"desc.tx.immediate", 9, 1, Type1PacketDescriptor::txInfo)));
+	}
+	// @formatter:on
 
 	/**
 	 * Creates a new Type-1 descriptor using the default native timestamp unit.
@@ -581,5 +614,18 @@ public class Type1PacketDescriptor
 	@Override
 	public int wireLength() {
 		return WIRELEN.getUnsignedShort(view());
+	}
+
+	@Override
+	public String toString() {
+		return toText().toString();
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
+	 */
+	@Override
+	public DataEmitter<?> dataEmitter() {
+		return TYPE1_EMITTER;
 	}
 }

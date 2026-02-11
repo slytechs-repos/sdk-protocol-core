@@ -18,7 +18,10 @@
 package com.slytechs.sdk.protocol.core.descriptor;
 
 import com.slytechs.sdk.common.memory.BindableView;
+import com.slytechs.sdk.common.text.DataEmitter;
+import com.slytechs.sdk.common.text.Textual;
 import com.slytechs.sdk.common.time.TimestampUnit;
+import com.slytechs.sdk.protocol.core.dissector.OnDemandPacketDissector;
 import com.slytechs.sdk.protocol.core.header.Header;
 import com.slytechs.sdk.protocol.core.id.L2FrameType;
 
@@ -26,7 +29,9 @@ import com.slytechs.sdk.protocol.core.id.L2FrameType;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public abstract class PcapDescriptor extends AbstractPacketDescriptor {
+public abstract class PcapDescriptor
+		extends AbstractPacketDescriptor
+		implements Textual {
 
 	/** The Constant RX_CAPABILITIES. */
 	public static final long RX_CAPABILITIES = 0;
@@ -34,16 +39,38 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 	/** The Constant TX_CAPABILITIES. */
 	public static final long TX_CAPABILITIES = 0;
 
+	// @formatter:off
+	private static final String SUMMARY = "PCAP Packet Descriptor, cap={pcap.caplen}, wire={pcap.wirelen}";
+
+	private static final DataEmitter<PcapDescriptor> PCAP_EMITTER;
+	static {
+		PCAP_EMITTER = new DataEmitter<>();
+
+		PCAP_EMITTER.section(SUMMARY, sec -> sec
+				.field("Timestamp", d -> "%d (%s)".formatted(d.timestamp(), d.timestampUnit()),
+						"pcap.timestamp")
+				.field("tv_sec", PcapDescriptor::tvSec, "pcap.tv_sec")
+				.field("tv_usec", PcapDescriptor::tvUSec, "pcap.tv_usec")
+				.field("Capture Length", PcapDescriptor::captureLength, "pcap.caplen")
+				.field("Wire Length", PcapDescriptor::wireLength, "pcap.wirelen")
+				.field("L2 Frame Type", d -> d.l2FrameType().name(), "pcap.l2type"));
+	}
+	// @formatter:on
+
 	public static boolean isPcapDescriptor(DescriptorType target) {
 		return target == DescriptorType.PCAP_PACKED || target == DescriptorType.PCAP_PADDED;
 	}
 
 	public PcapDescriptor(DescriptorType descriptorType, L2FrameType l2FrameType, TimestampUnit timestampUnit) {
 		super(descriptorType, timestampUnit);
+
+		setOnDemandDissector(OnDemandPacketDissector::bindHeader);
 	}
 
 	public PcapDescriptor(DescriptorType descriptorType, TimestampUnit timestampUnit) {
 		super(descriptorType, timestampUnit);
+
+		setOnDemandDissector(OnDemandPacketDissector::bindHeader);
 	}
 
 	/**
@@ -63,8 +90,7 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 		}
 
 		// Slow path or no-op depending on user settings.
-		return onDemandDissector != null && onDemandDissector
-				.bindHeader(packet, header, l2Type.id(), protocolId, depth);
+		return OnDemandPacketDissector.bindHeader(packet, header, l2Type.id(), protocolId, depth);
 	}
 
 	/**
@@ -137,6 +163,19 @@ public abstract class PcapDescriptor extends AbstractPacketDescriptor {
 	@Override
 	public long txCapabilitiesBitmask() {
 		return TX_CAPABILITIES;
+	}
+
+	@Override
+	public String toString() {
+		return toText().toString();
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
+	 */
+	@Override
+	public DataEmitter<?> dataEmitter() {
+		return PCAP_EMITTER;
 	}
 
 }

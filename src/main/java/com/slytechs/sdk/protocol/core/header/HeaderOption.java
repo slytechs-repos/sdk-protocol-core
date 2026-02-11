@@ -17,8 +17,6 @@
  */
 package com.slytechs.sdk.protocol.core.header;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-
 /**
  * Common interface for protocol header options.
  * 
@@ -35,47 +33,40 @@ import com.slytechs.sdk.common.detail.DetailBuilder;
  */
 public interface HeaderOption {
 
-    /**
-     * Returns the option type/kind identifier.
-     * 
-     * @return the option identifier (0-255)
-     */
-    int optionId();
+	/**
+	 * Returns the option type/kind identifier.
+	 * 
+	 * @return the option identifier (0-255)
+	 */
+	int optionId();
 
-    /**
-     * Returns the offset of this option within the options area.
-     * 
-     * @return offset in bytes from start of options area
-     */
-    int optionOffset();
+	/**
+	 * Returns the offset of this option within the options area.
+	 * 
+	 * @return offset in bytes from start of options area
+	 */
+	int optionOffset();
 
-    /**
-     * Returns the total length of this option including type and length bytes.
-     * 
-     * @return option length in bytes
-     */
-    int optionLength();
+	/**
+	 * Returns the total length of this option including type and length bytes.
+	 * 
+	 * @return option length in bytes
+	 */
+	int optionLength();
 
-    /**
-     * Checks if this option is present in the current packet.
-     * 
-     * @return true if option is present
-     */
-    boolean isPresent();
+	/**
+	 * Checks if this option is present in the current packet.
+	 * 
+	 * @return true if option is present
+	 */
+	boolean isPresent();
 
-    /**
-     * Returns the human-readable name of this option.
-     * 
-     * @return option name
-     */
-    String optionName();
-    
-    String optionAbbr();
+	/**
+	 * Returns the human-readable name of this option.
+	 * 
+	 * @return option name
+	 */
+	String optionName();
 
-    /**
-     * Builds detailed output for this option.
-     * 
-     * @param h the header builder to populate
-     */
-    void buildDetail(DetailBuilder.HeaderBuilder h);
+	String optionAbbr();
 }

@@ -20,6 +20,7 @@ package com.slytechs.sdk.protocol.core.header;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 
+import com.slytechs.sdk.common.text.DataEmitter;
 import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 /**
@@ -34,12 +35,29 @@ public class Payload extends FixedHeader {
 
 	public static final MemoryLayout LAYOUT = ValueLayout.JAVA_BYTE;
 
+	// @formatter:off
+	private static final DataEmitter<Payload> PAYLOAD_EMITTER;
+	static {
+		PAYLOAD_EMITTER = new DataEmitter<>();
+
+		PAYLOAD_EMITTER.section("Data ({payload.len} bytes)", sec -> sec
+				.field("Length", p -> p.headerLength(), "payload.len"));
+	}
+	// @formatter:on
 	/**
 	 * @param id
 	 * @param layout
 	 */
 	public Payload() {
 		super(ID, LAYOUT);
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
+	 */
+	@Override
+	public DataEmitter<?> dataEmitter() {
+		return PAYLOAD_EMITTER;
 	}
 
 }

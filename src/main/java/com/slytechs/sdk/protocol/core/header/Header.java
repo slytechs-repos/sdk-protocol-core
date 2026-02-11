@@ -22,6 +22,8 @@ import java.lang.foreign.MemoryLayout;
 import com.slytechs.sdk.common.memory.BindableView;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryStructure;
+import com.slytechs.sdk.common.text.Detail;
+import com.slytechs.sdk.common.text.Textual;
 import com.slytechs.sdk.common.util.Named;
 import com.slytechs.sdk.protocol.core.Packet;
 import com.slytechs.sdk.protocol.core.Protocol;
@@ -34,7 +36,7 @@ import com.slytechs.sdk.protocol.core.spi.PackProvider;
  */
 public sealed abstract class Header
 		extends BoundView
-		implements MemoryStructure, Named
+		implements MemoryStructure, Named, Textual
 		permits FixedHeader, VariableHeader, ExtensibleHeader {
 
 	private final int protocolId;
@@ -439,4 +441,15 @@ public sealed abstract class Header
 		super.unbind();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String toString() {
+		return toText().toString();
+	}
+
+	public String toString(Detail detail) {
+		return toText(detail).toString();
+	}
 }

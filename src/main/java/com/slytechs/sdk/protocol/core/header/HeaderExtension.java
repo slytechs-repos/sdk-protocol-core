@@ -17,8 +17,6 @@
  */
 package com.slytechs.sdk.protocol.core.header;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-
 /**
  * Common interface for protocol header extensions.
  * 
@@ -35,46 +33,39 @@ import com.slytechs.sdk.common.detail.DetailBuilder;
  */
 public interface HeaderExtension {
 
-    /**
-     * Returns the extension identifier (Next Header value for IPv6, type for
-     * others).
-     * 
-     * @return the extension identifier
-     */
-    int extensionId();
+	/**
+	 * Returns the extension identifier (Next Header value for IPv6, type for
+	 * others).
+	 * 
+	 * @return the extension identifier
+	 */
+	int extensionId();
 
-    /**
-     * Returns the offset of this extension within the extensions area.
-     * 
-     * @return offset in bytes from start of extensions area
-     */
-    int extensionOffset();
+	/**
+	 * Returns the offset of this extension within the extensions area.
+	 * 
+	 * @return offset in bytes from start of extensions area
+	 */
+	int extensionOffset();
 
-    /**
-     * Returns the total length of this extension header.
-     * 
-     * @return extension length in bytes
-     */
-    int extensionLength();
+	/**
+	 * Returns the total length of this extension header.
+	 * 
+	 * @return extension length in bytes
+	 */
+	int extensionLength();
 
-    /**
-     * Checks if this extension is present in the current packet.
-     * 
-     * @return true if extension is present
-     */
-    boolean isPresent();
+	/**
+	 * Checks if this extension is present in the current packet.
+	 * 
+	 * @return true if extension is present
+	 */
+	boolean isPresent();
 
-    /**
-     * Returns the human-readable name of this extension.
-     * 
-     * @return extension name
-     */
-    String extensionName();
-
-    /**
-     * Builds detailed output for this extension.
-     * 
-     * @param h the header builder to populate
-     */
-    void buildDetail(DetailBuilder.HeaderBuilder h);
+	/**
+	 * Returns the human-readable name of this extension.
+	 * 
+	 * @return extension name
+	 */
+	String extensionName();
 }

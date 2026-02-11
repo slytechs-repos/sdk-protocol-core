@@ -17,8 +17,6 @@
  */
 package com.slytechs.sdk.protocol.core.header;
 
-import com.slytechs.sdk.common.detail.Detailable;
-
 /**
  * Common interface for protocol header extensions containers.
  * 
@@ -38,17 +36,18 @@ import com.slytechs.sdk.common.detail.Detailable;
  * </ul>
  * 
  * <h2>Usage Example</h2>
+ * 
  * <pre>{@code
  * HeaderExtensions<Ip6Extension> exts = ip6.extensions();
  * 
  * // Check presence
  * if (exts.hasExtension(Ip6Extensions.FRAGMENT)) {
- *     Ip6Extension ext = exts.extension(Ip6Extensions.FRAGMENT);
+ * 	Ip6Extension ext = exts.extension(Ip6Extensions.FRAGMENT);
  * }
  * 
  * // Iterate all extensions
  * for (Ip6Extension ext : exts) {
- *     System.out.println(ext.extensionName());
+ * 	System.out.println(ext.extensionName());
  * }
  * }</pre>
  *
@@ -59,57 +58,57 @@ import com.slytechs.sdk.common.detail.Detailable;
  * @since 1.0
  * @see HeaderExtension
  */
-public interface HeaderExtensions<E extends HeaderExtension> extends Iterable<E>, Detailable {
+public interface HeaderExtensions<E extends HeaderExtension> extends Iterable<E> {
 
-    /**
-     * Returns the number of extensions present.
-     * 
-     * @return extension count
-     */
-    int count();
+	/**
+	 * Returns the number of extensions present.
+	 * 
+	 * @return extension count
+	 */
+	int count();
 
-    /**
-     * Checks if an extension with the specified ID is present.
-     * 
-     * @param id the extension identifier
-     * @return true if extension is present
-     */
-    boolean hasExtension(int id);
+	/**
+	 * Checks if an extension with the specified ID is present.
+	 * 
+	 * @param id the extension identifier
+	 * @return true if extension is present
+	 */
+	boolean hasExtension(int id);
 
-    /**
-     * Returns the extension instance for the specified ID.
-     * 
-     * <p>
-     * Returns the pre-allocated extension instance regardless of presence. Use
-     * {@link #hasExtension(int)} or {@link HeaderExtension#isPresent()} to check
-     * if the extension exists in the current packet.
-     * </p>
-     * 
-     * @param id the extension identifier
-     * @return the extension instance, or null if ID is not recognized
-     */
-    E extension(int id);
+	/**
+	 * Returns the extension instance for the specified ID.
+	 * 
+	 * <p>
+	 * Returns the pre-allocated extension instance regardless of presence. Use
+	 * {@link #hasExtension(int)} or {@link HeaderExtension#isPresent()} to check if
+	 * the extension exists in the current packet.
+	 * </p>
+	 * 
+	 * @param id the extension identifier
+	 * @return the extension instance, or null if ID is not recognized
+	 */
+	E extension(int id);
 
-    /**
-     * Returns the total length of all extensions in bytes.
-     * 
-     * @return total extensions length
-     */
-    default long totalLength() {
-        long total = 0;
-        for (E ext : this) {
-            total += ext.extensionLength();
-        }
-        return total;
-    }
+	/**
+	 * Returns the total length of all extensions in bytes.
+	 * 
+	 * @return total extensions length
+	 */
+	default long totalLength() {
+		long total = 0;
+		for (E ext : this) {
+			total += ext.extensionLength();
+		}
+		return total;
+	}
 
-    /**
-     * Checks if any extensions are present.
-     * 
-     * @return true if at least one extension exists
-     */
-    default boolean hasExtensions() {
-        return count() > 0;
-    }
+	/**
+	 * Checks if any extensions are present.
+	 * 
+	 * @return true if at least one extension exists
+	 */
+	default boolean hasExtensions() {
+		return count() > 0;
+	}
 
 }

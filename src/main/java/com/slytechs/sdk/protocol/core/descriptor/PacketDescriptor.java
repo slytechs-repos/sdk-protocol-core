@@ -15,15 +15,20 @@
  */
 package com.slytechs.sdk.protocol.core.descriptor;
 
+import java.lang.foreign.MemorySegment;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.stream.Stream;
 
 import com.slytechs.sdk.common.memory.BindableView;
+import com.slytechs.sdk.common.memory.Memory;
 import com.slytechs.sdk.common.memory.pool.Persistable;
 import com.slytechs.sdk.common.time.TimestampUnit;
 import com.slytechs.sdk.protocol.core.Protocol;
 import com.slytechs.sdk.protocol.core.descriptor.PacketDescriptor.BindingInfo;
+import com.slytechs.sdk.protocol.core.dissector.ProtocolIterator;
 import com.slytechs.sdk.protocol.core.header.Header;
 import com.slytechs.sdk.protocol.core.header.HeaderAccessor;
 import com.slytechs.sdk.protocol.core.id.L2FrameType;
@@ -645,6 +650,25 @@ public interface PacketDescriptor
 		return Stream.of(info).iterator();
 	}
 
+	default String protocolSummary() {
+		StringBuilder sb = new StringBuilder();
+
+		for (BindingInfo info : this) {
+			if (sb.length() > 0)
+				sb.append(":");
+
+			String name = info.newUnboundHeader().defaultName();
+
+			String abbr = name.length() >= 5
+					? name.substring(0, 5)
+					: name;
+
+			sb.append(abbr.toUpperCase());
+		}
+
+		return sb.toString();
+	}
+
 	L2FrameType l2FrameType();
 
 	/**
@@ -717,6 +741,34 @@ public interface PacketDescriptor
 	 * @see ProtocolIds
 	 */
 	long mapProtocol(int protocolId, int depth);
+
+	default List<BindingInfo> listProtocols(Memory memory) {
+		var it = iterateProtocols(memory);
+		var list = new ArrayList<BindingInfo>();
+
+		it.forEachRemaining(list::add);
+
+		return list;
+	}
+
+	default Iterator<BindingInfo> iterateProtocols(Memory memory) {
+		int l2Type = l2FrameId();
+		MemorySegment seg = memory.segment();
+		long offset = memory.start();
+		long limit = memory.end();
+
+		var it = new ProtocolIterator(l2Type, seg, offset, limit);
+		return it;
+	}
+
+	default Iterator<BindingInfo> iterateProtocols(MemorySegment seg, long offset) {
+		int l2Type = l2FrameId();
+		long limit = seg.byteSize();
+
+		var it = new ProtocolIterator(l2Type, seg, offset, limit);
+
+		return it;
+	}
 
 	/**
 	 * Gets the byte order of the descriptor data.

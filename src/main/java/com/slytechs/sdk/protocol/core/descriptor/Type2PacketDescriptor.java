@@ -26,14 +26,14 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
-import com.slytechs.sdk.common.detail.ExpertLevel;
 import com.slytechs.sdk.common.format.StructFormat;
 import com.slytechs.sdk.common.memory.BindableView;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryHandle.LongHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
+import com.slytechs.sdk.common.text.Textual;
+import com.slytechs.sdk.common.text.format.Macro;
 import com.slytechs.sdk.common.time.TimestampUnit;
 import com.slytechs.sdk.protocol.core.header.Header;
 import com.slytechs.sdk.protocol.core.id.L2FrameType;
@@ -109,53 +109,7 @@ import static java.lang.foreign.MemoryLayout.PathElement.*;
  */
 public class Type2PacketDescriptor
 		extends AbstractPacketDescriptor
-		implements RxCapabilities, TxCapabilities, Detailable, BindableView {
-
-	// ========== Memory Layout (96 bytes) ==========
-
-	public static final MemoryLayout LAYOUT = structLayout(
-			// Base fields (16 bytes) - pcap compatible
-			structLayout(
-					U64.withName("timestamp"), // 0x00: 8 bytes
-					U16.withName("caplen"), // 0x08: 2 bytes
-					U16.withName("rx_info"), // 0x0A: 2 bytes
-					U16.withName("wirelen"), // 0x0C: 2 bytes
-					U16.withName("tx_info") // 0x0E: 2 bytes
-			).withName("base"),
-
-			// Protocol dissection fields (16 bytes)
-			U64.withName("proto_bitmap"), // 0x10: 8 bytes
-			U16.withName("proto_counts"), // 0x18: 2 bytes
-			U16.withName("extended_offset"), // 0x1A: 2 bytes
-			U16.withName("extended_size"), // 0x1C: 2 bytes
-			U16.withName("reserved"), // 0x1E: 2 bytes
-
-			// Inline protocol table (64 bytes)
-			sequenceLayout(8, U64).withName("inline_table") // 0x20: 64 bytes
-	).withName("type2");
-
-	public static final int BYTE_SIZE = (int) LAYOUT.byteSize(); // 96 bytes
-
-	/** Base layout (16 bytes) - pcap compatible, reusable by other descriptors */
-	public static final MemoryLayout BASE_LAYOUT = LAYOUT.select(groupElement("base"));
-
-	// ========== Type-safe Handles (JIT-inlinable) ==========
-
-	// Base fields - using dot notation for nested struct
-	private static final LongHandle TIMESTAMP = new LongHandle(LAYOUT, "base", "timestamp");
-	private static final ShortHandle CAPLEN = new ShortHandle(LAYOUT, "base", "caplen");
-	private static final ShortHandle RX_INFO = new ShortHandle(LAYOUT, "base", "rx_info");
-	private static final ShortHandle WIRELEN = new ShortHandle(LAYOUT, "base", "wirelen");
-	private static final ShortHandle TX_INFO = new ShortHandle(LAYOUT, "base", "tx_info");
-
-	// Protocol dissection fields
-	private static final LongHandle PROTO_BITMAP = new LongHandle(LAYOUT, "proto_bitmap");
-	private static final ShortHandle PROTO_COUNTS = new ShortHandle(LAYOUT, "proto_counts");
-	private static final ShortHandle EXTENDED_OFFSET = new ShortHandle(LAYOUT, "extended_offset");
-	private static final ShortHandle EXTENDED_SIZE = new ShortHandle(LAYOUT, "extended_size");
-
-	// Inline table - array access with [] syntax
-	private static final LongHandle INLINE_TABLE = new LongHandle(LAYOUT, "inline_table[]");
+		implements RxCapabilities, TxCapabilities, BindableView, Textual {
 
 	// ========== RX_INFO bit layout ==========
 
@@ -225,6 +179,140 @@ public class Type2PacketDescriptor
 	private static final long TX_CAPABILITIES = TxCapabilities.TX_NONE;
 	private static final long RX_CAPABILITIES = RxCapabilities.RX_NONE;
 	private static final int DESCRIPTOR_ID = DescriptorTypes.TYPE2;
+
+	// ========== Memory Layout (96 bytes) ==========
+
+	public static final MemoryLayout LAYOUT = structLayout(
+			// Base fields (16 bytes) - pcap compatible
+			structLayout(
+					U64.withName("timestamp"), // 0x00: 8 bytes
+					U16.withName("caplen"), // 0x08: 2 bytes
+					U16.withName("rx_info"), // 0x0A: 2 bytes
+					U16.withName("wirelen"), // 0x0C: 2 bytes
+					U16.withName("tx_info") // 0x0E: 2 bytes
+			).withName("base"),
+
+			// Protocol dissection fields (16 bytes)
+			U64.withName("proto_bitmap"), // 0x10: 8 bytes
+			U16.withName("proto_counts"), // 0x18: 2 bytes
+			U16.withName("extended_offset"), // 0x1A: 2 bytes
+			U16.withName("extended_size"), // 0x1C: 2 bytes
+			U16.withName("reserved"), // 0x1E: 2 bytes
+
+			// Inline protocol table (64 bytes)
+			sequenceLayout(8, U64).withName("inline_table") // 0x20: 64 bytes
+	).withName("type2");
+
+	public static final int BYTE_SIZE = (int) LAYOUT.byteSize(); // 96 bytes
+
+	/** Base layout (16 bytes) - pcap compatible, reusable by other descriptors */
+	public static final MemoryLayout BASE_LAYOUT = LAYOUT.select(groupElement("base"));
+
+	// ========== Type-safe Handles (JIT-inlinable) ==========
+
+	// Base fields - using dot notation for nested struct
+	private static final LongHandle TIMESTAMP = new LongHandle(LAYOUT, "base", "timestamp");
+	private static final ShortHandle CAPLEN = new ShortHandle(LAYOUT, "base", "caplen");
+	private static final ShortHandle RX_INFO = new ShortHandle(LAYOUT, "base", "rx_info");
+	private static final ShortHandle WIRELEN = new ShortHandle(LAYOUT, "base", "wirelen");
+	private static final ShortHandle TX_INFO = new ShortHandle(LAYOUT, "base", "tx_info");
+
+	// Protocol dissection fields
+	private static final LongHandle PROTO_BITMAP = new LongHandle(LAYOUT, "proto_bitmap");
+	private static final ShortHandle PROTO_COUNTS = new ShortHandle(LAYOUT, "proto_counts");
+	private static final ShortHandle EXTENDED_OFFSET = new ShortHandle(LAYOUT, "extended_offset");
+	private static final ShortHandle EXTENDED_SIZE = new ShortHandle(LAYOUT, "extended_size");
+
+	// Inline table - array access with [] syntax
+	private static final LongHandle INLINE_TABLE = new LongHandle(LAYOUT, "inline_table[]");
+
+	// @formatter:off
+	private static final String SUMMARY = "Net Packet Descriptor, cap={desc.caplen}, wire={desc.wirelen}";
+
+	private static final DataEmitter<Type2PacketDescriptor> TYPE2_EMITTER;
+	static {
+		TYPE2_EMITTER = new DataEmitter<>();
+
+		TYPE2_EMITTER.macro("desc.l2type.name", Macro.ofLong(v ->
+				L2FrameTypes.nameOf((int) v)));
+		TYPE2_EMITTER.macro("desc.tsunit.name", Macro.of(v ->
+				v instanceof TimestampUnit u ? u.name() : String.valueOf(v)));
+
+		TYPE2_EMITTER.section(SUMMARY, sec -> sec
+
+				// Base section
+				.section("Base", base -> base
+						.field("Timestamp", d -> "%d (%s)".formatted(d.timestamp(), d.timestampUnit()),
+								"desc.timestamp")
+						.field("Capture Length", Type2PacketDescriptor::captureLength, "desc.caplen")
+						.field("Wire Length", Type2PacketDescriptor::wireLength, "desc.wirelen")
+
+						// RX Info field-section
+						.field("RX Info: {desc.rxinfo:0x%04X}", Type2PacketDescriptor::rxInfo, "desc.rxinfo", rx -> rx
+								.field("RX Port", Type2PacketDescriptor::rxPort, "desc.rx.port")
+								.field("L2 Frame Type", d -> "%s (%d)".formatted(
+										L2FrameTypes.nameOf(d.l2FrameId()), d.l2FrameId()),
+										"desc.rx.l2type")
+								.field("L2 Extensions", Type2PacketDescriptor::hasL2Extensions, "desc.rx.l2ext")
+								.field("Timestamp Unit", d -> d.timestampUnit().name(), "desc.rx.tsunit"))
+
+						// TX Info field-section
+						.field("TX Info: {desc.txinfo:0x%04X}", Type2PacketDescriptor::txInfo, "desc.txinfo", tx -> tx
+								.field("TX Port", Type2PacketDescriptor::txPort, "desc.tx.port")
+								.field("TX Enabled", Type2PacketDescriptor::isTxEnabled, "desc.tx.enabled")
+								.field("TX Immediate", Type2PacketDescriptor::isTxImmediate, "desc.tx.immediate")
+								.field("TX CRC Recalc", Type2PacketDescriptor::isTxCrcRecalc, "desc.tx.crc")
+								.field("TX Timestamp Sync", Type2PacketDescriptor::isTxSyncTimestamp, "desc.tx.tssync")))
+
+				// Protocol dissection section
+				.section("Protocol Dissection", proto -> proto
+						.field("Protocol Bitmap", d -> "%08X (%s)".formatted(
+								d.getProtoBitmap(), d.formatBitmapFlags()),
+								"desc.proto.bitmap")
+						.field("Protocol Count", Type2PacketDescriptor::getProtocolCount, "desc.proto.count")
+						.field("VLAN Count", Type2PacketDescriptor::getVlanCount, "desc.proto.vlan")
+						.field("MPLS Count", Type2PacketDescriptor::getMplsCount, "desc.proto.mpls")
+						.field("Extended Offset", Type2PacketDescriptor::getExtendedOffset, "desc.proto.extoff")
+						.field("Extended Size", Type2PacketDescriptor::getExtendedSize, "desc.proto.extsize"))
+
+				// Inline table via delegate (dynamic iteration)
+				.section("Inline Protocol Table", inline -> inline
+						.delegate((e, desc, c) -> {
+							for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
+								long entry = INLINE_TABLE.getLongAtIndex(desc.view(), i);
+								if (entry == 0)
+									continue;
+
+								int protoId  = (int) (entry & PROTOCOL_ID_MASK);
+								int offset   = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
+								int length   = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
+								int order    = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
+								int instance = (int) ((entry >> INSTANCE_NUM_SHIFT) & INSTANCE_NUM_MASK);
+								boolean fragment = (entry & IS_FRAGMENT_BIT) != 0;
+								boolean tunneled = (entry & IS_TUNNELED_BIT) != 0;
+								boolean error    = (entry & HAS_ERRORS_BIT) != 0;
+
+								e.summary(INLINE_SLOT_NAMES[i]);
+								e.push();
+								e.field("Protocol ID", "0x%04X".formatted(protoId));
+								e.field("Offset", String.valueOf(offset));
+								e.field("Length", String.valueOf(length));
+								e.field("Order", String.valueOf(order));
+								if (instance > 0)
+									e.field("Instance", String.valueOf(instance));
+								if (fragment)
+									e.field("Fragment", "true");
+								if (tunneled)
+									e.field("Tunneled", "true");
+								if (error)
+									e.meta("Error", "Protocol parse error");
+								e.pop();
+							}
+							return e;
+						})));
+	}
+	// @formatter:on
+
 	private int extendedIndex = 0;
 	private int encounterOrder = 0;
 
@@ -304,114 +392,6 @@ public class Type2PacketDescriptor
 	@Override
 	public BoundView boundView() {
 		return view;
-	}
-
-	/**
-	 * Builds a detailed tree representation of this descriptor for UI display.
-	 * 
-	 * @param b the detail builder
-	 */
-	@Override
-	public void buildDetail(DetailBuilder b) {
-		b.header("Net Packet Descriptor", "TYPE2", DESCRIPTOR_ID, 0, BYTE_SIZE, h -> {
-
-			// Summary line
-			h.summaryf("cap=%d wire=%d ts=%d %s",
-					captureLength(), wireLength(), timestamp(),
-					timestampUnit().name());
-
-			// Base section (pcap-compatible 16 bytes)
-			h.section("Base", "base", s -> {
-				s.field("Timestamp", timestamp(),
-						String.format("%d (%s)", timestamp(), timestampUnit()),
-						DetailBuilder.longAt(0x00));
-				s.field("Capture Length", captureLength(), DetailBuilder.shortAt(0x08));
-				s.field("Wire Length", wireLength(), DetailBuilder.shortAt(0x0C));
-
-				// RX Info expandable
-				int rxInfoVal = rxInfo();
-				s.section("RX Info", "rx", rx -> {
-					rx.fieldHex("Raw", rxInfoVal, 4, DetailBuilder.shortAt(0x0A));
-					rx.field("RX Port", rxPort());
-					rx.field("L2 Frame Type", l2FrameId(), L2FrameTypes.nameOf(l2FrameId()));
-					rx.field("L2 Extensions", hasL2Extensions());
-					rx.field("Timestamp Unit", timestampUnit().name());
-				});
-
-				// TX Info expandable
-				int txInfoVal = txInfo();
-				s.section("TX Info", "tx", tx -> {
-					tx.fieldHex("Raw", txInfoVal, 4, DetailBuilder.shortAt(0x0E));
-					tx.field("TX Port", txPort());
-					tx.field("TX Enabled", isTxEnabled());
-					tx.field("TX Immediate", isTxImmediate());
-					tx.field("TX CRC Recalc", isTxCrcRecalc());
-					tx.field("TX Timestamp Sync", isTxSyncTimestamp());
-				});
-			});
-
-			// Protocol dissection section
-			h.section("Protocol Dissection", "proto", s -> {
-				s.fieldHex("Protocol Bitmap", (int) (getProtoBitmap() & 0xFFFFFFFF), 8,
-						formatBitmapFlags(), DetailBuilder.longAt(0x10));
-				s.field("Protocol Count", getProtocolCount(), DetailBuilder.shortAt(0x18));
-				s.field("VLAN Count", getVlanCount());
-				s.field("MPLS Count", getMplsCount());
-				s.field("Extended Offset", getExtendedOffset(), DetailBuilder.shortAt(0x1A));
-				s.field("Extended Size", getExtendedSize(), DetailBuilder.shortAt(0x1C));
-			});
-
-			// Inline table section
-			h.section("Inline Protocol Table", "inline", s -> {
-				for (int i = 0; i < INLINE_TABLE_SIZE; i++) {
-					long entry = INLINE_TABLE.getLongAtIndex(view(), i);
-					if (entry != 0) {
-						int protoId = (int) (entry & PROTOCOL_ID_MASK);
-						int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
-						int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
-						int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
-						int instance = (int) ((entry >> INSTANCE_NUM_SHIFT) & INSTANCE_NUM_MASK);
-						boolean fragment = (entry & IS_FRAGMENT_BIT) != 0;
-						boolean tunneled = (entry & IS_TUNNELED_BIT) != 0;
-						boolean error = (entry & HAS_ERRORS_BIT) != 0;
-
-						s.section(INLINE_SLOT_NAMES[i], INLINE_SLOT_NAMES[i].toLowerCase(), slot -> {
-							slot.fieldHex("Protocol ID", protoId, 4);
-							slot.field("Offset", offset);
-							slot.field("Length", length);
-							slot.field("Order", order);
-							if (instance > 0)
-								slot.field("Instance", instance);
-							if (fragment)
-								slot.field("Fragment", true);
-							if (tunneled)
-								slot.field("Tunneled", true);
-							if (error)
-								slot.expert(ExpertLevel.ERROR, "Protocol parse error");
-						});
-					}
-				}
-			});
-
-			// Extended table section (if populated)
-//			short extSize = getExtendedSize();
-//			if (extSize > 0) {
-//				h.section("Extended Protocol Table", "extended", s -> {
-//					MemorySegment extended = getExtendedSegment();
-//					for (int i = 0; i < extSize; i++) {
-//						long entry = extended.get(ValueLayout.JAVA_LONG, i * 8);
-//						int protoId = (int) (entry & PROTOCOL_ID_MASK);
-//						int offset = (int) ((entry >> HEADER_OFFSET_SHIFT) & HEADER_OFFSET_MASK);
-//						int length = (int) ((entry >> HEADER_LENGTH_SHIFT) & HEADER_LENGTH_MASK);
-//						int order = (int) ((entry >> ENCOUNTER_ORDER_SHIFT) & ENCOUNTER_ORDER_MASK);
-//
-//						s.fieldf("Entry[%d]", protoId,
-//								"id=0x%04X off=%d len=%d order=%d",
-//								protoId, offset, length, order);
-//					}
-//				});
-//			}
-		});
 	}
 
 	private long buildProtocolEntry(int protocolId, int offset, int length,
@@ -920,7 +900,7 @@ public class Type2PacketDescriptor
 
 	@Override
 	public String toString() {
-		return toDetailString();
+		return toText().toString();
 	}
 
 	/**
@@ -967,6 +947,14 @@ public class Type2PacketDescriptor
 		extended.set(ValueLayout.JAVA_LONG, extendedIndex * 8, entry);
 		extendedIndex++;
 		EXTENDED_SIZE.setShort(view(), (short) extendedIndex);
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
+	 */
+	@Override
+	public DataEmitter<?> dataEmitter() {
+		return TYPE2_EMITTER;
 	}
 
 }
