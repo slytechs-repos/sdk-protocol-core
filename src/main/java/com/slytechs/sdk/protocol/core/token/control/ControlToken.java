@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.protocol.core.token;
+package com.slytechs.sdk.protocol.core.token.control;
+
+import com.slytechs.sdk.protocol.core.token.Token;
+import com.slytechs.sdk.protocol.core.token.Tokens;
 
 /**
  * 
@@ -21,9 +24,10 @@ package com.slytechs.sdk.protocol.core.token;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface TokenType {
+public interface ControlToken extends Token {
 
-	int tokenType();
-
-	<T extends Token> Class<T> tokenClass();
+	@Override
+	default int domain() {
+		return Tokens.CONTROL_DOMAIN;
+	}
 }

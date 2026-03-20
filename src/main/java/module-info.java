@@ -1,3 +1,4 @@
+
 /*
  * Sly Technologies Free License
  * 
@@ -15,10 +16,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 /**
  * 
  */
-
 module com.slytechs.sdk.protocol.core {
 	exports com.slytechs.sdk.protocol.core;
 	exports com.slytechs.sdk.protocol.core.address;
@@ -40,4 +41,8 @@ module com.slytechs.sdk.protocol.core {
 	requires transitive com.slytechs.sdk.common;
 
 	uses com.slytechs.sdk.protocol.core.spi.PackProvider;
+	uses com.slytechs.sdk.protocol.core.token.TokenFactory;
+
+	provides com.slytechs.sdk.protocol.core.token.TokenFactory
+			with com.slytechs.sdk.protocol.core.token.control.ContolTokenFactory;
 }

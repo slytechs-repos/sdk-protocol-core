@@ -186,7 +186,7 @@ public class Packet
 			.meta("Protocols in frame", p -> p.descriptor().protocolSummary(), "frame.protocols")
 			.delegate((e, pkt, c) -> {
 
-				System.out.println("Packet::delegate pkt.descriptor=" + pkt.descriptor());
+//				System.out.println("Packet::delegate pkt.descriptor=" + pkt.descriptor());
 				Iterator<BindingInfo> iterator = pkt.descriptor().iterateProtocols(pkt.boundMemory());
 				while (iterator.hasNext()) {
 
