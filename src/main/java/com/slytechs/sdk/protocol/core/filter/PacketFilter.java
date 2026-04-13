@@ -284,6 +284,16 @@ public interface PacketFilter {
 	}
 
 	/**
+	 * Starts a filter chain that matches IP (v4 or v6) packets.
+	 *
+	 * @return a {@link PacketDsl} scoped to IPv4
+	 * @see #ip4(HeaderOperator)
+	 */
+	static PacketDsl ip() {
+		return of().ip();
+	}
+
+	/**
 	 * Starts a filter chain that matches IPv4 packets.
 	 *
 	 * @return a {@link PacketDsl} scoped to IPv4

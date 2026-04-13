@@ -201,6 +201,15 @@ public interface PacketDsl extends FilterDsl {
 	}
 
 	/**
+	 * Matches IP (v4 or v6) packets.
+	 *
+	 * @return a new filter that adds an IPv4 protocol condition
+	 */
+	default PacketDsl ip() {
+		return b -> this.emit(b).and().protocol("ip");
+	}
+
+	/**
 	 * Matches IPv4 packets.
 	 *
 	 * @return a new filter that adds an IPv4 protocol condition
