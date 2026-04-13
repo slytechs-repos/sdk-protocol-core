@@ -1,0 +1,15 @@
+{
+  "Ipx": "IPX, src: %{sourceAddress}s dst=%{destinationAddress}s type=%{type}d",
+  "HIGH,MEDIUM,LOW": {
+    "checksum;Checksum": "0x%{}04X",
+    "length;Length": "%{}d bytes",
+    "transportControl;Transport Control": "%{}d",
+    "type;Packet Type": "%{:IPX_TYPE}s (%{}d)",
+    "destinationNetwork;Destination Network": "0x%{}08X", 
+    "destinationNode;Destination Node": "%{:F}s",
+    "destinationSocket;Destination Socket": "0x%{}04X",
+    "sourceNetwork;Source Network": "0x%{}08X",
+    "sourceNode;Source Node": "%{:F}s", 
+    "sourceSocket;Source Socket": "0x%{}04X"
+  }
+}

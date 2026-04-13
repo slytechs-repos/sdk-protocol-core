@@ -1,0 +1,9 @@
+{
+	"Ppp": "Point-to-Point Protocol, offset=%{offset},d length=%{length},d",
+	"TRACE,DEBUG,HIGH,MEDIUM,LOW": {
+		"flag;Flag": "0x%{}02X",
+		"address;Address": "0x%{}02X",
+		"control;Control": "0x%{}02X",
+		"protocol;Protocol": "%{:PPP_PROTOCOL}s (0x%{}04X)"
+	}
+}

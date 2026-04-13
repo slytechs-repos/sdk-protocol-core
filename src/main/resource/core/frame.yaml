@@ -1,0 +1,30 @@
+Frame:
+  defaults:
+    width: 50
+    align: left
+
+  templates:
+    HIGH:
+      summary: ""
+      fields:
+        - name: portNo
+          label: "Interface id"
+          template: "${value} (${portName})"
+
+        - name: frameNo
+          label: "Frame Number"
+          template: "${value}"
+
+        - name: timestamp
+          label: "Arrival Time"
+          template: "${value} [0x${timestampAsLong:016X}]"
+
+        - name: captureLength 
+          label: "Capture Length"
+          template: "${value} bytes (${captureLengthBits} bits)"
+
+        - name: wireLength
+          label: "Frame Length"
+          template: "${value} bytes (${wireLengthBits} bits)"
+
+    # MEDIUM and LOW will inherit from HIGH since they're identical

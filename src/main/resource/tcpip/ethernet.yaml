@@ -1,0 +1,38 @@
+Ethernet:
+  defaults:
+    width: 50
+    align: left
+
+  templates:
+    HIGH:
+      summary: "Ethernet II, src: ${src:ETHER_MAC_OUI_NAME_PREFIXED} dst=${dst:ETHER_MAC_OUI_NAME_PREFIXED} offset=${offset} length=${length}"
+      fields:
+        - name: dst 
+          label: "Destination Address"
+          template: "${value:ETHER_MAC_OUI_NAME_PREFIXED} (${value:MAC})"
+
+        - name: src
+          label: "Source Address"
+          template: "${value:ETHER_MAC_OUI_NAME_PREFIXED} (${value:MAC})"
+
+        - name: type
+          label: "Type"
+          template: "${value:ETHER_TYPE} (0x${value:HEX})"
+          width: 30
+
+    MEDIUM:
+      summary: "Ethernet II, src: ${src:MAC} dst=${dst:MAC} type=${type:ETHER_TYPE}"
+      fields:
+        - name: dst 
+          label: "Destination"
+          template: "${value:MAC}"
+          width: 30
+
+        - name: type
+          label: "Type"
+          template: "${value:ETHER_TYPE}"
+          width: 20
+
+    LOW:
+      summary: "Ethernet II, type=${type:ETHER_TYPE}"
+      # No fields, just summary

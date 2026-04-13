@@ -1,0 +1,74 @@
+IPv4:
+  defaults:
+    width: 50
+    align: left
+
+  templates:
+    HIGH:
+      summary: "Internet Protocol Version 4, offset=${offset} length=${length}"
+      fields:
+        - name: version
+          label: "Version"
+          template: "${header[0]:$1111 ....} = Version: ${value}"
+
+        - name: hdrLen
+          label: "Header Length"
+          template: "${hdrLenBytes} bytes (${header[0]:$.... 1111} = ${value})"
+
+        - name: trafficClass
+          label: "Traffic Class"
+          template: "0x${value:02X} (DSCP: ${trafficDscpName}, ECN: ${trafficDscpAbbr})"
+
+        - name: totalLength
+          label: "Total Length"
+          template: "${value} bytes"
+
+        - name: identification
+          label: "Identification"
+          template: "0x${value:04X} [${value}]"
+
+        - name: flags
+          label: "Flags"
+          template: "0x${value:X} (${flagsEnum})"
+
+        - name: fragOffset
+          label: "Fragment Offset"
+          template: "${value} [${value}*8 = ${fragOffsetBytes} bytes]"
+
+        - name: ttl
+          label: "Time to Live"
+          template: "${value}"
+
+        - name: protocol
+          label: "Protocol"
+          template: "${protocol:IP_TYPE} (${value})"
+
+        - name: src
+          label: "Source Address"
+          template: "${value}"
+
+        - name: dst
+          label: "Destination Address"
+          template: "${value}"
+
+    MEDIUM:
+      summary: "IPv4 ${src} → ${dst}, ${protocol}"
+      fields:
+        - name: trafficClass
+          label: "Traffic Class"
+          template: "0x${value:02X} (DSCP: ${trafficDscpName}, ECN: ${trafficDscpAbbr})"
+
+        - name: totalLength
+          label: "Total Length"
+          template: "${value} bytes"
+
+        - name: ttl
+          label: "Time to Live"
+          template: "${value}"
+
+        - name: protocol
+          label: "Protocol"
+          template: "${protocol:IP_TYPE}"
+
+    LOW:
+      summary: "IPv4 ${src} → ${dst} (${protocol})"

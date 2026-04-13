@@ -1,0 +1,27 @@
+{
+  "Ethernet": {
+    "templates": {
+      "summary": "Ethernet II, src: ${src:ETHER_MAC_OUI_NAME_PREFIXED} dst=${dst:ETHER_MAC_OUI_NAME_PREFIXED} offset=${offset} length=${length}",
+      "details": [
+        {
+          "field": "dst",
+          "label": "Destination Address",
+          "template": "${value:ETHER_MAC_OUI_NAME_PREFIXED} (${value:MAC})",
+          "width": 50
+        },
+        {
+          "field": "src",
+          "label": "Source Address",
+          "template": "${value:ETHER_MAC_OUI_NAME_PREFIXED} (${value:MAC})",
+          "width": 50
+        },
+        {
+          "field": "type",
+          "label": "Type",
+          "template": "${value:ETHER_TYPE} (0x${value:HEX})",
+          "width": 30
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,55 @@
+ICMPv4-Echo:
+ defaults:
+   width: 50
+   align: left
+
+ meta:
+   priority: 200
+
+ templates:
+   HIGH:
+     summary: "Internet Control Message Protocol Echo (Ping), offset=${offset}, length=${length}"
+     fields:
+       - name: identifier
+         label: "Identifier"
+         template: "${value} (0x${value:04X})"
+
+       - name: sequence
+         label: "Sequence Number"
+         template: "${value}"
+
+   MEDIUM:
+     summary: "Internet Control Message Protocol Echo (Ping), offset=${offset}, length=${length}"
+     fields:
+       - name: identifier
+         label: "Identifier"
+         template: "${value} (0x${value:04X})"
+
+       - name: sequence
+         label: "Sequence Number"
+         template: "${value}"
+
+   LOW:
+     summary: "ICMP Echo id=${identifier} seq=${sequence}"
+
+   DEBUG:
+     summary: "Internet Control Message Protocol Echo (Ping), offset=${offset}, length=${length}"
+     fields:
+       - name: identifier
+         label: "Identifier"
+         template: "${value} (0x${value:04X})"
+
+       - name: sequence
+         label: "Sequence Number"
+         template: "${value}"
+
+   TRACE:
+     summary: "Internet Control Message Protocol Echo (Ping), offset=${offset}, length=${length}"
+     fields:
+       - name: identifier
+         label: "Identifier"
+         template: "${value} (0x${value:04X})"
+
+       - name: sequence
+         label: "Sequence Number"
+         template: "${value}"

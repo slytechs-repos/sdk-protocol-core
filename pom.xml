@@ -1,24 +1,94 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>com.slytechs.jnet.protocol</groupId>
-		<artifactId>protocol-pack-sdk-parent</artifactId>
-		<version>0.10.0</version>
-	</parent>
-	<artifactId>protocol-pack-api</artifactId>
-	<name>Protocol Pack API</name>
-	<description>Core prototocols and API for all protocol packs</description>
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2005-2026 Sly Technologies Inc.
 
-	<build>
-		<resources>
-			<resource>
-				<directory>src/main/resource</directory>
-				<excludes>
-					<exclude>**/*.java</exclude>
-				</excludes>
-			</resource>
-		</resources>
-	</build>
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.slytechs.sdk</groupId>
+        <artifactId>sdk-parent</artifactId>
+        <version>3.0.0</version>
+        <relativePath>../sdk-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>sdk-protocol-core</artifactId>
+    <packaging>jar</packaging>
+
+    <name>SDK Protocol Core</name>
+    <description>Core protocol definitions and dissection framework</description>
+    <url>https://github.com/slytechs-repos/sdk-protocol-core</url>
+
+    <scm>
+        <connection>scm:git:git://github.com/slytechs-repos/sdk-protocol-core.git</connection>
+        <developerConnection>scm:git:ssh://github.com:slytechs-repos/sdk-protocol-core.git</developerConnection>
+        <url>https://github.com/slytechs-repos/sdk-protocol-core</url>
+    </scm>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.slytechs.sdk</groupId>
+                <artifactId>sdk-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.slytechs.sdk</groupId>
+            <artifactId>sdk-common</artifactId>
+        </dependency>
+        <!-- junit-jupiter aggregates api + engine + params - no need to list individually -->
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

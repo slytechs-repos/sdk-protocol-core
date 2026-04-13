@@ -1,0 +1,31 @@
+ICMPv4:
+  defaults:
+    width: 50
+    align: left
+
+  meta:
+    priority: 100
+
+  templates:
+    HIGH:
+      summary: "Internet Control Message Protocol Version 4, offset=${offset}, length=${length}"
+      fields:
+        - name: type
+          label: "Type"
+          template: "${value} (${value:ICMPv4_TYPE})"
+
+        - name: code
+          label: "Code" 
+          template: "${value} (${value:ICMPv4_CODE})"
+
+        - name: checksum
+          label: "Checksum"
+          template: "0x${value:04X}"
+
+    MEDIUM:
+      # Only override the summary, inherit fields from HIGH
+      summary: "ICMPv4 ${type:ICMPv4_TYPE}"
+
+    LOW:
+      # Just override summary, no fields needed
+      summary: "ICMPv4 ${type:ICMPv4_TYPE}"

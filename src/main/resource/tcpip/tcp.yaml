@@ -1,0 +1,62 @@
+TCP:
+  defaults:
+    width: 50
+    align: left
+
+  templates:
+    HIGH:
+      summary: "Transmission Control Protocol, offset=${offset} length=${length}"
+      fields:
+        - name: src
+          label: "Source Port"
+          template: "${value:PORT_LOOKUP} (${value})"
+
+        - name: dst
+          label: "Destination Port" 
+          template: "${value:PORT_LOOKUP} (${value})"
+
+        - name: seq
+          label: "Sequence Number (raw)"
+          template: "${value}"
+
+        - name: ack
+          label: "Acknowledgment Number (raw)"
+          template: "${value}"
+
+        - name: dataOffset
+          label: "Header Length"
+          template: "${length} bytes (${value})"
+
+        - name: flags
+          label: "Flags"
+          template: "0x${value:03X} (${value:TCP_FLAGS}) [${value:TCP_BITS}]"
+
+        - name: window
+          label: "Window"
+          template: "${value}"
+
+        - name: checksum
+          label: "Checksum"
+          template: "0x${value:X}"
+
+        - name: urgent
+          label: "Urgent Pointer"
+          template: "${value}"
+
+    MEDIUM:
+      summary: "TCP ${src:PORT_LOOKUP} → ${dst:PORT_LOOKUP}"
+      fields:
+        - name: flags
+          label: "Flags"
+          template: "${value:TCP_FLAGS}"
+
+        - name: seq
+          label: "Seq"
+          template: "${value}"
+
+        - name: ack
+          label: "Ack"
+          template: "${value}"
+
+    LOW:
+      summary: "TCP ${src:PORT_LOOKUP} → ${dst:PORT_LOOKUP}"

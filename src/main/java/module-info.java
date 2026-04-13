@@ -1,7 +1,8 @@
+
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2023 Sly Technologies Inc.
+ * Copyright 2025 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,38 +18,31 @@
  */
 
 /**
- * Base protocol support for packet dissection, protocol classification, IP
- * fragment reassembly, UDP and TCP stream reassembly.
- * <p>
- * The following protocols are supported:
- * </p>
- * <dl>
- * <dt>Ethernet - IEEE 802.3, Ethernet2</dt>
- * <dt>Llc - provides LLC functions to IEEE 802 MAC layers</dt>
- * <dt>Vlan - IEEE 802.1q datalink Vlan tags</dt>
- * <dt>MPLS - MPLS labels</dt>
- * <dt>Stp - Spanning Tree Protocol</dt>
- * <dt>Ip - Internet Protocol IPv4 and IPv6</dt>
- * <dt>Icmp - Internet Control Message Protocol</dt>
- * <dt>Tcp - Transmission Control Protocol</dt>
- * <dt>Udp - User Datagram Protocol</dt>
- * </dl>
  * 
- * @author Sly Technologies
- * @author repos@slytechs.com
  */
-module com.slytechs.jnet.protocol {
-
-
-	/* Public API */
-	exports com.slytechs.jnet.protocol;
-	exports com.slytechs.jnet.protocol.pack;
-	exports com.slytechs.jnet.protocol.core;
-	exports com.slytechs.jnet.protocol.core.constants;
-	exports com.slytechs.jnet.protocol.descriptor;
-	exports com.slytechs.jnet.protocol.meta;
-	
-	requires com.slytechs.jnet.jnetruntime;
+module com.slytechs.sdk.protocol.core {
+	exports com.slytechs.sdk.protocol.core;
+	exports com.slytechs.sdk.protocol.core.address;
+	exports com.slytechs.sdk.protocol.core.checksum;
+	exports com.slytechs.sdk.protocol.core.header;
+	exports com.slytechs.sdk.protocol.core.hash;
+	exports com.slytechs.sdk.protocol.core.id;
+	exports com.slytechs.sdk.protocol.core.flow;
+	exports com.slytechs.sdk.protocol.core.filter;
+	exports com.slytechs.sdk.protocol.core.pack;
+	exports com.slytechs.sdk.protocol.core.token;
+	exports com.slytechs.sdk.protocol.core.descriptor;
+	exports com.slytechs.sdk.protocol.core.dissector;
+	exports com.slytechs.sdk.protocol.core.stack;
+	exports com.slytechs.sdk.protocol.core.stack.processor;
+	exports com.slytechs.sdk.protocol.core.spi;
 
 	requires java.logging;
+	requires transitive com.slytechs.sdk.common;
+
+	uses com.slytechs.sdk.protocol.core.spi.PackProvider;
+	uses com.slytechs.sdk.protocol.core.token.TokenFactory;
+
+	provides com.slytechs.sdk.protocol.core.token.TokenFactory
+			with com.slytechs.sdk.protocol.core.token.control.ContolTokenFactory;
 }

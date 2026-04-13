@@ -1,0 +1,137 @@
+# icmp6.yml
+ICMPv6:
+ defaults:
+   width: 50
+   align: left
+
+ templates:
+   HIGH:
+     summary: "Internet Control Message Protocol Version 6, offset=${offset}, length=${length}"
+     fields:
+       - name: type
+         label: "Type"
+         template: "${value:ICMPv6_TYPE} (${value})"
+
+       - name: code
+         label: "Code"
+         template: "${value}"
+
+       - name: checksum
+         label: "Checksum"
+         template: "0x${value:04X}"
+
+   MEDIUM:
+     summary: "ICMPv6 ${type:ICMPv6_TYPE}"
+     fields:
+       - name: type
+         label: "Type"
+         template: "${value:ICMPv6_TYPE} (${value})"
+
+       - name: code
+         label: "Code"
+         template: "${value}"
+
+   LOW:
+     summary: "ICMPv6 ${type:ICMPv6_TYPE}"
+     fields:
+       - name: type
+         label: "Type"
+         template: "${value:ICMPv6_TYPE} (${value})"
+
+  # icmp6-mlr2.yml
+  ICMPv6-MLR2:
+    defaults:
+      width: 50
+      align: left
+
+    templates:
+      HIGH:
+        summary: "Internet Control Message Protocol Version 6, offset=${offset}, length=${length}"
+        fields:
+          - name: reserved
+            label: "Reserved"
+            template: "${value:04x}"
+
+          - name: numberOfRecords
+            label: "Number of Multicast Address Records"
+            template: "${value}"
+
+# icmp6-mlr2-record.yml
+ICMPv6-MLR2-Record:
+  defaults:
+    width: 50
+    align: left
+
+  templates:
+    HIGH:
+      summary: "Multicast Address Record ${recordType:R}: ${multicastAddress}"
+      fields:
+        - name: recordType
+          label: "Record Type"
+          template: "${value:MLRv2_TYPE} (${value})"
+
+        - name: auxDataLen
+          label: "Aux Data Len"
+          template: "${value} [${value}*4=${auxDataLenBytes} bytes]"
+
+        - name: numberOfSources
+          label: "Number of Sources"
+          template: "${value}"
+
+        - name: multicastAddress
+          label: "Multicast Address"
+          template: "${value}"
+
+# icmp6-neighbor-advertisement.yml
+ICMPv6-NeighborAdvertisement:
+  defaults:
+    width: 50
+    align: left
+
+  templates:
+    HIGH:
+      summary: "Internet Control Message Protocol Version 6, offset=${offset}, length=${length}"
+      fields:
+        - name: flags
+          label: "Flags"
+          template: "0x${value:x} ${flagsSet}"
+          format_list:
+            - "${:$1... .... .... .... .... .... .... ....} = Router: ${isRouterFlag:[false=Not Set,true=Set]}"
+            - "${:$.1.. .... .... .... .... .... .... ....} = Solicited: ${isSolicitedFlag:[false=Not set,true=Set]}"
+            - "${:$..1. .... .... .... .... .... .... ....} = Override: ${isOverrideFlag:[false=Not set,true=Set]}"
+            - "${:$...1 1111 1111 1111 1111 1111 1111 1111} = Reserved: 0x${reserved:08X}"
+
+        - name: targetAddress
+          label: "Target Address"
+          template: "${value}"
+
+    DEBUG:
+      summary: |
+        Internet Control Message Protocol Version 6, offset=${offset}, length=${length}
+         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |     Type      |     Code      |          Checksum             |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |R|S|O|                     Reserved                            |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                                                               |
+        +                                                               +
+        |                                                               |
+        +                         Target Address                        +
+        |                                                               |
+        +                                                               +
+        |                                                               |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |  Options ...
+        +-+-+-+-+-+-+-+-+-+-+-
+
+    MEDIUM:
+      fields:
+        - name: flags
+          label: "Flags"
+          template: "0x${value:x} ${flagsSet}"
+
+        - name: targetAddress
+          label: "Target Address"
+          template: "${value}"
+  
